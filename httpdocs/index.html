@@ -120,7 +120,12 @@
 					<a href="#" class="button" id="view_3d_button" onclick="project.show3DView( );"><img src="widgets/themes/kde/3d-view.png" alt="Show the 3D view" title="Show the 3D view" /></a>
 				</div>
 				<div id="logout_box" class="box_right" style="display:none"><p><a id="logout" name="logout" title="Logout" onclick="logout();" href="#">Logout</a></p></div>
-				<div id="login_box" class="box_right" style="display:none"><p>account&nbsp;</p><p><input type="text" id="account" name="account" size="8" /></p><p>&nbsp;&nbsp;password&nbsp;</p><p><input type="password" id="password" name="password" size="8" /></p><p>&nbsp;&nbsp;<a id="login" name="login" title="Login" href="#" onclick="login( document.getElementById( 'account' ).value, document.getElementById( 'password' ).value );">Login</a></p></div>
+				<div id="login_box" class="box_right" style="display:none">
+					<p>account&nbsp;</p><p><input type="text" id="account" name="account" size="8" /></p><p>&nbsp;&nbsp;password&nbsp;</p>
+					<p><input type="password" id="password" name="password" size="8" /></p>
+					<p>&nbsp;&nbsp;<a id="login" name="login" title="Login" href="#" onclick="login( document.getElementById( 'account' ).value, document.getElementById( 'password' ).value );">Login</a></p>
+					<p>&nbsp;&nbsp;<a id="new_user" name="new_user" title="New User" onclick="showMainForm('new_user_dialog');"  href="#">New User</a></p>
+				</div>
 				<div id="session_box" class="box_right" style="display:none"><p>You are <span id="session_longname">&nbsp;</span>.</p></div>
 				<div class="box_right" id="toolbox_show" style="display:none">
 					<a href="#" class="button_active" id="show_button_text" onclick="project.toggleShow( 'text' );"><img src="widgets/themes/kde/show_text.gif" alt="show textlabels" title="show textlabels" /></a>
@@ -437,7 +442,7 @@
 		<div id="content">
 			<h1>CATMAID v0.24beta</h1>
 		
-			<div id="project list">
+			<div id="project_list">
 				<p>Please feel free to open one of the public projects or log in with your account and password.</p>
 		
 				<h2 id="projects_h">Projects</h2>
@@ -476,18 +481,33 @@
 					<td><p>Username:</p></td><td><input type="text" name="uname" id="user_name" /></td>
 				</tr>
 				<tr>
-					<td><p>Longname:</p></td><td><input type="text" name="ulongname" id="user_longname" /></td>
+					<td><p>Name:</p></td><td><input type="text" name="urealname" id="user_realname" /></td>
+				</tr>
+				<tr>
+					<td><p>E-Mail:</p></td><td><input type="text" name="uemail" id="user_email" /></td>
 				</tr>
 				<tr>
 					<td><p>Password:</p></td><td><input type="password" name="upassword" id="user_pwd" /></td>
 				</tr>
 				<tr>
-					<td><p>E-Mail:</p></td><td><input type="text" name="uemail" id="user_email" /></td>
+					<td><p>Confirm password:</p></td><td><input type="password" name="upassword2" id="user_pwd2" /></td>
 				</tr>
 				<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
 				<tr><td></td><td>
-					<input type="button" value=" Register User " onclick="register_user();" />
-					<input type="reset" value=" Cancel " />
+					<input type="button" value=" Register User " onclick="jRegister()" />
+					<input type="reset" value=" Cancel " onclick="showMainForm('project_list')" />
+					<script type="text/javascript">
+					<!--
+						function jRegister() {
+							var uname = document.getElementById( 'user_name' ).value;
+							var rname = document.getElementById( 'user_realname').value;
+							var email = document.getElementById( 'user_email').value;
+							var pwd = document.getElementById( 'user_pwd').value;
+							var pwd2 = document.getElementById( 'user_pwd2').value;
+							create_user(uname, rname, email, pwd, pwd2);
+						}
+					//-->
+					</script>	
 				</td></tr>
 			</table>
 			</form>

@@ -137,6 +137,77 @@ function handle_login(status, text, xml) {
 
 
 /**
+ * queue a create-user-request optionally using username, password, name and email,
+ * freeze the window to wait for an answer
+ *
+ */
+function create_user(
+		username,	//!< string account
+		realname,		//!< string name
+		email,		//!< string email	
+		password,	//!< string password
+		password2	//!< string password confirmation
+)
+{
+	if ( msg_timeout ) window.clearTimeout( msg_timeout );
+
+	/** Construct secure URL
+	* secureURL = 'https' + getBaseURL() + '/model/register.php'
+	*/
+	ui.catchEvents( "wait" );
+	if ( username || realname || email || password || password2)
+		requestQueue.register(
+			'model/user.create.php',
+			'POST',
+			{ username : username, realname : realname, email : email, password : password, password2 : password2 },
+			handle_create_user );
+	else
+		requestQueue.register(
+			'model/user.create.php',
+			'GET',
+			undefined,
+			handle_create_user );
+	return;
+}
+
+/**
+ * handle a new-user-request answer
+ * update the project menu
+ *
+ * free the window
+ */s
+function handle_create_user( status, text, xml )
+{
+	if ( status == 200 && text )
+	{
+		var e = eval( "(" + text + ")" );
+		
+		if ( e.notice )
+		{
+			alert(e.notice);
+			document.getElementById( "user_name" ).value = "";
+			document.getElementById( "user_realname" ).value = "";
+			document.getElementById( "user_email" ).value = "";
+			document.getElementById( "user_pwd" ).value = "";
+			document.getElementById( "user_pwd2" ).value = "";
+			$('#new_user_dialog').hide();  // todo: DRY >> repeated operation, go to index.html showMainForm(content)
+			$('#project_list').fadeIn('fast');
+			
+			//msg_timeout = window.setTimeout( message, MSG_TIMEOUT_INTERVAL );
+			
+			message();
+		}
+		else if ( e.error )
+		{
+			alert( e.error );
+		}
+		updateProjects();
+	}
+	return;
+}
+
+
+/**
  * queue a logout-request
  * freeze the window to wait for an answer
  */
