@@ -827,14 +827,18 @@ current_scale // current scale of the stack
     // might update the mouse pointer
     document.getElementById("trace_button_skeleton").className = "button";
     document.getElementById("trace_button_synapse").className = "button";
+    document.getElementById("trace_button_polygon").className = "button";
 
     if (mode === "skeletontracing") {
       currentmode = mode;
       document.getElementById("trace_button_skeleton").className = "button_active";
-    } else if (currentmode === "skeletontracing") {
+    } else if (mode === "synapsedropping") {
       currentmode = mode;
       document.getElementById("trace_button_synapse").className = "button_active";
-    }
+    } else if (mode === "polygontracing") {
+			currentmode = mode;
+			document.getElementById("trace_button_polygon").className = "button_active";
+		}
   };
 
   var getMode = function (e) {
@@ -910,7 +914,13 @@ current_scale // current scale of the stack
       } else if (getMode() === "synapsedropping") {
         // only create single synapses/connectors
         createSingleConnector(phys_x, phys_y, phys_z, pos_x, pos_y, pos_z, 5);
-      }
+      } else if (getMode() === "polygontracing") {
+				if (typeof this.polygon === 'undefined') {
+					this.polygon = new Area(1, r, pos_x, pos_y, 3);
+				} else {
+					this.polygon.addXY(pos_x, pos_y);
+				}				
+			}
     }
     e.stopPropagation();
     return true;
