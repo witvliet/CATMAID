@@ -103,7 +103,7 @@ CREATE TYPE tablefunc_crosstab_4 AS (
 ALTER TYPE public.tablefunc_crosstab_4 OWNER TO catmaid_user;
 
 --
--- Name: connectby(text, text, text, text, integer, text); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: connectby(text, text, text, text, integer, text); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION connectby(text, text, text, text, integer, text) RETURNS SETOF record
@@ -114,7 +114,7 @@ CREATE FUNCTION connectby(text, text, text, text, integer, text) RETURNS SETOF r
 ALTER FUNCTION public.connectby(text, text, text, text, integer, text) OWNER TO catmaid_user;
 
 --
--- Name: connectby(text, text, text, text, integer); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: connectby(text, text, text, text, integer); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION connectby(text, text, text, text, integer) RETURNS SETOF record
@@ -125,7 +125,7 @@ CREATE FUNCTION connectby(text, text, text, text, integer) RETURNS SETOF record
 ALTER FUNCTION public.connectby(text, text, text, text, integer) OWNER TO catmaid_user;
 
 --
--- Name: connectby(text, text, text, text, text, integer, text); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: connectby(text, text, text, text, text, integer, text); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION connectby(text, text, text, text, text, integer, text) RETURNS SETOF record
@@ -136,7 +136,7 @@ CREATE FUNCTION connectby(text, text, text, text, text, integer, text) RETURNS S
 ALTER FUNCTION public.connectby(text, text, text, text, text, integer, text) OWNER TO catmaid_user;
 
 --
--- Name: connectby(text, text, text, text, text, integer); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: connectby(text, text, text, text, text, integer); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION connectby(text, text, text, text, text, integer) RETURNS SETOF record
@@ -147,7 +147,7 @@ CREATE FUNCTION connectby(text, text, text, text, text, integer) RETURNS SETOF r
 ALTER FUNCTION public.connectby(text, text, text, text, text, integer) OWNER TO catmaid_user;
 
 --
--- Name: crosstab(text); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: crosstab(text); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION crosstab(text) RETURNS SETOF record
@@ -158,7 +158,7 @@ CREATE FUNCTION crosstab(text) RETURNS SETOF record
 ALTER FUNCTION public.crosstab(text) OWNER TO catmaid_user;
 
 --
--- Name: crosstab(text, integer); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: crosstab(text, integer); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION crosstab(text, integer) RETURNS SETOF record
@@ -169,7 +169,7 @@ CREATE FUNCTION crosstab(text, integer) RETURNS SETOF record
 ALTER FUNCTION public.crosstab(text, integer) OWNER TO catmaid_user;
 
 --
--- Name: crosstab(text, text); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: crosstab(text, text); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION crosstab(text, text) RETURNS SETOF record
@@ -180,7 +180,7 @@ CREATE FUNCTION crosstab(text, text) RETURNS SETOF record
 ALTER FUNCTION public.crosstab(text, text) OWNER TO catmaid_user;
 
 --
--- Name: crosstab2(text); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: crosstab2(text); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION crosstab2(text) RETURNS SETOF tablefunc_crosstab_2
@@ -191,7 +191,7 @@ CREATE FUNCTION crosstab2(text) RETURNS SETOF tablefunc_crosstab_2
 ALTER FUNCTION public.crosstab2(text) OWNER TO catmaid_user;
 
 --
--- Name: crosstab3(text); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: crosstab3(text); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION crosstab3(text) RETURNS SETOF tablefunc_crosstab_3
@@ -202,7 +202,7 @@ CREATE FUNCTION crosstab3(text) RETURNS SETOF tablefunc_crosstab_3
 ALTER FUNCTION public.crosstab3(text) OWNER TO catmaid_user;
 
 --
--- Name: crosstab4(text); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: crosstab4(text); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION crosstab4(text) RETURNS SETOF tablefunc_crosstab_4
@@ -213,7 +213,7 @@ CREATE FUNCTION crosstab4(text) RETURNS SETOF tablefunc_crosstab_4
 ALTER FUNCTION public.crosstab4(text) OWNER TO catmaid_user;
 
 --
--- Name: normal_rand(integer, double precision, double precision); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: normal_rand(integer, double precision, double precision); Type: FUNCTION; Schema: public; Owner: catmaid_user
 --
 
 CREATE FUNCTION normal_rand(integer, double precision, double precision) RETURNS SETOF double precision
@@ -371,7 +371,7 @@ ALTER SEQUENCE concept_id_seq OWNED BY concept.id;
 -- Name: concept_id_seq; Type: SEQUENCE SET; Schema: public; Owner: catmaid_user
 --
 
-SELECT pg_catalog.setval('concept_id_seq', 2323, true);
+SELECT pg_catalog.setval('concept_id_seq', 2324, true);
 
 
 --
@@ -599,6 +599,21 @@ ALTER SEQUENCE object_id_seq OWNED BY object.id;
 
 SELECT pg_catalog.setval('object_id_seq', 1, false);
 
+
+--
+-- Name: polygons; Type: TABLE; Schema: public; Owner: catmaid_user; Tablespace: 
+--
+
+CREATE TABLE polygons (
+    z double precision NOT NULL,
+    polygon polygon NOT NULL,
+    lbound double3d,
+    ubound double3d
+)
+INHERITS (concept);
+
+
+ALTER TABLE public.polygons OWNER TO catmaid_user;
 
 --
 -- Name: project; Type: TABLE; Schema: public; Owner: catmaid_user; Tablespace: 
@@ -986,14 +1001,15 @@ COPY broken_slice (stack_id, index) FROM stdin;
 --
 
 COPY class (id, user_id, creation_time, edition_time, project_id, class_name, uri, description, showintree) FROM stdin;
-14	1	2010-08-26 19:19:57.046457+02	2010-08-26 19:19:57.046457+02	3	skeleton	\N	\N	t
-5	1	2010-08-26 18:23:53.551017+02	2010-08-26 18:23:53.551017+02	3	neuron	http://flybase.org/.bin/cvreport.html?cvterm=FBbt:00005106+childdepth=2+parentdepth=all	\N	t
-106	3	2010-10-12 09:42:55.856494+02	2010-10-12 09:42:55.856494+02	3	group	\N	A group helps to organize the data, i.e. it can contain neuron or other groups.	t
-33	3	2010-08-27 17:28:08.713582+02	2010-08-27 17:28:08.713582+02	3	label	\N	\N	f
-112	3	2010-10-12 11:29:38.385393+02	2010-10-12 11:29:38.385393+02	3	root	\N	\N	f
-7	3	2010-08-26 18:30:53.288021+02	2010-08-26 18:30:53.288021+02	3	synapse	http://flybase.org/.bin/cvreport.html?cvterm=GO:0045202	\N	t
-755	3	2010-12-20 16:17:48.122167+01	2010-12-20 16:17:48.122167+01	3	presynaptic terminal			t
-756	3	2010-12-20 16:18:07.231631+01	2010-12-20 16:18:07.231631+01	3	postsynaptic terminal			t
+14	1	2010-08-26 13:19:57.046457-04	2010-08-26 13:19:57.046457-04	3	skeleton	\N	\N	t
+5	1	2010-08-26 12:23:53.551017-04	2010-08-26 12:23:53.551017-04	3	neuron	http://flybase.org/.bin/cvreport.html?cvterm=FBbt:00005106+childdepth=2+parentdepth=all	\N	t
+106	3	2010-10-12 03:42:55.856494-04	2010-10-12 03:42:55.856494-04	3	group	\N	A group helps to organize the data, i.e. it can contain neuron or other groups.	t
+33	3	2010-08-27 11:28:08.713582-04	2010-08-27 11:28:08.713582-04	3	label	\N	\N	f
+112	3	2010-10-12 05:29:38.385393-04	2010-10-12 05:29:38.385393-04	3	root	\N	\N	f
+7	3	2010-08-26 12:30:53.288021-04	2010-08-26 12:30:53.288021-04	3	synapse	http://flybase.org/.bin/cvreport.html?cvterm=GO:0045202	\N	t
+755	3	2010-12-20 10:17:48.122167-05	2010-12-20 10:17:48.122167-05	3	presynaptic terminal			t
+756	3	2010-12-20 10:18:07.231631-05	2010-12-20 10:18:07.231631-05	3	postsynaptic terminal			t
+2324	3	2011-07-08 18:09:25.157497-04	2011-07-08 18:09:25.157497-04	3	arealist			t
 \.
 
 
@@ -1010,7 +1026,7 @@ COPY class_class (id, user_id, creation_time, edition_time, project_id, relation
 --
 
 COPY class_instance (id, user_id, creation_time, edition_time, project_id, class_id, name) FROM stdin;
-2323	3	2011-01-13 15:10:41.563809+01	2011-01-13 15:10:41.563809+01	3	112	neuropile
+2323	3	2011-01-13 09:10:41.563809-05	2011-01-13 09:10:41.563809-05	3	112	neuropile
 \.
 
 
@@ -1071,6 +1087,14 @@ COPY object (id, class, name, project_id, colour) FROM stdin;
 
 
 --
+-- Data for Name: polygons; Type: TABLE DATA; Schema: public; Owner: catmaid_user
+--
+
+COPY polygons (id, user_id, creation_time, edition_time, project_id, z, polygon, lbound, ubound) FROM stdin;
+\.
+
+
+--
 -- Data for Name: profile; Type: TABLE DATA; Schema: public; Owner: catmaid_user
 --
 
@@ -1117,13 +1141,13 @@ COPY project_user (project_id, user_id) FROM stdin;
 --
 
 COPY relation (id, user_id, creation_time, edition_time, project_id, relation_name, uri, description, isreciprocal) FROM stdin;
-35	3	2010-08-27 17:30:10.480635+02	2010-08-27 17:30:10.480635+02	3	labeled_as	\N	\N	f
-24	1	2010-08-26 21:21:35.859377+02	2010-08-26 21:21:35.859377+02	3	postsynaptic_to	\N	\N	f
-23	1	2010-08-26 21:20:51.55492+02	2010-08-26 21:20:51.55492+02	3	presynaptic_to	\N	\N	f
-11	1	2010-08-26 19:15:41.060476+02	2010-08-26 19:15:41.060476+02	3	element_of	\N	\N	f
-10	1	2010-08-26 19:15:31.939089+02	2010-08-26 19:15:31.939089+02	3	model_of	\N	\N	f
-9	1	2010-08-26 19:15:22.408939+02	2010-08-26 19:15:22.408939+02	3	part_of	\N	\N	f
-8	1	2010-08-26 19:08:19.488588+02	2010-08-26 19:08:19.488588+02	3	is_a	\N	\N	f
+35	3	2010-08-27 11:30:10.480635-04	2010-08-27 11:30:10.480635-04	3	labeled_as	\N	\N	f
+24	1	2010-08-26 15:21:35.859377-04	2010-08-26 15:21:35.859377-04	3	postsynaptic_to	\N	\N	f
+23	1	2010-08-26 15:20:51.55492-04	2010-08-26 15:20:51.55492-04	3	presynaptic_to	\N	\N	f
+11	1	2010-08-26 13:15:41.060476-04	2010-08-26 13:15:41.060476-04	3	element_of	\N	\N	f
+10	1	2010-08-26 13:15:31.939089-04	2010-08-26 13:15:31.939089-04	3	model_of	\N	\N	f
+9	1	2010-08-26 13:15:22.408939-04	2010-08-26 13:15:22.408939-04	3	part_of	\N	\N	f
+8	1	2010-08-26 13:08:19.488588-04	2010-08-26 13:08:19.488588-04	3	is_a	\N	\N	f
 \.
 
 
@@ -1477,6 +1501,48 @@ ALTER TABLE ONLY "user"
 
 
 --
+-- Name: connector_x_index; Type: INDEX; Schema: public; Owner: catmaid_user; Tablespace: 
+--
+
+CREATE INDEX connector_x_index ON connector USING btree (((location).x));
+
+
+--
+-- Name: connector_y_index; Type: INDEX; Schema: public; Owner: catmaid_user; Tablespace: 
+--
+
+CREATE INDEX connector_y_index ON connector USING btree (((location).y));
+
+
+--
+-- Name: connector_z_index; Type: INDEX; Schema: public; Owner: catmaid_user; Tablespace: 
+--
+
+CREATE INDEX connector_z_index ON connector USING btree (((location).z));
+
+
+--
+-- Name: location_x_index; Type: INDEX; Schema: public; Owner: catmaid_user; Tablespace: 
+--
+
+CREATE INDEX location_x_index ON treenode USING btree (((location).x));
+
+
+--
+-- Name: location_y_index; Type: INDEX; Schema: public; Owner: catmaid_user; Tablespace: 
+--
+
+CREATE INDEX location_y_index ON treenode USING btree (((location).y));
+
+
+--
+-- Name: location_z_index; Type: INDEX; Schema: public; Owner: catmaid_user; Tablespace: 
+--
+
+CREATE INDEX location_z_index ON treenode USING btree (((location).z));
+
+
+--
 -- Name: apply_edition_time_update; Type: TRIGGER; Schema: public; Owner: catmaid_user
 --
 
@@ -1793,7 +1859,6 @@ ALTER TABLE ONLY treenode
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 REVOKE ALL ON SCHEMA public FROM postgres;
 GRANT ALL ON SCHEMA public TO postgres;
-GRANT ALL ON SCHEMA public TO stephan;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
@@ -1936,12 +2001,4 @@ GRANT ALL ON TABLE "user" TO catmaid_user;
 -- PostgreSQL database dump complete
 --
 
---- adding indices
-create index location_x_index on treenode (((location).x));
-create index location_y_index on treenode (((location).y));
-create index location_z_index on treenode (((location).z));
-
-create index connector_x_index on connector (((location).x));
-create index connector_y_index on connector (((location).y));
-create index connector_z_index on connector (((location).z));
 
