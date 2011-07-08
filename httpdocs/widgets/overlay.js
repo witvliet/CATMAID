@@ -875,7 +875,9 @@ current_scale // current scale of the stack
         if (getMode() === "skeletontracing") {
           alert("You need to activate a treenode first (skeleton tracing mode)");
           return true;
-        }
+        } else if (getMode() === "polygontracing" && typeof this.polygon !== 'undefined') {
+					this.polygon.switchMode();
+				}
       } else {
         if (atn instanceof Node) {
           // here we could create new connector presynaptic to the activated treenode
@@ -919,7 +921,7 @@ current_scale // current scale of the stack
 					this.polygon = new Area(1, r, pos_x, pos_y, 3);
 				} else {
 					this.polygon.addXY(pos_x, pos_y);
-				}				
+				}	
 			}
     }
     e.stopPropagation();
