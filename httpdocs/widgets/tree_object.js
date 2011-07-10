@@ -6,10 +6,6 @@ initObjectTree = function (pid) {
   // id of object tree
   object_tree_id = "#tree_object";
 
-  $("#refresh_object_tree").click(function () {
-    $("#tree_object").jstree("refresh", -1);
-  });
-
   $(object_tree_id).jstree({
     "core": {
       "html_titles": false
@@ -246,7 +242,6 @@ initObjectTree = function (pid) {
                   pid: project.id,
                   skeletonid: skelid
                 }, function (status, text, xml) {
-
                   if (status === 200) {
                     if (text && text !== " ") {
                       var e = $.parseJSON(text);
@@ -254,7 +249,6 @@ initObjectTree = function (pid) {
                         alert(e.error);
                       } else {
                         // go to node
-                        // console.log("returned", e, e.root_id);
                         project.moveTo(e.z, e.y, e.x);
 
                         // activate the node with a delay
@@ -626,7 +620,7 @@ var requestOpenTreePath = function(treenode) {
     type: 'POST',
     url: "model/tree.object.expand.php",
     data: { "skeleton_id" : treenode.skeleton_id,
-            "pid" : pid },
+            "pid" : project.id },
     success: function (r, status) {
                r = $.parseJSON(r);
                if (r['error']) {

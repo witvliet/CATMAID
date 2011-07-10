@@ -6,7 +6,6 @@ var atn = null;
 var atn_fillcolor = "rgb(0, 255, 0)";
 
 var active_skeleton_id = null;
-var active_skeleton_color = "rgb(60, 145, 56)";
 
 function activateNode(node) {
 
@@ -24,7 +23,6 @@ function activateNode(node) {
     } else {
       statusBar.replaceLast("activated connector node with id " + atn.id);
     }
-
   }
   project.recolorAllNodes();
 }
@@ -38,9 +36,9 @@ var openSkeletonNodeInObjectTree = function(node) {
   requestOpenTreePath(node);
 };
 
-SVGOverlay = function (
-resolution, translation, dimension, // dimension of the stack
-current_scale // current scale of the stack
+var SVGOverlay = function (
+  resolution, translation, dimension, // dimension of the stack
+  current_scale // current scale of the stack
 ) {
 
   this.resolution = resolution;
@@ -67,10 +65,6 @@ current_scale // current scale of the stack
         recipe.document.open();
         recipe.document.write(html);
         recipe.document.close();
-
-
-
-
       }
     }); // endfunction
   };
@@ -95,10 +89,32 @@ current_scale // current scale of the stack
       if (nodes.hasOwnProperty(nodeid)) {
         node = nodes[nodeid];
         node.setColor();
-        node.draw();
+        node.drawEdges();
       }
     }
   };
+
+  this.activateNearestNode = function (x, y, z) {
+    var xdiff, ydiff, zdiff, distsq, mindistsq = Number.MAX_VALUE, nearestnode = null;
+    for (nodeid in nodes) {
+      if (nodes.hasOwnProperty(nodeid)) {
+        node = nodes[nodeid];
+        xdiff = x - this.pix2physX(node.x);
+        ydiff = y - this.pix2physY(node.y);
+        zdiff = z - this.pix2physZ(node.z);
+        distsq = xdiff*xdiff + ydiff*ydiff + zdiff*zdiff;
+        if (distsq < mindistsq) {
+          mindistsq = distsq;
+          nearestnode = node;
+        }
+      }
+    }
+    if (nearestnode) {
+      activateNode(nearestnode);
+    } else {
+      statusBar.replaceLast("No nodes were visible - can't activate the nearest");
+    }
+  }
 
   this.showTags = function (val) {
     this.toggleLabels(val);
@@ -144,11 +160,9 @@ current_scale // current scale of the stack
             x.overrideMimeType("application/json;charset=UTF-8");
           }
         },
-        success: function (result) {
-          var nodeitems = result, nodeid;
-
+        success: function (nodeitems) {
           // for all retrieved, create a label
-          for (nodeid in nodeitems) {
+          for (var nodeid in nodeitems) {
             if (nodeitems.hasOwnProperty(nodeid)) {
               var tl = new OverlayLabel(nodeitems[nodeid], r, nodes[nodeid].x, nodes[nodeid].y, nodeitems[nodeid]);
               labels[nodeid] = tl;
@@ -163,29 +177,36 @@ current_scale // current scale of the stack
   this.tagATN = function () {
 
     // tagbox from
-    // http://blog.crazybeavers.se/wp-content/demos/jquery.tag.editor/
+    // http://blog.crazybeavers.se/wp-content/Demos/jquery.tag.editor/
     if ($("#tagBoxId" + atn.id).length !== 0) {
       alert("TagBox is already open!");
       return;
     }
 
     var e = $("<div class='tagBox' id='tagBoxId" + atn.id + "' style='z-index: 8; border: 1px solid #B3B2B2; padding: 5px; left: " + atn.x + "px; top: " + atn.y + "px;'>" +
-    //var e = $("<div class='tagBox' id='tagBoxId' style='z-index: 7; left: 0px; top: 0px; color:white; bgcolor:blue;font-size:12pt'>" +
-    "Tag (id:" + atn.id + "): <input id='Tags" + atn.id + "' name='Tags' type='text' value='' />" + "<button id='SaveCloseButton" + atn.id + "'>Save</button>" + "<button id='CloseButton" + atn.id + "'>Cancel</button>" + "</div>");
-    e.onclick = function (e) {
-      e.stopPropagation();
-      return true;
-    };
+    "Tag: <input id='Tags" + atn.id + "' name='Tags' type='text' value='' />" );
     e.css('background-color', 'white');
-    //e.css('width', '200px');
-    //e.css('height', '200px');
     e.css('position', 'absolute');
     e.appendTo("#sliceSVGOverlayId");
 
     // update click event handling
     $("#tagBoxId" + atn.id).click(function (event) {
-      // console.log(event);
       event.stopPropagation();
+      // update the tags
+      updateTags();
+      $("#tagBoxId" + atn.id).remove();
+    });
+
+    $("#tagBoxId" + atn.id).mousedown(function (event) {
+      event.stopPropagation();
+    });
+
+    $("#Tags" + atn.id).bind('focusout', function() {
+      // focus out with tab updates tags and remove tagbox
+      updateTags();
+      $("#tagBoxId" + atn.id).fadeOut( 1500, function() {
+        $("#tagBoxId" + atn.id).remove();
+      });
     });
 
     // add autocompletion
@@ -206,7 +227,8 @@ current_scale // current scale of the stack
           }
         }
       }
-    }); // endfunction
+    });
+
     requestQueue.register("model/label.node.list.php", "POST", {
       pid: project.id,
       nid: atn.id,
@@ -220,11 +242,9 @@ current_scale // current scale of the stack
             alert(e.error);
           } else {
             var nodeitems = $.parseJSON(text);
-            // retrieved nodeitems should be for active
-            // node anyways
             $("#Tags" + atn.id).tagEditor({
               items: nodeitems[atn.id],
-              confirmRemoval: true,
+              confirmRemoval: false,
               completeOnSeparator: true
             });
             $("#Tags" + atn.id).focus();
@@ -232,16 +252,9 @@ current_scale // current scale of the stack
           }
         }
       }
-    }); // endfunction
-    $("#CloseButton" + atn.id).click(function (event) {
-      // save and close
-      // alert($("#Tags" + atn.id).tagEditorGetTags());
-      $("#tagBoxId" + atn.id).remove();
-      event.stopPropagation();
     });
 
-    $("#SaveCloseButton" + atn.id).click(function (event) {
-      // save and close
+    var updateTags = function() {
       requestQueue.register("model/label.update.php", "POST", {
         pid: project.id,
         nid: atn.id,
@@ -255,16 +268,13 @@ current_scale // current scale of the stack
             if (e.error) {
               alert(e.error);
             } else {
+              $("#Tags" + atn.id).focus();
               project.showTags(true);
             }
           }
         }
-      }); // endfunction
-      $("#tagBoxId" + atn.id).remove();
-      event.stopPropagation();
-    });
-
-
+      });
+    }
   };
 
   this.rerootSkeleton = function () {
@@ -282,9 +292,9 @@ current_scale // current scale of the stack
               // just redraw all for now
               project.updateNodes();
             }
-          } // endif
-        } // end if
-      }); // endfunction
+          }
+        }
+      });
     }
   };
 
@@ -304,9 +314,9 @@ current_scale // current scale of the stack
               project.updateNodes();
               refreshObjectTree();
             }
-          } // endif
-        } // end if
-      }); // endfunction
+          }
+        }
+      });
     }
   };
 
@@ -328,9 +338,9 @@ current_scale // current scale of the stack
             project.updateNodes();
             refreshObjectTree();
           }
-        } // endif
-      } // end if
-    }); // endfunction
+        }
+      }
+    });
     // then link again
     requestQueue.register("model/treenode.link.php", "POST", {
       pid: project.id,
@@ -346,8 +356,8 @@ current_scale // current scale of the stack
             nodes[toid].parent = nodes[fromid];
             // update the parents children
             nodes[fromid].children[toid] = nodes[toid];
-            nodes[toid].draw();
-            nodes[fromid].draw();
+            nodes[toid].drawEdges();
+            nodes[fromid].drawEdges();
             // make target active treenode
             activateNode(nodes[toid]);
           }
@@ -408,9 +418,7 @@ current_scale // current scale of the stack
           } else {
             // add treenode to the display and update it
             var jso = $.parseJSON(text);
-            var cid = parseInt(jso.connector_id, 10);
-
-            var nn = new ConnectorNode(cid, r, 8, pos_x, pos_y, pos_z, 0);
+            var nn = new ConnectorNode(jso.connector_id, r, 8, pos_x, pos_y, pos_z, 0);
             nodes[cid] = nn;
             nn.draw();
             activateNode(nn);
@@ -452,12 +460,11 @@ current_scale // current scale of the stack
     }, function (status, text, xml) {
       if (status === 200) {
         if (text && text !== " ") {
-          var e = $.parseJSON(text);
-          if (e.error) {
-            alert(e.error);
+          var jso = $.parseJSON(text);
+          if (jso.error) {
+            alert(jso.error);
           } else {
-            var jso = $.parseJSON(text);
-            var locid_retrieved = parseInt(jso.location_id, 10);
+            var locid_retrieved = jso.location_id;
 
             if (locidval === null) {
               // presynaptic case, we create a new connector node and use the retrieved id
@@ -514,19 +521,16 @@ current_scale // current scale of the stack
           } else {
             // add treenode to the display and update it
             var jso = $.parseJSON(text);
-            // FIXME: isn't this always true?
+
             // always create a new treenode which is the root of a new skeleton
-            var nn = new Node(jso.treenode_id, r, null, radius, pos_x, pos_y, pos_z, 0, null, true);
+            var nn = new Node(jso.treenode_id, r, null, radius, pos_x, pos_y, pos_z, 0, jso.skeleton_id, true);
 
             // add node to nodes list
             nodes[jso.treenode_id] = nn;
             nn.draw();
 
-            // grab the treenode id
-            tnid = jso.treenode_id;
-
             // create connector : new atn postsynaptic_to deactivated atn.id (location)
-            createConnector(locid, tnid, phys_x, phys_y, phys_z, pos_x, pos_y, pos_z);
+            createConnector(locid, jso.treenode_id, phys_x, phys_y, phys_z, pos_x, pos_y, pos_z);
 
           }
         }
@@ -583,8 +587,26 @@ current_scale // current scale of the stack
             }
 
             nodes[jso.treenode_id] = nn;
-            activateNode(nn);
+            nn.draw();
+            var active_node = atn;
+            activateNode(nn); // will alter atn
 
+            // Check whether the Z coordinate of the new node is beyond one section away 
+            // from the Z coordinate of the parent node (which is the active by definition)
+            if (active_node) {
+              if (Math.abs(active_node.z - nn.z) > 1) {
+                var g = $('body').append('<div id="growl-alert" class="growl-message"></div>').find('#growl-alert');
+                //var g = $('#growl-alert'); // doesn't work
+                g.growlAlert({
+                  autoShow: true,
+                  content: 'Node added beyond one section from its parent node!',
+                  title: 'BEWARE',
+                  position: 'top-right',
+                  delayTime: 2500,
+                  onComplete: function() { g.remove(); }
+                });
+              }
+            }
           }
         }
       }
@@ -706,11 +728,8 @@ current_scale // current scale of the stack
 
       if (jso[i].type == "treenode")
       {
-        if (jso[i].skeleton_id) {
-          skeleton_id = parseInt(jso[i].skeleton_id);
-        }
         isRootNode = isNaN(parseInt(jso[i].parentid));
-        nn = new Node(id, this.paper, null, rad, pos_x, pos_y, pos_z, zdiff, skeleton_id, isRootNode);
+        nn = new Node(id, this.paper, null, rad, pos_x, pos_y, pos_z, zdiff, jso[i].skeleton_id, isRootNode);
         nrtn++;
       }
       else
@@ -776,10 +795,17 @@ current_scale // current scale of the stack
           }
         }
       }
-      // draw nodes
+      // Draw node edges first
       for (i in nodes) {
         if (nodes.hasOwnProperty(i)) {
-          nodes[i].draw();
+          nodes[i].drawEdges();
+        }
+      }
+      // Create raphael's circles on top of the edges
+      // so that the events reach the circles first
+      for (i in nodes) {
+        if (nodes.hasOwnProperty(i)) {
+          nodes[i].createCircle();
         }
       }
 
@@ -849,7 +875,12 @@ current_scale // current scale of the stack
     return view;
   };
 
-  this.onclick = function (e) {
+  // This isn't called "onclick" to avoid confusion - click events
+  // aren't generated when clicking in the overlay since the mousedown
+  // and mouseup events happen in different divs.  This is actually
+  // called from mousedown (or mouseup if we ever need to make
+  // click-and-drag work with the left hand button too...)
+  this.whenclicked = function (e) {
     var locid;
     var m = ui.getMouse(e);
 
@@ -873,7 +904,15 @@ current_scale // current scale of the stack
     } else if (e.shiftKey) {
       if (atn === null) {
         if (getMode() === "skeletontracing") {
-          alert("You need to activate a treenode first (skeleton tracing mode)");
+          var g = $('body').append('<div id="growl-alert" class="growl-message"></div>').find('#growl-alert');
+          g.growlAlert({
+            autoShow: true,
+            content: 'You need to activate a treenode first (skeleton tracing mode)!',
+            title: 'BEWARE',
+            position: 'top-right',
+            delayTime: 2500,
+            onComplete: function() { g.remove(); }
+          });
           return true;
         } else if (getMode() === "polygontracing" && typeof this.polygon !== 'undefined') {
 					this.polygon.switchMode();
@@ -939,7 +978,6 @@ current_scale // current scale of the stack
   var view = document.createElement("div");
   view.className = "sliceSVGOverlay";
   view.id = "sliceSVGOverlayId";
-  view.onclick = this.onclick;
   view.style.zIndex = 6;
   view.style.cursor = "crosshair";
   // make view accessible from outside for setting additional mouse handlers
