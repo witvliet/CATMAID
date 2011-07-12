@@ -241,6 +241,7 @@
 				<p class="stackClose" onclick="this.parentNode.parentNode.style.display = 'none'; ui.onresize();">close [ x ]</p>
             </div>
 			<div id="treenode_table_container" style="position:absolute; top:20px; bottom:4px; width:100%; overflow:auto">
+                &nbsp; Synchronize <input type="checkbox" id="synchronize_treenodetable" />
 				<table cellpadding="0" cellspacing="0" border="0" class="display" id="treenodetable">
 					<thead>
 						<tr>
@@ -282,11 +283,11 @@
 				<p class="stackClose" onclick="this.parentNode.parentNode.style.display = 'none'; ui.onresize();">close [ x ]</p>
             </div>
 			<div id="connector_table_container" style="position:absolute; top:20px; bottom:4px; width:100%; overflow:auto">
-
                 <select id="connector_relation_type">
                     <option value="0">Incoming connectors</option>
                     <option value="1" selected="yes">Outgoing connectors</option>
                 </select>
+                &nbsp; Synchronize <input type="checkbox" id="synchronize_connectortable" />
 				<table cellpadding="0" cellspacing="0" border="0" class="display" id="connectortable">
 					<thead>
 						<tr>
@@ -408,6 +409,7 @@
 		<div id="object_tree_widget" class="sliceView" style="width:350px; z-index:0; background-color:#FFFFFF; overflow:auto; display:none; overflow:hidden">
 			<div class="stackInfo_selected" style="position:relative"><p id="tree_widget_title" class="stackTitle">Object Tree</p><p class="stackClose" onclick="this.parentNode.parentNode.style.display = 'none'; ui.onresize();">close [ x ]</p></div>
 			<div id="tree_container" style="position:absolute; top:20px; bottom:4px; width:100%; overflow:auto">
+			    <input type="button" id="refresh_object_tree" value="refresh" style="display:block; float:left;" />
 				  &nbsp; Synchronize <input type="checkbox" id="synchronize_object_tree" checked="yes" />
 			    <br clear="all" />
 			    <div id="tree_object"></div>

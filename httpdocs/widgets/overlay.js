@@ -8,14 +8,20 @@ var active_area = null;
 var active_skeleton_id = null;
 
 function activateNode(node) {
-
+  var skeleton_switched = false;
   // if node === null, just deactivate
   if (node === null) {
     atn = null;
     active_skeleton_id = null;
   } else {
+
+    if ( node.type === "treenode" && node.skeleton_id !== active_skeleton_id ) {
+      skeleton_switched = true;
+    }
+
     atn = node;
     active_skeleton_id = atn.skeleton_id;
+
     // update statusBar
     if (atn.type === "treenode") {
       statusBar.replaceLast("activated treenode with id " + atn.id + " skeleton id " + atn.skeleton_id );
@@ -38,6 +44,19 @@ var openSkeletonNodeInObjectTree = function(node) {
   // Else, synchronize:
   requestOpenTreePath(node);
 };
+
+var refreshAllWidgets = function() {
+
+  if ($('#connectortable_widget').css('display') === "block" && $('#synchronize_connectortable').attr('checked')) {
+    initConnectorTable(pid);
+  }
+
+  if ($('#treenode_table_widget').css('display') === "block" && $('#synchronize_treenodetable').attr('checked')) {
+    initTreenodeTable(pid);
+  }
+
+}
+
 
 var SVGOverlay = function (
   resolution, translation, dimension, // dimension of the stack
@@ -147,7 +166,7 @@ var SVGOverlay = function (
       // create node id array
       for (nodeid in nodes) {
         if (nodes.hasOwnProperty(nodeid)) {
-          if (nodes[nodeid].zdiff === 0) {
+          if (0 === nodes[nodeid].zdiff) {
             nods[nodeid] = nodeid;
           }
         }
@@ -318,6 +337,7 @@ var SVGOverlay = function (
               // just redraw all for now
               project.updateNodes();
               refreshObjectTree();
+              refreshAllWidgets();
             }
           }
         }
@@ -327,6 +347,7 @@ var SVGOverlay = function (
 
   // Used to join two skeleton together
   this.createTreenodeLink = function (fromid, toid) {
+    // TODO: rerooting operation should be called on the backend
     // first make sure to reroot target
     requestQueue.register("model/treenode.reroot.php", "POST", {
       pid: project.id,
@@ -342,6 +363,7 @@ var SVGOverlay = function (
             // just redraw all for now
             project.updateNodes();
             refreshObjectTree();
+            refreshAllWidgets();
           }
         }
       }
@@ -364,7 +386,9 @@ var SVGOverlay = function (
             nodes[toid].drawEdges();
             nodes[fromid].drawEdges();
             // make target active treenode
-            activateNode(nodes[toid]);
+            // activateNode(nodes[toid]);
+            requestOpenTreePath( nodes[fromid] );
+            refreshAllWidgets();
           }
         }
       }
@@ -424,7 +448,7 @@ var SVGOverlay = function (
             // add treenode to the display and update it
             var jso = $.parseJSON(text);
             var nn = new ConnectorNode(jso.connector_id, r, 8, pos_x, pos_y, pos_z, 0);
-            nodes[cid] = nn;
+            nodes[jso.connector_id] = nn;
             nn.draw();
             activateNode(nn);
           }
@@ -709,7 +733,8 @@ var SVGOverlay = function (
             nn.draw();
             var active_node = atn;
             activateNode(nn); // will alter atn
-
+            refreshAllWidgets();
+            
             // Check whether the Z coordinate of the new node is beyond one section away 
             // from the Z coordinate of the parent node (which is the active by definition)
             if (active_node) {
@@ -965,6 +990,9 @@ var SVGOverlay = function (
 
     // show tags if necessary again
     this.showTags(show_labels);
+    // recolor all nodes
+    project.recolorAllNodes();
+
   };
 
   var updateDimension = function () {
@@ -1153,7 +1181,8 @@ var SVGOverlay = function (
   view.className = "sliceSVGOverlay";
   view.id = "sliceSVGOverlayId";
   view.style.zIndex = 6;
-  view.style.cursor = "crosshair";
+  // TODO: custom cursor for tracing
+  view.style.cursor ="url(widgets/themes/kde/face.cur),crosshair";
   // make view accessible from outside for setting additional mouse handlers
   this.view = view;
 

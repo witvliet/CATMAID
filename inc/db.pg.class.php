@@ -162,6 +162,7 @@ class DB
 	{
 		$entries = $this->getResult( 'SELECT count( * ) AS "count" FROM "'.$table.'" WHERE '.$cond );
 		//echo( "SELECT count(*) AS 'count' FROM `".$table."` WHERE ".$cond );
+		if (false === $entries) return false;
 		return ( $entries[ 0 ][ 'count' ] );
 	}
 
@@ -270,6 +271,7 @@ class DB
 		if( $this->debug )
 			error_log("In delete: ".preg_replace('/\s+/', ' ', $query));
 		$r = pg_query( $this->handle, $query );
+		if (false === $r) return false; // failed
 		return pg_affected_rows( $r );
 	}
 	
@@ -469,15 +471,19 @@ class DB
       'name' => $class
       );
     $ci_id = $this->insertIntoId('class_instance', $data );
+    if (false === $ci_id) return false; // failed
     // update with class_instanstance_name
+    $q = false;
     if($class_instance_name == "") {
       $up = array('name' => $class.' '.$ci_id);
-      $this->update( "class_instance", $up, 'id = '.$ci_id); 
+      $q = $this->update( "class_instance", $up, 'id = '.$ci_id); 
     } else {
       // use it as name
       $up = array('name' => $class_instance_name);
-      $this->update( "class_instance", $up, 'id = '.$ci_id); 
+      $q = $this->update( "class_instance", $up, 'id = '.$ci_id); 
     }
+    
+    if (false === $q) return false; // failed
     
     $data = array(
       'user_id' => $uid,
@@ -486,7 +492,9 @@ class DB
       'treenode_id' => $tnid,
       'class_instance_id' => $ci_id
       );
-    $this->insertInto('treenode_class_instance', $data );
+    $q = $this->insertInto('treenode_class_instance', $data );
+    
+    if (false === $q) return false; // failed
     
     return $ci_id;
    }
@@ -510,15 +518,19 @@ class DB
       'name' => $class
       );
     $ci_id = $this->insertIntoId('class_instance', $data );
+    if (false === $ci_id) return false;
+  
     // update with class_instanstance_name
+    $q = false;
     if($class_instance_name == "") {
       $up = array('name' => $class.' '.$ci_id);
-      $this->update( "class_instance", $up, 'id = '.$ci_id); 
+      $q = $this->update( "class_instance", $up, 'id = '.$ci_id); 
     } else {
       // use it as name
       $up = array('name' => $class_instance_name);
-      $this->update( "class_instance", $up, 'id = '.$ci_id); 
+      $q = $this->update( "class_instance", $up, 'id = '.$ci_id); 
     }
+    if (false === $q) return false; // failed
     
     $data = array(
       'user_id' => $uid,
@@ -527,7 +539,9 @@ class DB
       'connector_id' => $cid,
       'class_instance_id' => $ci_id
       );
-    $this->insertInto('connector_class_instance', $data );
+    $q = $this->insertInto('connector_class_instance', $data );
+    
+    if (false === $q) return false; // failed
     
     return $ci_id;
    }
