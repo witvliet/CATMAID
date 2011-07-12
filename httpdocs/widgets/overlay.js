@@ -20,7 +20,10 @@ function activateNode(node) {
     if (atn.type === "treenode") {
       statusBar.replaceLast("activated treenode with id " + atn.id + " skeleton id " + atn.skeleton_id );
       openSkeletonNodeInObjectTree(node);
-    } else {
+    } else if (atn.type === "area") {
+			statusBar.replaceLast("activated area with id " + atn.id + " skelecton id " + atn.skeleton_id );
+			atn.activate();
+		} else {
       statusBar.replaceLast("activated connector node with id " + atn.id);
     }
   }
@@ -564,7 +567,7 @@ var SVGOverlay = function (
 						atn = a;
             areas[jso.polygonid] = a;
             //a.draw();
-
+						atn.draw();
           }
         }
       }
@@ -622,34 +625,7 @@ var SVGOverlay = function (
     }
 	};
 	
-	this.refreshAreas = function (jso)
-  {
-    var a, i;
-    this.paper.clear();
-    nodes = new Object();
-    labels = new Object();
-
-    for (i in jso)
-    {
-			var j;
-			var pos_x = [];
-      var pos_y = [];
-      var pos_z = jso[i].z;
-      var zdiff = jso[i].z_diff;
-      var id = parseInt(jso[i].id);
-      
-      for (j in jso[i].x) {
-				pos_x[j] = jso[i].x[j] * s;
-			}
-			for (j in jso[i].y) {
-				pos_y[j] = jso[i].y[j] * s;
-			}      
-
-      a = new Area(id, this.paper, pos_x, pos_y, pos_z, area_dragpt_r);
-
-      areas[id] = a;
-    }
-  };
+	
 	
 	var updateAreaPositions = function (areaArray, completedCallback) {
     var requestDicitionary = {}, i, k, node, callback;
@@ -846,12 +822,37 @@ var SVGOverlay = function (
 
     for (var i in jso)
     {
-      var id = parseInt(jso[i].id);
-      var pos_x = phys2pixX(jso[i].x);
-      var pos_y = phys2pixY(jso[i].y);
+      var id = parseInt(jso[i].id);        
+      var pos_x;
+      var pos_y;
       var pos_z = phys2pixZ(jso[i].z);
       var zdiff = Math.floor(parseFloat(jso[i].z_diff) / resolution.z);
       var skeleton_id = null;
+      
+      //Check if jso[i].x is singleton
+      if (parseFloat(jso[i].x) === jso[i].x)
+      {
+				pos_x = phys2pixX(jso[i].x);				
+			} else {  // if it isn't, assume jso[i].x is an array, or an object with numeric fields
+				pos_x = [];
+				for (j in jso[i].x)
+				{
+					pos_x[j] = phys2pixX(jso[i].x[j]);
+				}
+			}
+			
+			//Ditto
+			if (parseFloat(jso[i].y) === jso[i].y)
+			{
+				pos_y = phys2pixY(jso[i].y);
+			} else {
+				pos_y = [];
+				for (j in jso[i].y)
+				{
+					pos_y[j] = phys2pixY(jso[i].y[j]);
+				}
+			} // Now, hope everything was sent correctly.
+      
       if (zdiff == 0)
       {
         if (jso[i].type == "treenode")
@@ -875,9 +876,17 @@ var SVGOverlay = function (
         nn = new Node(id, this.paper, null, rad, pos_x, pos_y, pos_z, zdiff, jso[i].skeleton_id, isRootNode);
         nrtn++;
       }
+      else if (jso[i].type === "area")
+      {
+				nn = new Area(id, this.paper, pos_x, pos_y, pos_z, 4);
+			}
       else
       {
         nn = new ConnectorNode(id, this.paper, rad, pos_x, pos_y, pos_z, zdiff);
+        if (getMode() !== "polygontracing")
+        {
+					nn.deactivate();
+				}
         nrcn++;
       }
       nodes[id] = nn;
@@ -992,6 +1001,7 @@ var SVGOverlay = function (
   };
 
   this.set_tracing_mode = function (mode) {
+		var changeMode = false, i;
     // toggels the button correctly
     // might update the mouse pointer
     document.getElementById("trace_button_skeleton").className = "button";
@@ -1001,12 +1011,24 @@ var SVGOverlay = function (
     if (mode === "skeletontracing") {
       currentmode = mode;
       document.getElementById("trace_button_skeleton").className = "button_active";
+      changeMode = true;
     } else if (mode === "synapsedropping") {
       currentmode = mode;
       document.getElementById("trace_button_synapse").className = "button_active";
+      changeMode = true;
     } else if (mode === "polygontracing") {
 			currentmode = mode;
 			document.getElementById("trace_button_polygon").className = "button_active";
+			changeMode = true;
+		}
+		
+		if (changeMode) {
+			for (i in nodes) {
+				if (nodes[i].hasOwnProperty('changeMode'))
+				{
+					nodes[i].changeMode(currentmode);
+				}
+			}
 		}
   };
 
@@ -1043,6 +1065,10 @@ var SVGOverlay = function (
       if (atn !== null) {
         statusBar.replaceLast("deactivated active node with id " + atn.id);
       }
+      if (atn.hasOwnProperty('deactivate'))
+      {
+				atn.deactivate();
+			}
       activateNode(null);
     } else if (e.shiftKey) {
       if (atn === null) {

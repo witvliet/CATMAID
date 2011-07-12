@@ -14,6 +14,7 @@ VertexDot = function (
 	this.area = area;
 	this.isVisible = true;
   this.isMidpoint = isMidpoint;
+  this.skeleton_id = -1;
 
 	var x = xin;
 	var y = yin;
@@ -177,6 +178,9 @@ r // the vertex node radius
     this.ignoreClick = false;
     // Z-coordinate
     this.z = z;
+    this.zdiff = 0;
+    this.doShadow = true;
+    this.active = true;
     
     /* Edit mode
      * createvertices - appends a new vertex to the end of the list at each click
@@ -190,7 +194,12 @@ r // the vertex node radius
     var dots = [];
     var mdots = [];
     
-    var fillOpacity = 0.2;
+    // Constants
+    var fillOpacity = 0.3;
+    var shadowOpacity = 0.1;
+    var aboveColor = "rgb(255, 0, 0)";
+    var belowColor = "rgb(0, 255, 0)";
+    
 
     // Arrays used for storing the x,y locations of the vertices
     // Assume that if x is not numeric, then it is an array.
@@ -209,9 +218,9 @@ r // the vertex node radius
     this.path.attr("fill", this.fillColor);
     this.path.attr("stroke", this.fillColor);
     this.path.attr("fill-opacity", fillOpacity);
-    this.path.dblclick(function(){
-      this.area.switchMode();
-    });
+//    this.path.dblclick(function(){
+//     this.area.switchMode();
+//    });
     this.path.area = this;
 
 	// Pushes a new VertexDot onto the array
@@ -228,7 +237,7 @@ r // the vertex node radius
 
     // Add a new x,y location to the end of the polygon
 	this.addXY = function (xnew, ynew) {
-		if (mode === "createvertices" && !this.ignoreClick) {
+		if (this.active && mode === "createvertices" && !this.ignoreClick) {
 			this.x.push(xnew);
 			this.y.push(ynew);
 			this.pushVertexDot(xnew, ynew);
@@ -354,6 +363,26 @@ r // the vertex node radius
 	  dots = [];
   };
   
+  this.activate = function() {
+    if (!this.active){
+      this.active = true;
+      this.resetVertexDots();
+      if (mode === "editvertices") {
+        this.createMidpoints();
+      }
+    }
+    this.draw();
+  };
+  
+  this.deactivate = function() {
+    if (this.active){
+      this.active = false;
+      this.removeMidpoints();
+      this.deleteVertexDots();
+    }
+    this.draw();
+  };
+  
   this.getSVGPath = function() {
     var i;
 		var pathlist = [];
@@ -369,6 +398,8 @@ r // the vertex node radius
 		return pathlist.join();
 	};
     
+  this.createCircle = function() {
+  };
   
   // Regenerates the SVG code for the polygon, causing it to be redrawn to the screen.
 	this.draw = function() {
@@ -383,6 +414,34 @@ r // the vertex node radius
       mode = "createvertices";
       this.removeMidpoints();
     }    
+  };
+
+  this.setMode = function(newmode) {
+    if (newmode !== mode) {
+      if (newmode === "editvertices" || newmode === "createvertices")
+      {
+        this.switchMode();
+      }
+    }
+  };
+
+  this.drawEdges = function() {
+    this.draw();
+  };
+  
+  this.setColor = function() {
+    if (this.zdiff === 0)
+    {
+      this.polygon.attr({fillcolor: this.fillColor, opacity: fillOpacity});
+    } else if (this.doShadow) {
+      if (this.zdiff > 0) {
+        this.polygon.attr({fillcolor: aboveColor, opacity: shadowOpacity});
+      } else {
+        this.polygon.attr({fillcolor: belowColor, opacity: shadowOpacity});
+      }
+    } else {
+      this.polygon.attr({fillcolor: this.fillColor, opacity: 0});
+    }
   };
 
   if (parseFloat(this.x) === this.x)

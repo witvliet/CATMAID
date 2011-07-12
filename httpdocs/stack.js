@@ -315,7 +315,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
   }
   
   this.updateAreas = function () {
-    var tl_width;
+    /*var tl_width;
     var tl_height;
     if (tiles.length == 0) {
       tl_width = 0;
@@ -335,24 +335,10 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       height: tl_height,
       zres: 1
     }, handle_updateAreas);
-    return;
+    return;*/
   };
 
-  var handle_updateAreas = function (status, text, xml) {
-    if (status = 200) {
-      
-      var e = eval("(" + text + ")");
-      
-      if (e.error) {
-        alert(e.error);
-      } else {
-        var jso = $.parseJSON(text);
-        
-        svgOverlay.refreshAreas(jso);
-      }
-    }
-    return;
-  }
+  
 
   /**
    * update treeline nodes by querying them from the server
@@ -405,6 +391,17 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       height: tl_height * resolution.y,
       zres: resolution.z
     }, handle_updateNodes);
+    
+    requestQueue.register('model/area.list.php', 'POST', {
+      pid: project.id,
+      sid: id,
+      z: z,
+      top: translation.y,
+      left: translation.x,
+      width: tl_width,
+      height: tl_height,
+      zres: 1
+    }, handle_updateAreas);
     return;
   }
 
@@ -422,6 +419,22 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       } else {
         var jso = $.parseJSON(text);
         // XXX: how much time does calling the function like this take?
+        svgOverlay.refreshNodes(jso);
+      }
+    }
+    return;
+  }
+  
+  var handle_updateAreas = function (status, text, xml) {
+    if (status = 200) {
+      
+      var e = eval("(" + text + ")");
+      
+      if (e.error) {
+        alert(e.error);
+      } else {
+        var jso = $.parseJSON(text);
+        
         svgOverlay.refreshNodes(jso);
       }
     }
@@ -582,7 +595,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
     if (show_tracing) {
       if (z != old_z || s != old_s || xd != 0 || yd != 0) {
         self.updateNodes();
-        self.updateAreas();
+        //self.updateAreas();
       }
       // redraw the overlay
       svgOverlay.redraw(
