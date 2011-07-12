@@ -149,6 +149,7 @@ id, // unique id for the node from the database
 paper, // the raphael paper this area is drawn to
 x, // initial x coordinate or coordinates. May be either singleton or array.
 y, // ditto, but y
+z, // z 
 r // the vertex node radius
 )
 {
@@ -174,6 +175,8 @@ r // the vertex node radius
     this.path = paper.path();
     // Used to determine whether we are editting or creating vertices
     this.ignoreClick = false;
+    // Z-coordinate
+    this.z = z;
     
     /* Edit mode
      * createvertices - appends a new vertex to the end of the list at each click
@@ -215,7 +218,8 @@ r // the vertex node radius
 	this.pushVertexDot = function (x, y, area) {
 		vdot = new VertexDot(x, y, this.r, this.rcatch, dots.length, this, false);
 		dots.push(vdot);
-    };
+    this.needsync = true;
+  };
 
 
 	this.setIgnoreClick = function(isIt){
@@ -228,7 +232,7 @@ r // the vertex node radius
 			this.x.push(xnew);
 			this.y.push(ynew);
 			this.pushVertexDot(xnew, ynew);
-			this.draw();
+			this.draw();      
 		}
 	};
    
@@ -282,6 +286,7 @@ r // the vertex node radius
       v.setRadius(this.r, this.rcatch);
       
     }
+    this.needsync = true;
     this.draw();
     
     

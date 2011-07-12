@@ -117,7 +117,6 @@ try {
 			emitErrorAndExit( $db, 'Failed to commit for expand!' );
 		}
 		echo json_encode( $json );
-    echo '('.$x.', '.$y.', '.$z.')';
 	} else {
 		emitErrorAndExit( $db, 'Failed to produce a JSON string!' );
 	}

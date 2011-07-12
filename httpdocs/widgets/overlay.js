@@ -4,7 +4,7 @@
 // active treenode or connector
 var atn = null;
 var atn_fillcolor = "rgb(0, 255, 0)";
-
+var active_area = null;
 var active_skeleton_id = null;
 
 function activateNode(node) {
@@ -49,6 +49,8 @@ var SVGOverlay = function (
   var nodes = {};
   var labels = {};
   var show_labels = false;
+  var areas = {};
+  var area_dragpt_r = 4;
 
   this.exportSWC = function () {
     // retrieve SWC file of currently active treenode's skeleton
@@ -541,6 +543,147 @@ var SVGOverlay = function (
 
   };
 
+	var createArea = function(pos_x, pos_y, pos_z) {
+		var pix_x = pos_x / s;
+		var pix_y = pos_y / s;		
+		requestQueue.register("model/area.create.php", "POST", {
+			pid: project.id,
+			x: pix_x,
+			y: pix_y,
+			z: pos_z
+		}, function (status, text, xml) {
+			var e, jso, a;
+			if (status === 200) {
+        if (text && text !== " ") {
+          e = $.parseJSON(text);
+          if (e.error) {
+            alert(e.error);
+          } else {
+            var jso = $.parseJSON(text);
+            var a = new Area(jso.polygonid, r, pos_x, pos_y, pos_z, area_dragpt_r);
+						atn = a;
+            areas[jso.polygonid] = a;
+            //a.draw();
+
+          }
+        }
+      }
+      return true;
+    });
+    return;
+	};
+	
+	var updateAreasInDB = function() {
+		var areasToUpdate = [], i, j, pos_x, pos_y, pos_z, pix_x, pix_y;
+		var area_str, lbound = [], ubound = [];
+    for (i in areas) {
+      if (areas.hasOwnProperty(i)) {
+        // only updated areas that need sync, e.g.
+        // when they have been editted
+        if (areas[i].needsync) {
+					pos_x = areas[i].x;
+					pos_y = areas[i].y;
+          pos_z = areas[i].z;
+          lbound = [Infinity, Infinity, pos_z];
+          ubound = [-Infinity, -Infinity, pos_z];
+          
+          area_str = '(';
+          for (j = 0; j < pos_x.length; j++) {
+						pix_x = pos_x[j] / s;
+						pix_y = pos_y[j] / s;
+						
+						area_str = area_str + '(' + pix_x + ',' + pix_y + ')';
+						if (j + 1 < pos_x.length) {
+							area_str = area_str + ',';
+						}
+						
+						if (pix_x < lbound[0]) { lbound[0] = pix_x; };						
+						if (pix_y < lbound[1]) { lbound[1] = pix_y; };
+						if (pix_x > ubound[0]) { ubound[0] = pix_x; };
+						if (pix_y > ubound[1]) { ubound[1] = pix_y; };						
+					}
+					
+					area_str = area_str + ')';
+          
+          areas[i].needsync = false;
+
+          areasToUpdate.push({
+            'area_id': areas[i].id,
+            'polygon': area_str,
+            'z': pos_z,
+            'lbound' : '(' + lbound.join() + ')',
+            'ubound' : '(' + ubound.join() + ')'
+          });
+        }
+      }
+    }
+    if (areasToUpdate.length > 0) {
+      updateAreaPositions(areasToUpdate, function(){});
+    }
+	};
+	
+	this.refreshAreas = function (jso)
+  {
+    var a, i;
+    this.paper.clear();
+    nodes = new Object();
+    labels = new Object();
+
+    for (i in jso)
+    {
+			var j;
+			var pos_x = [];
+      var pos_y = [];
+      var pos_z = jso[i].z;
+      var zdiff = jso[i].z_diff;
+      var id = parseInt(jso[i].id);
+      
+      for (j in jso[i].x) {
+				pos_x[j] = jso[i].x[j] * s;
+			}
+			for (j in jso[i].y) {
+				pos_y[j] = jso[i].y[j] * s;
+			}      
+
+      a = new Area(id, this.paper, pos_x, pos_y, pos_z, area_dragpt_r);
+
+      areas[id] = a;
+    }
+  };
+	
+	var updateAreaPositions = function (areaArray, completedCallback) {
+    var requestDicitionary = {}, i, k, node, callback;
+    for (i in areaArray) {
+      if (areaArray.hasOwnProperty(i)) {
+        requestDicitionary['pid' + i] = project.id;
+        area = areaArray[i];
+        for (k in area) {
+          if (area.hasOwnProperty(k)) {
+            requestDicitionary[k + i] = area[k];
+          }
+        }
+      }
+    }
+    callback = function (status, text, xml) {
+      var e;
+      if (status === 200) {
+        if (text && text !== " ") {
+          e = $.parseJSON(text);
+          if (e.error) {
+            alert(e.error);
+            completedCallback(-1);
+          } else {
+            if (completedCallback) {
+              completedCallback(e.updated);
+            }
+          }
+        }
+      }
+      return true;
+    };
+    requestQueue.register("model/area.update.php", "POST", requestDicitionary, callback);
+  };	
+
   var createNode = function (parentid, phys_x, phys_y, phys_z, radius, confidence, pos_x, pos_y, pos_z) {
 
     var parid, selneuron, useneuron;
@@ -914,9 +1057,7 @@ var SVGOverlay = function (
             onComplete: function() { g.remove(); }
           });
           return true;
-        } else if (getMode() === "polygontracing" && typeof this.polygon !== 'undefined') {
-					this.polygon.switchMode();
-				}
+        }
       } else {
         if (atn instanceof Node) {
           // here we could create new connector presynaptic to the activated treenode
@@ -935,7 +1076,10 @@ var SVGOverlay = function (
           createNodeWithConnector(locid, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
           e.stopPropagation();
           return true;
-        }
+        } else if (atn instanceof Area) {
+					atn.switchMode();
+					return true;
+				}
       }
     } else {
       // depending on what mode we are in
@@ -956,10 +1100,14 @@ var SVGOverlay = function (
         // only create single synapses/connectors
         createSingleConnector(phys_x, phys_y, phys_z, pos_x, pos_y, pos_z, 5);
       } else if (getMode() === "polygontracing") {
-				if (typeof this.polygon === 'undefined') {
-					this.polygon = new Area(1, r, pos_x, pos_y, 3);
-				} else {
-					this.polygon.addXY(pos_x, pos_y);
+				if (atn === null) {
+					createArea(pos_x, pos_y, pos_z);
+					e.stopPropagation();
+					return true;
+				} else if (atn instanceof Area){
+					atn.addXY(pos_x, pos_y);
+					e.stopPropagation();
+					updateAreasInDB();
 				}	
 			}
     }

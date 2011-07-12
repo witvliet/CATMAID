@@ -313,6 +313,46 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
     }, handle_updateTextlabels);
     return;
   }
+  
+  this.updateAreas = function () {
+    var tl_width;
+    var tl_height;
+    if (tiles.length == 0) {
+      tl_width = 0;
+      tl_height = 0;
+    } else {
+      tl_width = tiles[0].length * X_TILE_SIZE / scale;
+      tl_height = tiles.length * Y_TILE_SIZE / scale;
+    }
+    
+    requestQueue.register('model/area.list.php', 'POST', {
+      pid: project.id,
+      sid: id,
+      z: z,
+      top: translation.y,
+      left: translation.x,
+      width: tl_width,
+      height: tl_height,
+      zres: 1
+    }, handle_updateAreas);
+    return;
+  };
+
+  var handle_updateAreas = function (status, text, xml) {
+    if (status = 200) {
+      
+      var e = eval("(" + text + ")");
+      
+      if (e.error) {
+        alert(e.error);
+      } else {
+        var jso = $.parseJSON(text);
+        
+        svgOverlay.refreshAreas(jso);
+      }
+    }
+    return;
+  }
 
   /**
    * update treeline nodes by querying them from the server
@@ -542,6 +582,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
     if (show_tracing) {
       if (z != old_z || s != old_s || xd != 0 || yd != 0) {
         self.updateNodes();
+        self.updateAreas();
       }
       // redraw the overlay
       svgOverlay.redraw(
@@ -1066,6 +1107,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       show_tracing = true;
       svgOverlay.show();
       self.updateNodes();
+      self.updateAreas();
       for (var i = 0; i < textlabels.length; ++i) {
         textlabels[i].setEditable(false);
       }

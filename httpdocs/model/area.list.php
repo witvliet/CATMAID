@@ -33,50 +33,47 @@ if ( $pid )
     // need class: synapse, presynaptic terminal, postsynaptic terminal
     // retrieve class ids
 
-    $areas0 = $db->getResult(
-      'SELECT polygons.id AS id,
+    $areas = $db->getResult(
+      'SELECT polygons.id AS "id",
            polygons.z AS z,
            polygons.polygon AS polygon,
            polygons.user_id AS user_id,       
            (polygons.z - '.$z.') AS z_diff           
        FROM polygons 
        WHERE polygons.project_id = '.$pid.'
-        AND (polygons.lbound).x >= '.$left.'
-        AND (polygons.lbound).x <= '.( $left + $width ).'
-        AND (polygons.lbound).y >= '.$top.'
-        AND (polygons.lbound).y <= '.( $top + $height ).'
+        AND ( (polygons.lbound).x >= '.$left.' OR (polygons.ubound).x >= '.$left.' )
+        AND ( (polygons.lbound).x <= '.( $left + $width ).' OR (polygons.ubound).x <= '.( $left + $width ).' )
+        AND ( (polygons.lbound).y >= '.$top.' OR (polygons.ubound).y >= '.$top.' )
+        AND ( (polygons.lbound).y <= '.( $top + $height ).' OR (polygons.ubound).y <= '.( $top + $height ).' )
         AND (polygons.lbound).z >= '.$z.' - '.$zbound.' * '.$zres.'
         AND (polygons.lbound).z <= '.$z.' + '.$zbound.' * '.$zres.'
         ORDER BY id, z_diff
         LIMIT '.$limit
     );
-    $areas1 = $db->getResult(
-      'SELECT polygons.id AS id,
-           polygons.z AS z,
-           polygons.polygon AS polygon,
-           polygons.user_id AS user_id,       
-           (polygons.z - '.$z.') AS z_diff           
-       FROM polygons 
-       WHERE polygons.project_id = '.$pid.'
-        AND (polygons.ubound).x >= '.$left.'
-        AND (polygons.ubound).x <= '.( $left + $width ).'
-        AND (polygons.ubound).y >= '.$top.'
-        AND (polygons.ubound).y <= '.( $top + $height ).'
-        AND (polygons.ubound).z >= '.$z.' - '.$zbound.' * '.$zres.'
-        AND (polygons.ubound).z <= '.$z.' + '.$zbound.' * '.$zres.'
-        ORDER BY id, z_diff
-        LIMIT '.$limit
-    );
-    $areas = array_merge($areas0, $areas1);
 
    
-    // loop over and add type
+    // loop over and add type, parse polygon into numerical values
     {
     while ( list( $key, $val) = each( $areas ) )
+    {
       $areas[$key]['type'] = "area";
+      $polystr = $areas[$key]['polygon'];      
+      $tok = strtok($polystr, '(), \t');      
+      
+      while ($tok !== false) {
+        $xarr[] = floatval($tok);
+        $tok = strtok('(), \t');
+        $yarr[] = floatval($tok);
+        $tok = strtok('(), \t');
+      }
+      $areas[$key]['x'] = $xarr;
+      $areas[$key]['y'] = $yarr;
+      unset($xarr);
+      unset($yarr); 
+     } 
     }
-
-    echo json_encode( $areas );
+    
+    echo makeJSON( $areas );
 
   }
   else

@@ -787,7 +787,10 @@ function Project(pid) {
 
   this.updateNodes = function () {
     for (var i = 0; i < stacks.length; ++i)
+    {
     stacks[i].updateNodes();
+    stacks[i].updateAreas();
+    }
     return;
   }
 
