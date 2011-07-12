@@ -432,15 +432,15 @@ r // the vertex node radius
   this.setColor = function() {
     if (this.zdiff === 0)
     {
-      this.polygon.attr({fillcolor: this.fillColor, opacity: fillOpacity});
+      this.path.attr({fillcolor: this.fillColor, opacity: fillOpacity});
     } else if (this.doShadow) {
       if (this.zdiff > 0) {
-        this.polygon.attr({fillcolor: aboveColor, opacity: shadowOpacity});
+        this.path.attr({fillcolor: aboveColor, opacity: shadowOpacity});
       } else {
-        this.polygon.attr({fillcolor: belowColor, opacity: shadowOpacity});
+        this.path.attr({fillcolor: belowColor, opacity: shadowOpacity});
       }
     } else {
-      this.polygon.attr({fillcolor: this.fillColor, opacity: 0});
+      this.path.attr({fillcolor: this.fillColor, opacity: 0});
     }
   };
 

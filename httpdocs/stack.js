@@ -314,32 +314,6 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
     return;
   }
   
-  this.updateAreas = function () {
-    /*var tl_width;
-    var tl_height;
-    if (tiles.length == 0) {
-      tl_width = 0;
-      tl_height = 0;
-    } else {
-      tl_width = tiles[0].length * X_TILE_SIZE / scale;
-      tl_height = tiles.length * Y_TILE_SIZE / scale;
-    }
-    
-    requestQueue.register('model/area.list.php', 'POST', {
-      pid: project.id,
-      sid: id,
-      z: z,
-      top: translation.y,
-      left: translation.x,
-      width: tl_width,
-      height: tl_height,
-      zres: 1
-    }, handle_updateAreas);
-    return;*/
-  };
-
-  
-
   /**
    * update treeline nodes by querying them from the server
    * with a bounding volume dependend on the current view
@@ -380,6 +354,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
     // can now be done with completedCallback...
     // first synchronize with database
     svgOverlay.updateNodeCoordinatesinDB();
+    svgOverlay.updateAreasInDB();
 
     requestQueue.register('model/node.list.php', 'POST', {
       pid: project.id,
@@ -400,7 +375,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       left: translation.x,
       width: tl_width,
       height: tl_height,
-      zres: 1
+      zres: 0
     }, handle_updateAreas);
     return;
   }
@@ -419,7 +394,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       } else {
         var jso = $.parseJSON(text);
         // XXX: how much time does calling the function like this take?
-        svgOverlay.refreshNodes(jso);
+        svgOverlay.refreshAnnotations(jso);
       }
     }
     return;
@@ -435,7 +410,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       } else {
         var jso = $.parseJSON(text);
         
-        svgOverlay.refreshNodes(jso);
+        svgOverlay.refreshAnnotations(jso);
       }
     }
     return;
@@ -595,7 +570,6 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
     if (show_tracing) {
       if (z != old_z || s != old_s || xd != 0 || yd != 0) {
         self.updateNodes();
-        //self.updateAreas();
       }
       // redraw the overlay
       svgOverlay.redraw(
@@ -1120,7 +1094,6 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       show_tracing = true;
       svgOverlay.show();
       self.updateNodes();
-      self.updateAreas();
       for (var i = 0; i < textlabels.length; ++i) {
         textlabels[i].setEditable(false);
       }

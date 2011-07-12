@@ -3,6 +3,7 @@
 
 // active treenode or connector
 var atn = null;
+var aa = null; // active area
 var atn_fillcolor = "rgb(0, 255, 0)";
 var active_area = null;
 var active_skeleton_id = null;
@@ -26,15 +27,27 @@ function activateNode(node) {
     if (atn.type === "treenode") {
       statusBar.replaceLast("activated treenode with id " + atn.id + " skeleton id " + atn.skeleton_id );
       openSkeletonNodeInObjectTree(node);
-    } else if (atn.type === "area") {
-			statusBar.replaceLast("activated area with id " + atn.id + " skelecton id " + atn.skeleton_id );
-			atn.activate();
-		} else {
+    } else {
       statusBar.replaceLast("activated connector node with id " + atn.id);
     }
   }
   project.recolorAllNodes();
 }
+
+var activateArea = function(area) {
+	
+	if (aa !== null) {
+		aa.deactivate();
+	}
+	
+	aa = area;
+	
+	if (aa !== null) {
+		aa.activate();		
+		aa.draw();
+		aa.setColor();
+	}
+};
 
 var openSkeletonNodeInObjectTree = function(node) {
   // Check if the Object Tree div is visible
@@ -55,7 +68,7 @@ var refreshAllWidgets = function() {
     initTreenodeTable(pid);
   }
 
-}
+};
 
 
 var SVGOverlay = function (
@@ -66,7 +79,7 @@ var SVGOverlay = function (
   this.resolution = resolution;
   this.translation = translation;
   this.dimension = dimension;
-
+	
   var edgetoggle = true;
   var nodes = {};
   var labels = {};
@@ -105,6 +118,20 @@ var SVGOverlay = function (
       }
     }
   };
+  
+  this.selectArea = function(id) {
+		var i;
+		for (i in areas) {
+			if (areas[i].id === id) {
+				activateArea(areas[i]);
+			}
+		}
+	};
+
+	this.recolorAll = function() {
+		this.recolorAllNodes();
+		this.recolorAllAreas();
+	};
 
   this.recolorAllNodes = function () {
     // Assumes that atn and active_skeleton_id are correct:
@@ -117,9 +144,17 @@ var SVGOverlay = function (
       }
     }
   };
+  
+  this.recolorAllAreas = function() {
+		var i;
+		for (i in areas) {
+			areas[i].setColor();
+			areas[i].draw();
+		}
+	};
 
   this.activateNearestNode = function (x, y, z) {
-    var xdiff, ydiff, zdiff, distsq, mindistsq = Number.MAX_VALUE, nearestnode = null;
+    var xdiff, ydiff, zdiff, distsq, mindistsq = Number.MAX_VALUE, nearestnode = null, nodeid;
     for (nodeid in nodes) {
       if (nodes.hasOwnProperty(nodeid)) {
         node = nodes[nodeid];
@@ -138,7 +173,7 @@ var SVGOverlay = function (
     } else {
       statusBar.replaceLast("No nodes were visible - can't activate the nearest");
     }
-  }
+  };
 
   this.showTags = function (val) {
     this.toggleLabels(val);
@@ -185,8 +220,9 @@ var SVGOverlay = function (
           }
         },
         success: function (nodeitems) {
+					var nodeid;
           // for all retrieved, create a label
-          for (var nodeid in nodeitems) {
+          for (nodeid in nodeitems) {
             if (nodeitems.hasOwnProperty(nodeid)) {
               var tl = new OverlayLabel(nodeitems[nodeid], r, nodes[nodeid].x, nodes[nodeid].y, nodeitems[nodeid]);
               labels[nodeid] = tl;
@@ -588,10 +624,10 @@ var SVGOverlay = function (
           } else {
             var jso = $.parseJSON(text);
             var a = new Area(jso.polygonid, r, pos_x, pos_y, pos_z, area_dragpt_r);
-						atn = a;
+						
             areas[jso.polygonid] = a;
             //a.draw();
-						atn.draw();
+						activateArea(a);
           }
         }
       }
@@ -600,7 +636,7 @@ var SVGOverlay = function (
     return;
 	};
 	
-	var updateAreasInDB = function() {
+	this.updateAreasInDB = function() {
 		var areasToUpdate = [], i, j, pos_x, pos_y, pos_z, pix_x, pix_y;
 		var area_str, lbound = [], ubound = [];
     for (i in areas) {
@@ -838,45 +874,67 @@ var SVGOverlay = function (
     }
   };
 
+	this.refreshAnnotations = function(jso)
+	{
+		var jso_area = [];
+		var jso_node = [];
+		var i;
+		
+		for (i in jso) {
+			if (jso[i].type === "area") {
+				jso_area.push(jso[i]);
+			} else {
+				jso_node.push(jso[i]);
+			}
+		}
+		
+		this.paper.clear();
+		nodes = new Object();
+		labels = new Object();
+		areas = new Object();
+		
+		this.refreshNodes(jso_node);
+		this.refreshAreas(jso_area);
+	};
+	
+	this.refreshAreas = function(jso)
+	{
+		var pix_x = [];
+		var pix_y = [];
+		var i,j;
+		
+		for (i in jso)
+		{
+			var id = parseInt(jso[i].id);
+			var z = jso[i].z;
+			for (j in jso[i].x)
+			{
+				pix_x[j] = jso[i].x[j] * s;
+			}
+		
+			for (j in jso[i].y)
+			{
+				pix_y[j] = jso[i].y[j] * s;
+			}
+
+			a = new Area(id, this.paper, pix_x, pix_y, z, 4);
+			a.deactivate();
+		}
+	};
+	
+
   this.refreshNodes = function (jso)
   {
     var rad, nrtn = 0, nrcn = 0, parid, nid, nn, isRootNode, j;
-    this.paper.clear();
-    nodes = new Object();
-    labels = new Object();
 
     for (var i in jso)
     {
       var id = parseInt(jso[i].id);        
-      var pos_x;
-      var pos_y;
+      var pos_x = phys2pixX(jso[i].x);
+      var pos_y = phys2pixY(jso[i].y);
       var pos_z = phys2pixZ(jso[i].z);
       var zdiff = Math.floor(parseFloat(jso[i].z_diff) / resolution.z);
       var skeleton_id = null;
-      
-      //Check if jso[i].x is singleton
-      if (parseFloat(jso[i].x) === jso[i].x)
-      {
-				pos_x = phys2pixX(jso[i].x);				
-			} else {  // if it isn't, assume jso[i].x is an array, or an object with numeric fields
-				pos_x = [];
-				for (j in jso[i].x)
-				{
-					pos_x[j] = phys2pixX(jso[i].x[j]);
-				}
-			}
-			
-			//Ditto
-			if (parseFloat(jso[i].y) === jso[i].y)
-			{
-				pos_y = phys2pixY(jso[i].y);
-			} else {
-				pos_y = [];
-				for (j in jso[i].y)
-				{
-					pos_y[j] = phys2pixY(jso[i].y[j]);
-				}
-			} // Now, hope everything was sent correctly.
       
       if (zdiff == 0)
       {
@@ -900,18 +958,10 @@ var SVGOverlay = function (
         isRootNode = isNaN(parseInt(jso[i].parentid));
         nn = new Node(id, this.paper, null, rad, pos_x, pos_y, pos_z, zdiff, jso[i].skeleton_id, isRootNode);
         nrtn++;
-      }
-      else if (jso[i].type === "area")
-      {
-				nn = new Area(id, this.paper, pos_x, pos_y, pos_z, 4);
-			}
+      }     
       else
       {
         nn = new ConnectorNode(id, this.paper, rad, pos_x, pos_y, pos_z, zdiff);
-        if (getMode() !== "polygontracing")
-        {
-					nn.deactivate();
-				}
         nrcn++;
       }
       nodes[id] = nn;
@@ -1029,35 +1079,27 @@ var SVGOverlay = function (
   };
 
   this.set_tracing_mode = function (mode) {
-		var changeMode = false, i;
+		var lastmode = currentmode;
     // toggels the button correctly
     // might update the mouse pointer
     document.getElementById("trace_button_skeleton").className = "button";
     document.getElementById("trace_button_synapse").className = "button";
     document.getElementById("trace_button_polygon").className = "button";
 
-    if (mode === "skeletontracing") {
+    if (mode === "skeletontracing") {			
       currentmode = mode;
-      document.getElementById("trace_button_skeleton").className = "button_active";
-      changeMode = true;
+      document.getElementById("trace_button_skeleton").className = "button_active";     
     } else if (mode === "synapsedropping") {
       currentmode = mode;
       document.getElementById("trace_button_synapse").className = "button_active";
-      changeMode = true;
     } else if (mode === "polygontracing") {
 			currentmode = mode;
 			document.getElementById("trace_button_polygon").className = "button_active";
-			changeMode = true;
-		}
-		
-		if (changeMode) {
-			for (i in nodes) {
-				if (nodes[i].hasOwnProperty('changeMode'))
-				{
-					nodes[i].changeMode(currentmode);
-				}
+			if (currentmode !== lastmode && aa !== null) {
+				aa.activae();
 			}
-		}
+		}		
+
   };
 
   var getMode = function (e) {
@@ -1089,15 +1131,17 @@ var SVGOverlay = function (
 
     // e.metaKey should correspond to the command key on Mac OS
     if (e.ctrlKey || e.metaKey) {
+			var statusStr = "";
       // ctrl-click deselects the current active node
       if (atn !== null) {
         statusBar.replaceLast("deactivated active node with id " + atn.id);
-      }
-      if (atn.hasOwnProperty('deactivate'))
-      {
-				atn.deactivate();
+			}
+			if (aa !== null) {
+				aa.deactivate();
 			}
       activateNode(null);
+      activateArea(null);
+      
     } else if (e.shiftKey) {
       if (atn === null) {
         if (getMode() === "skeletontracing") {
@@ -1129,12 +1173,13 @@ var SVGOverlay = function (
           statusBar.replaceLast("created treenode with id " + atn.id + "postsynaptic to activated connector");
           createNodeWithConnector(locid, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
           e.stopPropagation();
-          return true;
-        } else if (atn instanceof Area) {
-					atn.switchMode();
-					return true;
+          return true;        
 				}
       }
+      
+      if (aa !== null && getMode() === "polygontracing") {
+				aa.setMode("editvertices");
+			}
     } else {
       // depending on what mode we are in
       // do something else when clicking
@@ -1154,14 +1199,14 @@ var SVGOverlay = function (
         // only create single synapses/connectors
         createSingleConnector(phys_x, phys_y, phys_z, pos_x, pos_y, pos_z, 5);
       } else if (getMode() === "polygontracing") {
-				if (atn === null) {
+				if (aa === null) {
 					createArea(pos_x, pos_y, pos_z);
 					e.stopPropagation();
 					return true;
-				} else if (atn instanceof Area){
-					atn.addXY(pos_x, pos_y);
+				} else {
+					aa.addXY(pos_x, pos_y);
 					e.stopPropagation();
-					updateAreasInDB();
+					this.updateAreasInDB();
 				}	
 			}
     }
