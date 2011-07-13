@@ -151,7 +151,9 @@ paper, // the raphael paper this area is drawn to
 x, // initial x coordinate or coordinates. May be either singleton or array.
 y, // ditto, but y
 z, // z 
-r // the vertex node radius
+r, // the vertex node radius
+inEditCallback, // a function to call when this Area changes
+inClickCallback// a function to call when this Area is selected by mouse down
 )
 {
     // the database area id
@@ -166,7 +168,7 @@ r // the vertex node radius
     this.r = r;
     // Vertex dot surround radius
     this.rcatch = r + 4;
-    // Dots Enabled (currently unused)
+    // Dots Enabled (currently unused) 
     this.dotsEnabled = true;
     // Fill color
     this.fillColor = "rgb(255, 128, 0)";
@@ -181,7 +183,7 @@ r // the vertex node radius
     this.zdiff = 0;
     this.doShadow = true;
     this.active = true;
-    
+        
     /* Edit mode
      * createvertices - appends a new vertex to the end of the list at each click
      * editvertices - drag midpoints to create new vertices
@@ -189,6 +191,8 @@ r // the vertex node radius
     var mode = "createvertices";
     
     var midx = [], midy = [];
+    
+    var doClick = true;
 
     // An array of VertexDot instances
     var dots = [];
@@ -199,7 +203,8 @@ r // the vertex node radius
     var shadowOpacity = 0.1;
     var aboveColor = "rgb(255, 0, 0)";
     var belowColor = "rgb(0, 255, 0)";
-    
+    var clickCallback = typeof inClickCallback === "undefined" ? function(){} : inClickCallback;
+    var editCallback = typeof inEditCallback === "undefined" ? function(){} : inEditCallback;
 
     // Arrays used for storing the x,y locations of the vertices
     // Assume that if x is not numeric, then it is an array.
@@ -218,9 +223,9 @@ r // the vertex node radius
     this.path.attr("fill", this.fillColor);
     this.path.attr("stroke", this.fillColor);
     this.path.attr("fill-opacity", fillOpacity);
-//    this.path.dblclick(function(){
-//     this.area.switchMode();
-//    });
+    this.path.mousedown(function(e){
+     this.area.handlePolygonClick(e);
+    });
     this.path.area = this;
 
 	// Pushes a new VertexDot onto the array
@@ -234,6 +239,10 @@ r // the vertex node radius
 	this.setIgnoreClick = function(isIt){
 		this.ignoreClick = isIt;
 	};
+
+  this.enableClickCallback = function(yeah) {
+    doClick = yeah;
+  }
 
     // Add a new x,y location to the end of the polygon
 	this.addXY = function (xnew, ynew) {
@@ -256,8 +265,32 @@ r // the vertex node radius
 	  }
   };
   
+  this.handlePolygonClick = function(e) {
+    if (!this.ignoreClick)
+    {
+      if (clickCallback(this))
+      {
+        e.stopPropagation();
+        this.setMode("editvertices");
+      }
+    }    
+  };
+  
+  this.setClickCallback = function(inClick) {
+    clickCallback = typeof inClick === "undefined" ? function(){} : inClick;    
+  };
+  
+  this.setUpdateCallback = function(inUpdate) {
+    editCallback = typeof inUpdate === "undefined" ? function(){} : inUpdate;
+  };
+  
   this.handleDrag = function(c, v, term) {
     var i = v.index;    
+    
+    if (typeof term === "undefined")
+    {
+      term = true;
+    }
    
     if (!v.isMidpoint) { 
       if (i >= 0 && i < this.x.length) {
@@ -295,10 +328,13 @@ r // the vertex node radius
       v.setRadius(this.r, this.rcatch);
       
     }
-    this.needsync = true;
-    this.draw();
     
+    if (term) {
+      this.needsync = true;
+      editCallback(this);
+    }
     
+    this.draw();    
   };
   
   this.makeMidpoint = function(i) {
@@ -432,12 +468,15 @@ r // the vertex node radius
   this.setColor = function() {
     if (this.zdiff === 0)
     {
-      this.path.attr({fillcolor: this.fillColor, opacity: fillOpacity});
+      this.path.attr("fillcolor", this.fillColor);
+      this.path.attr("fill-opacity", fillOpacity);
     } else if (this.doShadow) {
       if (this.zdiff > 0) {
-        this.path.attr({fillcolor: aboveColor, opacity: shadowOpacity});
+        this.path.attr("fillcolor", this.aboveColor);
+        this.path.attr("fill-opacity", shadowOpacity);
       } else {
-        this.path.attr({fillcolor: belowColor, opacity: shadowOpacity});
+        this.path.attr("fillcolor", this.belowColor);
+        this.path.attr("fill-opacity", shadowOpacity);
       }
     } else {
       this.path.attr({fillcolor: this.fillColor, opacity: 0});
@@ -456,5 +495,4 @@ r // the vertex node radius
     }
   }
   
-
 };

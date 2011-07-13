@@ -43,7 +43,8 @@ var activateArea = function(area) {
 	aa = area;
 	
 	if (aa !== null) {
-		aa.activate();		
+		aa.activate();
+    
 		aa.draw();
 		aa.setColor();
 	}
@@ -127,6 +128,7 @@ var SVGOverlay = function (
 			}
 		}
 	};
+	
 
 	this.recolorAll = function() {
 		this.recolorAllNodes();
@@ -493,6 +495,18 @@ var SVGOverlay = function (
     }); // endfunction
   };
 
+	var activateAreaByClick = function(area) {
+		if (getMode() === "polygontracing")
+		{
+			activateArea(area);
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	};
+
   // Create a new connector. We also use this function to join connector and treenode (postsynaptic case)
   // when the locidval is not null, but the id of the connector
   var createConnector = function (locidval, id, phys_x, phys_y, phys_z, pos_x, pos_y, pos_z) {
@@ -623,7 +637,8 @@ var SVGOverlay = function (
             alert(e.error);
           } else {
             var jso = $.parseJSON(text);
-            var a = new Area(jso.polygonid, r, pos_x, pos_y, pos_z, area_dragpt_r);
+            var a = new Area(jso.polygonid, r, pos_x, pos_y, pos_z, area_dragpt_r, 
+							this.updateAreasInDB, function(area){return activateAreaByClick(area)});
 						
             areas[jso.polygonid] = a;
             //a.draw();
@@ -902,6 +917,12 @@ var SVGOverlay = function (
 		var pix_x = [];
 		var pix_y = [];
 		var i,j;
+    var lastID = -1;
+    
+    if (aa !== null) {
+      lastID = aa.id;
+      aa = null;
+    }
 		
 		for (i in jso)
 		{
@@ -917,8 +938,17 @@ var SVGOverlay = function (
 				pix_y[j] = jso[i].y[j] * s;
 			}
 
-			a = new Area(id, this.paper, pix_x, pix_y, z, 4);
-			a.deactivate();
+			a = new Area(id, this.paper, pix_x, pix_y, z, area_dragpt_r,
+				this.updateAreasInDB, function(area){return activateAreaByClick(area)});
+            
+      areas[id] = a;
+      
+      if (id === lastID) {
+        activateArea(a);        
+      } else {
+        a.deactivate();
+      }
+			
 		}
 	};
 	
@@ -1096,7 +1126,7 @@ var SVGOverlay = function (
 			currentmode = mode;
 			document.getElementById("trace_button_polygon").className = "button_active";
 			if (currentmode !== lastmode && aa !== null) {
-				aa.activae();
+				aa.activate();
 			}
 		}		
 
