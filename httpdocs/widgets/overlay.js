@@ -35,19 +35,19 @@ function activateNode(node) {
 }
 
 var activateArea = function(area) {
-	
-	if (aa !== null) {
-		aa.deactivate();
-	}
-	
-	aa = area;
-	
-	if (aa !== null) {
-		aa.activate();
+  
+  if (aa !== null) {
+    aa.deactivate();
+  }
+  
+  aa = area;
+  
+  if (aa !== null) {
+    aa.activate();
     
-		aa.draw();
-		aa.setColor();
-	}
+    aa.draw();
+    aa.setColor();
+  }
 };
 
 var openSkeletonNodeInObjectTree = function(node) {
@@ -80,7 +80,7 @@ var SVGOverlay = function (
   this.resolution = resolution;
   this.translation = translation;
   this.dimension = dimension;
-	
+  
   var edgetoggle = true;
   var nodes = {};
   var labels = {};
@@ -121,19 +121,19 @@ var SVGOverlay = function (
   };
   
   this.selectArea = function(id) {
-		var i;
-		for (i in areas) {
-			if (areas[i].id === id) {
-				activateArea(areas[i]);
-			}
-		}
-	};
-	
+    var i;
+    for (i in areas) {
+      if (areas[i].id === id) {
+        activateArea(areas[i]);
+      }
+    }
+  };
+  
 
-	this.recolorAll = function() {
-		this.recolorAllNodes();
-		this.recolorAllAreas();
-	};
+  this.recolorAll = function() {
+    this.recolorAllNodes();
+    this.recolorAllAreas();
+  };
 
   this.recolorAllNodes = function () {
     // Assumes that atn and active_skeleton_id are correct:
@@ -148,12 +148,12 @@ var SVGOverlay = function (
   };
   
   this.recolorAllAreas = function() {
-		var i;
-		for (i in areas) {
-			areas[i].setColor();
-			areas[i].draw();
-		}
-	};
+    var i;
+    for (i in areas) {
+      areas[i].setColor();
+      areas[i].draw();
+    }
+  };
 
   this.activateNearestNode = function (x, y, z) {
     var xdiff, ydiff, zdiff, distsq, mindistsq = Number.MAX_VALUE, nearestnode = null, nodeid;
@@ -222,7 +222,7 @@ var SVGOverlay = function (
           }
         },
         success: function (nodeitems) {
-					var nodeid;
+          var nodeid;
           // for all retrieved, create a label
           for (nodeid in nodeitems) {
             if (nodeitems.hasOwnProperty(nodeid)) {
@@ -495,17 +495,17 @@ var SVGOverlay = function (
     }); // endfunction
   };
 
-	var activateAreaByClick = function(area) {
-		if (getMode() === "polygontracing")
-		{
-			activateArea(area);
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	};
+  var activateAreaByClick = function(area) {
+    if (getMode() === "polygontracing")
+    {
+      activateArea(area);
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  };
 
   // Create a new connector. We also use this function to join connector and treenode (postsynaptic case)
   // when the locidval is not null, but the id of the connector
@@ -620,17 +620,17 @@ var SVGOverlay = function (
 
   };
 
-	var createArea = function(pos_x, pos_y, pos_z) {
-		var pix_x = pos_x / s;
-		var pix_y = pos_y / s;		
-		requestQueue.register("model/area.create.php", "POST", {
-			pid: project.id,
-			x: pix_x,
-			y: pix_y,
-			z: pos_z
-		}, function (status, text, xml) {
-			var e, jso, a;
-			if (status === 200) {
+  var createArea = function(pos_x, pos_y, pos_z) {
+    var pix_x = pos_x / s;
+    var pix_y = pos_y / s;    
+    requestQueue.register("model/area.create.php", "POST", {
+      pid: project.id,
+      x: pix_x,
+      y: pix_y,
+      z: pos_z
+    }, function (status, text, xml) {
+      var e, jso, a;
+      if (status === 200) {
         if (text && text !== " ") {
           e = $.parseJSON(text);
           if (e.error) {
@@ -638,50 +638,51 @@ var SVGOverlay = function (
           } else {
             var jso = $.parseJSON(text);
             var a = new Area(jso.polygonid, r, pos_x, pos_y, pos_z, area_dragpt_r, 
-							this.updateAreasInDB, function(area){return activateAreaByClick(area)});
-						
+              this.updateAreasInDB, function(area){return activateAreaByClick(area)});
+            
             areas[jso.polygonid] = a;
             //a.draw();
-						activateArea(a);
+            activateArea(a);
           }
         }
       }
       return true;
     });
     return;
-	};
-	
-	this.updateAreasInDB = function() {
-		var areasToUpdate = [], i, j, pos_x, pos_y, pos_z, pix_x, pix_y;
-		var area_str, lbound = [], ubound = [];
+  };
+  
+  this.updateAreasInDB = function() {
+    var areasToUpdate = [], i, j, pos_x, pos_y, pos_z, pix_x, pix_y;
+    var area_str, lbound = [], ubound = [];
+    
     for (i in areas) {
       if (areas.hasOwnProperty(i)) {
         // only updated areas that need sync, e.g.
         // when they have been editted
         if (areas[i].needsync) {
-					pos_x = areas[i].x;
-					pos_y = areas[i].y;
+          pos_x = areas[i].x;
+          pos_y = areas[i].y;
           pos_z = areas[i].z;
           lbound = [Infinity, Infinity, pos_z];
           ubound = [-Infinity, -Infinity, pos_z];
           
           area_str = '(';
           for (j = 0; j < pos_x.length; j++) {
-						pix_x = pos_x[j] / s;
-						pix_y = pos_y[j] / s;
-						
-						area_str = area_str + '(' + pix_x + ',' + pix_y + ')';
-						if (j + 1 < pos_x.length) {
-							area_str = area_str + ',';
-						}
-						
-						if (pix_x < lbound[0]) { lbound[0] = pix_x; };						
-						if (pix_y < lbound[1]) { lbound[1] = pix_y; };
-						if (pix_x > ubound[0]) { ubound[0] = pix_x; };
-						if (pix_y > ubound[1]) { ubound[1] = pix_y; };						
-					}
-					
-					area_str = area_str + ')';
+            pix_x = pos_x[j] / s;
+            pix_y = pos_y[j] / s;
+            
+            area_str = area_str + '(' + pix_x + ',' + pix_y + ')';
+            if (j + 1 < pos_x.length) {
+              area_str = area_str + ',';
+            }
+            
+            if (pix_x < lbound[0]) { lbound[0] = pix_x; };            
+            if (pix_y < lbound[1]) { lbound[1] = pix_y; };
+            if (pix_x > ubound[0]) { ubound[0] = pix_x; };
+            if (pix_y > ubound[1]) { ubound[1] = pix_y; };            
+          }
+          
+          area_str = area_str + ')';
           
           areas[i].needsync = false;
 
@@ -692,17 +693,18 @@ var SVGOverlay = function (
             'lbound' : '(' + lbound.join() + ')',
             'ubound' : '(' + ubound.join() + ')'
           });
+          
         }
       }
     }
     if (areasToUpdate.length > 0) {
       updateAreaPositions(areasToUpdate, function(){});
     }
-	};
-	
-	
-	
-	var updateAreaPositions = function (areaArray, completedCallback) {
+  };
+  
+  
+  
+  var updateAreaPositions = function (areaArray, completedCallback) {
     var requestDicitionary = {}, i, k, node, callback;
     for (i in areaArray) {
       if (areaArray.hasOwnProperty(i)) {
@@ -733,7 +735,7 @@ var SVGOverlay = function (
       return true;
     };
     requestQueue.register("model/area.update.php", "POST", requestDicitionary, callback);
-  };	
+  };  
 
   var createNode = function (parentid, phys_x, phys_y, phys_z, radius, confidence, pos_x, pos_y, pos_z) {
 
@@ -889,57 +891,58 @@ var SVGOverlay = function (
     }
   };
 
-	this.refreshAnnotations = function(jso)
-	{
-		var jso_area = [];
-		var jso_node = [];
-		var i;
-		
-		for (i in jso) {
-			if (jso[i].type === "area") {
-				jso_area.push(jso[i]);
-			} else {
-				jso_node.push(jso[i]);
-			}
-		}
-		
-		this.paper.clear();
-		nodes = new Object();
-		labels = new Object();
-		areas = new Object();
-		
-		this.refreshNodes(jso_node);
-		this.refreshAreas(jso_area);
-	};
-	
-	this.refreshAreas = function(jso)
-	{
-		var pix_x = [];
-		var pix_y = [];
-		var i,j;
+  this.refreshAnnotations = function(jso)
+  {
+    var jso_area = [];
+    var jso_node = [];
+    var i;
+    
+    for (i in jso) {
+      if (jso[i].type === "area") {
+        jso_area.push(jso[i]);
+      } else {
+        jso_node.push(jso[i]);
+      }
+    }
+    
+    this.paper.clear();
+    nodes = new Object();
+    labels = new Object();
+    areas = new Object();
+    
+    this.refreshNodes(jso_node);
+    this.refreshAreas(jso_area);
+  };
+  
+  this.refreshAreas = function(jso)
+  {
+    
+    var i,j;
     var lastID = -1;
     
     if (aa !== null) {
       lastID = aa.id;
       aa = null;
     }
-		
-		for (i in jso)
-		{
-			var id = parseInt(jso[i].id);
-			var z = jso[i].z;
-			for (j in jso[i].x)
-			{
-				pix_x[j] = jso[i].x[j] * s;
-			}
-		
-			for (j in jso[i].y)
-			{
-				pix_y[j] = jso[i].y[j] * s;
-			}
+    
+    for (i in jso)
+    {
+      var pix_x = [];
+      var pix_y = [];
+      var id = parseInt(jso[i].id);
+      var z = jso[i].z;
+      for (j in jso[i].x)
+      {
+        pix_x[j] = jso[i].x[j] * s;
+      }
+    
+      for (j in jso[i].y)
+      {
+        pix_y[j] = jso[i].y[j] * s;
+      }
 
-			a = new Area(id, this.paper, pix_x, pix_y, z, area_dragpt_r,
-				this.updateAreasInDB, function(area){return activateAreaByClick(area)});
+      a = new Area(id, this.paper, pix_x, pix_y, z, area_dragpt_r,
+        this.updateAreasInDB, function(area){return activateAreaByClick(area)});
             
       areas[id] = a;
       
@@ -948,10 +951,10 @@ var SVGOverlay = function (
       } else {
         a.deactivate();
       }
-			
-		}
-	};
-	
+      
+    }
+  };
+  
 
   this.refreshNodes = function (jso)
   {
@@ -1109,26 +1112,26 @@ var SVGOverlay = function (
   };
 
   this.set_tracing_mode = function (mode) {
-		var lastmode = currentmode;
+    var lastmode = currentmode;
     // toggels the button correctly
     // might update the mouse pointer
     document.getElementById("trace_button_skeleton").className = "button";
     document.getElementById("trace_button_synapse").className = "button";
     document.getElementById("trace_button_polygon").className = "button";
 
-    if (mode === "skeletontracing") {			
+    if (mode === "skeletontracing") {      
       currentmode = mode;
       document.getElementById("trace_button_skeleton").className = "button_active";     
     } else if (mode === "synapsedropping") {
       currentmode = mode;
       document.getElementById("trace_button_synapse").className = "button_active";
     } else if (mode === "polygontracing") {
-			currentmode = mode;
-			document.getElementById("trace_button_polygon").className = "button_active";
-			if (currentmode !== lastmode && aa !== null) {
-				aa.activate();
-			}
-		}		
+      currentmode = mode;
+      document.getElementById("trace_button_polygon").className = "button_active";
+      if (currentmode !== lastmode && aa !== null) {
+        aa.activate();
+      }
+    }    
 
   };
 
@@ -1161,14 +1164,14 @@ var SVGOverlay = function (
 
     // e.metaKey should correspond to the command key on Mac OS
     if (e.ctrlKey || e.metaKey) {
-			var statusStr = "";
+      var statusStr = "";
       // ctrl-click deselects the current active node
       if (atn !== null) {
         statusBar.replaceLast("deactivated active node with id " + atn.id);
-			}
-			if (aa !== null) {
-				aa.deactivate();
-			}
+      }
+      if (aa !== null) {
+        aa.deactivate();
+      }
       activateNode(null);
       activateArea(null);
       
@@ -1204,12 +1207,12 @@ var SVGOverlay = function (
           createNodeWithConnector(locid, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
           e.stopPropagation();
           return true;        
-				}
+        }
       }
       
       if (aa !== null && getMode() === "polygontracing") {
-				aa.setMode("editvertices");
-			}
+        aa.setMode("editvertices");
+      }
     } else {
       // depending on what mode we are in
       // do something else when clicking
@@ -1229,16 +1232,16 @@ var SVGOverlay = function (
         // only create single synapses/connectors
         createSingleConnector(phys_x, phys_y, phys_z, pos_x, pos_y, pos_z, 5);
       } else if (getMode() === "polygontracing") {
-				if (aa === null) {
-					createArea(pos_x, pos_y, pos_z);
-					e.stopPropagation();
-					return true;
-				} else {
-					aa.addXY(pos_x, pos_y);
-					e.stopPropagation();
-					this.updateAreasInDB();
-				}	
-			}
+        if (aa === null) {
+          createArea(pos_x, pos_y, pos_z);
+          e.stopPropagation();
+          return true;
+        } else {
+          aa.addXY(pos_x, pos_y);
+          e.stopPropagation();
+          this.updateAreasInDB();
+        }  
+      }
     }
     e.stopPropagation();
     return true;

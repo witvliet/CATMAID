@@ -172,7 +172,7 @@ and cici.relation_id = '.$postsyn_to.' and cici.class_instance_a = ci2.id and ci
 
 function &queryAreas($db, $z, $zbound, $limit, $pid, $uid) {
       $areas = $db->getResult(
-      'SELECT polygons.id AS "id",
+      'SELECT polygons.id AS id,
            polygons.z AS z,
            polygons.polygon AS polygon,
            polygons.user_id AS user_id,       

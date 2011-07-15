@@ -2,73 +2,73 @@
  * An object to handle the draggable dots at the vertices of a polygon.
  */
 VertexDot = function (
-	xin, // pixel x
-	yin, // pixel y 
-	r, // inner circle radius
-	rs, //circle surround radius
-	index, // Area-specific index
-	area,  // the Area object that this dot belongs to
+  xin, // pixel x
+  yin, // pixel y 
+  r, // inner circle radius
+  rs, //circle surround radius
+  index, // Area-specific index
+  area,  // the Area object that this dot belongs to
   isMidpoint) // is this vertex a midpoint?
 {
-	this.index = index;
-	this.area = area;
-	this.isVisible = true;
+  this.index = index;
+  this.area = area;
+  this.isVisible = true;
   this.isMidpoint = isMidpoint;
   this.skeleton_id = -1;
 
-	var x = xin;
-	var y = yin;
-	var viewOpacity = 1;
-	var surroundOpacity = 0;
-	
-	this.dotView = area.paper.circle(x, y, r).attr({
-		fill: area.fillColor,
-		stroke: "none",
-		opacity: viewOpacity});
-	var dotSurround = area.paper.circle(x, y, rs).attr({
-			  fill: "rgb(0,0,0)",
-			  stroke: "none",
-			  opacity: surroundOpacity
-		  });
-	dotSurround.vertex = this;
-		  
+  var x = xin;
+  var y = yin;
+  var viewOpacity = 1;
+  var surroundOpacity = 0;
+  
+  this.dotView = area.paper.circle(x, y, r).attr({
+    fill: area.fillColor,
+    stroke: "none",
+    opacity: viewOpacity});
+  var dotSurround = area.paper.circle(x, y, rs).attr({
+        fill: "rgb(0,0,0)",
+        stroke: "none",
+        opacity: surroundOpacity
+      });
+  dotSurround.vertex = this;
+      
   //Mouse Event Handler Functions
-	var start = function() { //handle start of drag
-		this.ox = this.attr("cx");
-		this.oy = this.attr("cy");
-		this.oo = this.vertex.dotView.attr("opacity");
-		this.vertex.dotView.attr({opacity: 0.5});
+  var start = function() { //handle start of drag
+    this.ox = this.attr("cx");
+    this.oy = this.attr("cy");
+    this.oo = this.vertex.dotView.attr("opacity");
+    this.vertex.dotView.attr({opacity: 0.5});
     // Tell the area to ignore click events while dragging, to fix some event propagation weirdness.
-		this.vertex.area.setIgnoreClick(true);
-	}; 
-	var move = function(dx, dy) { //handle drag movement
-		this.attr({cx: this.ox + dx, cy: this.oy + dy});
-		this.vertex.dotView.attr({cx: this.ox + dx, cy: this.oy + dy});
+    this.vertex.area.setIgnoreClick(true);
+  }; 
+  var move = function(dx, dy) { //handle drag movement
+    this.attr({cx: this.ox + dx, cy: this.oy + dy});
+    this.vertex.dotView.attr({cx: this.ox + dx, cy: this.oy + dy});
     this.vertex.syncLocation();
-		this.vertex.area.handleDrag(this, this.vertex, false);
-	};
-	var up = function() { //handle end of drag
-		this.vertex.dotView.attr({opacity: this.oo});
-		this.vertex.area.setIgnoreClick(false);
+    this.vertex.area.handleDrag(this, this.vertex, false);
+  };
+  var up = function() { //handle end of drag
+    this.vertex.dotView.attr({opacity: this.oo});
+    this.vertex.area.setIgnoreClick(false);
     this.vertex.syncLocation();
-		this.vertex.area.handleDrag(this, this.vertex, true);
-	};
-	var over = function() {		//handle mouse over
-		this.vertex.dotView.attr({fill: this.vertex.area.highlightColor});
+    this.vertex.area.handleDrag(this, this.vertex, true);
+  };
+  var over = function() {    //handle mouse over
+    this.vertex.dotView.attr({fill: this.vertex.area.highlightColor});
     this.or = this.vertex.dotView.attr("r");
     this.vertex.dotView.attr("r", this.attr("r"));
-	};
-	var out = function() {  //handle mouse out
-		this.vertex.dotView.attr({fill: this.vertex.area.fillColor});
+  };
+  var out = function() {  //handle mouse out
+    this.vertex.dotView.attr({fill: this.vertex.area.fillColor});
     this.vertex.dotView.attr("r", this.or);
-	};
-	var click = function(e) { //terminate propagation of click event
+  };
+  var click = function(e) { //terminate propagation of click event
     e.stopPropagation();
   };
-	
-	dotSurround.drag(move, start, up);
-	dotSurround.mouseover(over);
-	dotSurround.mouseout(out);
+  
+  dotSurround.drag(move, start, up);
+  dotSurround.mouseover(over);
+  dotSurround.mouseout(out);
   dotSurround.click(click);
   
   // Public Functions
@@ -76,12 +76,12 @@ VertexDot = function (
   /*
    * Deletes the objects held by this VertexDot
    */
-	this.del = function(){
-		dotSurround.remove();		
-		this.dotView.remove();
+  this.del = function(){
+    dotSurround.remove();    
+    this.dotView.remove();
     dotSurround = null;
     this.dotView = null;
-	};
+  };
   
   /*
    * Sets the location of this VertexDot to be the midpoint between two others.
@@ -96,14 +96,14 @@ VertexDot = function (
       dotSurround.attr("cy", y);
     }    
   };
-	
+  
   /*
    * Synchronizes the internally-stored location with that of the circle surround
    */
-	this.syncLocation = function(){
-		x = dotSurround.attr("cx");
-		y = dotSurround.attr("cy");
-	};
+  this.syncLocation = function(){
+    x = dotSurround.attr("cx");
+    y = dotSurround.attr("cy");
+  };
   
   /*
    * Set the visible and surround circle radii.
@@ -115,28 +115,28 @@ VertexDot = function (
     dotSurround.attr({r : rs});
     this.dotView.attr({r : r});
   };
-	
+  
   this.getX = function() {
     return x;
   };
   this.getY = function() {
     return y;
   };
-	
-	this.hide = function(){
-		dotSurround.attr({opacity : 0});
-		dotView.attr({opacity : 0});
-		this.isVisible = false;
-		dotSurround.undrag();
-	};
-	
-	this.unhide = function(){
-		dotSurround.attr({opacity : surroundOpacity});
-		dotView.attr({opacity : viewOpacity});
-		this.isVisible = true;
-		dotSurround.drag(move, start, up);
-	};
-	
+  
+  this.hide = function(){
+    dotSurround.attr({opacity : 0});
+    dotView.attr({opacity : 0});
+    this.isVisible = false;
+    dotSurround.undrag();
+  };
+  
+  this.unhide = function(){
+    dotSurround.attr({opacity : surroundOpacity});
+    dotView.attr({opacity : viewOpacity});
+    this.isVisible = true;
+    dotSurround.drag(move, start, up);
+  };
+  
   
 };
  
@@ -228,41 +228,41 @@ inClickCallback// a function to call when this Area is selected by mouse down
     });
     this.path.area = this;
 
-	// Pushes a new VertexDot onto the array
-	this.pushVertexDot = function (x, y, area) {
-		vdot = new VertexDot(x, y, this.r, this.rcatch, dots.length, this, false);
-		dots.push(vdot);
+  // Pushes a new VertexDot onto the array
+  this.pushVertexDot = function (x, y, area) {
+    vdot = new VertexDot(x, y, this.r, this.rcatch, dots.length, this, false);
+    dots.push(vdot);
     this.needsync = true;
   };
 
 
-	this.setIgnoreClick = function(isIt){
-		this.ignoreClick = isIt;
-	};
+  this.setIgnoreClick = function(isIt){
+    this.ignoreClick = isIt;
+  };
 
   this.enableClickCallback = function(yeah) {
     doClick = yeah;
   }
 
     // Add a new x,y location to the end of the polygon
-	this.addXY = function (xnew, ynew) {
-		if (this.active && mode === "createvertices" && !this.ignoreClick) {
-			this.x.push(xnew);
-			this.y.push(ynew);
-			this.pushVertexDot(xnew, ynew);
-			this.draw();      
-		}
-	};
+  this.addXY = function (xnew, ynew) {
+    if (this.active && mode === "createvertices" && !this.ignoreClick) {
+      this.x.push(xnew);
+      this.y.push(ynew);
+      this.pushVertexDot(xnew, ynew);
+      this.draw();      
+    }
+  };
    
   // Moves the i'th vertex to the location at x, y. This function is intended to be called
   // from within VertexDot, which handles edit events all its own.
   this.setVertex = function(i, x, y) {
-	  if (i < this.x.length)
-	  {
-		  this.x[i] = x;
-		  this.y[i] = y;	
-		  this.draw();	  
-	  }
+    if (i < this.x.length)
+    {
+      this.x[i] = x;
+      this.y[i] = y;  
+      this.draw();    
+    }
   };
   
   this.handlePolygonClick = function(e) {
@@ -382,21 +382,21 @@ inClickCallback// a function to call when this Area is selected by mouse down
   // Erases and rebuilds the vertex dot array from scratch, resyncing the dots to the vertices.
   this.resetVertexDots = function() {
     var i;
-	  this.deleteVertexDots();
-	  for(i = 0; i < this.x.length; i++)
-	  {
-		  this.pushVertexDot(this.x[i], this.y[i]);		  
-	  }
+    this.deleteVertexDots();
+    for(i = 0; i < this.x.length; i++)
+    {
+      this.pushVertexDot(this.x[i], this.y[i]);      
+    }
   };
   
   // Removes the vertex dots entirely, rather than just hiding them.
   this.deleteVertexDots = function() {
     var i;
     for (i = 0; i < dots.length; i++)
-	  {
-		  dots[i].del();
-	  }
-	  dots = [];
+    {
+      dots[i].del();
+    }
+    dots = [];
   };
   
   this.activate = function() {
@@ -421,26 +421,26 @@ inClickCallback// a function to call when this Area is selected by mouse down
   
   this.getSVGPath = function() {
     var i;
-		var pathlist = [];
-		
-		pathlist.push("M" + this.x[0] + " " + this.y[0]);
-		
-		for (i = 1; i < this.x.length; i++)
-		{
-			pathlist.push("L" + this.x[i] + " " + this.y[i]);
-		}
-		pathlist.push("Z");
-		
-		return pathlist.join();
-	};
+    var pathlist = [];
+    
+    pathlist.push("M" + this.x[0] + " " + this.y[0]);
+    
+    for (i = 1; i < this.x.length; i++)
+    {
+      pathlist.push("L" + this.x[i] + " " + this.y[i]);
+    }
+    pathlist.push("Z");
+    
+    return pathlist.join();
+  };
     
   this.createCircle = function() {
   };
   
   // Regenerates the SVG code for the polygon, causing it to be redrawn to the screen.
-	this.draw = function() {
-		this.path.attr("path", this.getSVGPath());
-	};
+  this.draw = function() {
+    this.path.attr("path", this.getSVGPath());
+  };
   
   this.switchMode = function() {
     if (mode === "createvertices") {
@@ -487,7 +487,7 @@ inClickCallback// a function to call when this Area is selected by mouse down
   {
     this.pushVertexDot(this.x[0],this.y[0]);
   }
-	else
+  else
   {
     for (i = 0; i < this.x.length; i++)
     {
