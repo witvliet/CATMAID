@@ -36,11 +36,15 @@ $left = isset( $_REQUEST[ 'left' ] ) ? floatval( $_REQUEST[ 'left' ] ) : 0;
 $width = isset( $_REQUEST[ 'width' ] ) ? floatval( $_REQUEST[ 'width' ] ) : 0;
 $height = isset( $_REQUEST[ 'height' ] ) ? floatval( $_REQUEST[ 'height' ] ) : 0;
 $zres = isset( $_REQUEST[ 'zres' ] ) ? floatval( $_REQUEST[ 'zres' ] ) : 0;
+$zpix = isset( $_REQUEST[ 'zpix' ] ) ? floatval( $_REQUEST[ 'zpix' ] ) : 0;
+$zpixres = isset( $_REQUEST[ 'zpixres' ] ) ? floatval( $_REQUEST[ 'zpix' ] ) : 0;
 
 // the scale factor to volume bound the query in z-direction based on the z-resolution
 $zbound = 1.0;
 // limit number of retrieved treenodes
 $limit = 400;
+
+
 
 
 // Start transaction
@@ -49,9 +53,13 @@ if (! $db->begin() ) {
 	return;
 }
 
+$treenodes = queryNodes($db, $z, $top, $left, $width,
+  $height, $zres, $zbound, $limit, $pid, $uid );
+$areas = queryAreas($db, $zpix, 0, $limit, $pid, $uid);
 
-echo json_encode( queryNodes($db, $z, $top, $left, $width,
-  $height, $zres, $zbound, $limit, $pid, $uid ));
+$annotations = array_merge($treenodes, $areas);
+
+echo makeJSON( $annotations );
 
 
   

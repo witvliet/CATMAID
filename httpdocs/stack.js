@@ -313,7 +313,7 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
     }, handle_updateTextlabels);
     return;
   }
-
+  
   /**
    * update treeline nodes by querying them from the server
    * with a bounding volume dependend on the current view
@@ -354,8 +354,9 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
     // can now be done with completedCallback...
     // first synchronize with database
     svgOverlay.updateNodeCoordinatesinDB();
+    svgOverlay.updateAreasInDB();
 
-    requestQueue.register('model/node.list.php', 'POST', {
+    requestQueue.register('model/annotations.list.php', 'POST', {
       pid: project.id,
       sid: id,
       z: z * resolution.z + translation.z,
@@ -363,30 +364,74 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       left: (x - tl_width / 2) * resolution.x + translation.x,
       width: tl_width * resolution.x,
       height: tl_height * resolution.y,
-      zres: resolution.z
-    }, handle_updateNodes);
+      zres: resolution.z,
+      zpix: z,
+      zpixres: 0
+    }, handle_updateAnnotations);
+    
+    //requestQueue.register('model/annotations.list.php', 'POST', {
+      //pid: project.id,
+      //sid: id,
+      //z: z,
+      //top: translation.y,
+      //left: translation.x,
+      //width: tl_width,
+      //height: tl_height,
+      //zres: 0
+    //}, handle_updateAreas);
     return;
   }
+
+  var handle_updateAnnotations = function(status, text, xml) {
+    if (status === 200) {
+      var e = eval("(" + text + ")");
+      
+      if (e.error) {
+        alert(e.error);
+      } else {
+        var jso = $.parseJSON(text);
+        svgOverlay.refreshAnnotations(jso);
+      }
+      
+    }
+  };
+
 
   /**
    * handle an update-treelinenodes-request answer
    *
    */
-  var handle_updateNodes = function (status, text, xml) {
-    if (status = 200) {
-      //console.log("update noded text", $.parseJSON(text));
-      var e = eval("(" + text + ")");
-      //var e = $.parseJSON(text);
-      if (e.error) {
-        alert(e.error);
-      } else {
-        var jso = $.parseJSON(text);
-        // XXX: how much time does calling the function like this take?
-        svgOverlay.refreshNodes(jso);
-      }
-    }
-    return;
-  }
+  //var handle_updateNodes = function (status, text, xml) {
+    //if (status = 200) {
+      ////console.log("update noded text", $.parseJSON(text));
+      //var e = eval("(" + text + ")");
+      ////var e = $.parseJSON(text);
+      //if (e.error) {
+        //alert(e.error);
+      //} else {
+        //var jso = $.parseJSON(text);
+        //// XXX: how much time does calling the function like this take?
+        //svgOverlay.refreshAnnotations(jso);
+      //}
+    //}
+    //return;
+  //}
+  
+  //var handle_updateAreas = function (status, text, xml) {
+    //if (status = 200) {
+      
+      //var e = eval("(" + text + ")");
+      
+      //if (e.error) {
+        //alert(e.error);
+      //} else {
+        //var jso = $.parseJSON(text);
+        
+        //svgOverlay.refreshAnnotations(jso);
+      //}
+    //}
+    //return;
+  //}
 
   /**
    * align and update the tiles to be ( x, y ) in the image center
@@ -1164,6 +1209,12 @@ trakem2_project //!< boolean that states if a TrakEM2 project is available for t
       break;
     case "synapsedropping":
       svgOverlay.set_tracing_mode(m);
+      break;
+    case "polygontracing":
+      svgOverlay.set_tracing_mode(m);
+      break;
+    case "dbsync":
+      svgOverlay.updateNodeCoordinatesinDB();
       break;
     case "goparent":
       if (atn != null) {

@@ -3,8 +3,9 @@
 
 // active treenode or connector
 var atn = null;
+var aa = null; // active area
 var atn_fillcolor = "rgb(0, 255, 0)";
-
+var active_area = null;
 var active_skeleton_id = null;
 
 function activateNode(node) {
@@ -25,23 +26,29 @@ function activateNode(node) {
     // update statusBar
     if (atn.type === "treenode") {
       statusBar.replaceLast("activated treenode with id " + atn.id + " skeleton id " + atn.skeleton_id );
-      if ( skeleton_switched ) {
-        // if we switched the skeleton, we need to reopen the object tree
-        openSkeletonNodeInObjectTree(node);
-      }
-      // refresh all widgets except for the object tree
-      // the reason is that calling a refresh just after a request to open tree path
-      // prevents the opening of the tree path. thus, the opening of the treepath
-      // and/or refresh have to be added to the individual operation's
-      // (such as split tree) callbacks
-      refreshAllWidgets();
-
+      openSkeletonNodeInObjectTree(node);
     } else {
       statusBar.replaceLast("activated connector node with id " + atn.id);
     }
   }
   project.recolorAllNodes();
 }
+
+var activateArea = function(area) {
+  
+  if (aa !== null) {
+    aa.deactivate();
+  }
+  
+  aa = area;
+  
+  if (aa !== null) {
+    aa.activate();
+    
+    aa.draw();
+    aa.setColor();
+  }
+};
 
 var openSkeletonNodeInObjectTree = function(node) {
   // Check if the Object Tree div is visible
@@ -62,7 +69,7 @@ var refreshAllWidgets = function() {
     initTreenodeTable(pid);
   }
 
-}
+};
 
 
 var SVGOverlay = function (
@@ -73,11 +80,13 @@ var SVGOverlay = function (
   this.resolution = resolution;
   this.translation = translation;
   this.dimension = dimension;
-
+  
   var edgetoggle = true;
   var nodes = {};
   var labels = {};
   var show_labels = false;
+  var areas = {};
+  var area_dragpt_r = 4;
 
   this.exportSWC = function () {
     // retrieve SWC file of currently active treenode's skeleton
@@ -110,6 +119,21 @@ var SVGOverlay = function (
       }
     }
   };
+  
+  this.selectArea = function(id) {
+    var i;
+    for (i in areas) {
+      if (areas[i].id === id) {
+        activateArea(areas[i]);
+      }
+    }
+  };
+  
+
+  this.recolorAll = function() {
+    this.recolorAllNodes();
+    this.recolorAllAreas();
+  };
 
   this.recolorAllNodes = function () {
     // Assumes that atn and active_skeleton_id are correct:
@@ -122,9 +146,17 @@ var SVGOverlay = function (
       }
     }
   };
+  
+  this.recolorAllAreas = function() {
+    var i;
+    for (i in areas) {
+      areas[i].setColor();
+      areas[i].draw();
+    }
+  };
 
   this.activateNearestNode = function (x, y, z) {
-    var xdiff, ydiff, zdiff, distsq, mindistsq = Number.MAX_VALUE, nearestnode = null;
+    var xdiff, ydiff, zdiff, distsq, mindistsq = Number.MAX_VALUE, nearestnode = null, nodeid;
     for (nodeid in nodes) {
       if (nodes.hasOwnProperty(nodeid)) {
         node = nodes[nodeid];
@@ -143,7 +175,7 @@ var SVGOverlay = function (
     } else {
       statusBar.replaceLast("No nodes were visible - can't activate the nearest");
     }
-  }
+  };
 
   this.showTags = function (val) {
     this.toggleLabels(val);
@@ -190,8 +222,9 @@ var SVGOverlay = function (
           }
         },
         success: function (nodeitems) {
+          var nodeid;
           // for all retrieved, create a label
-          for (var nodeid in nodeitems) {
+          for (nodeid in nodeitems) {
             if (nodeitems.hasOwnProperty(nodeid)) {
               var tl = new OverlayLabel(nodeitems[nodeid], r, nodes[nodeid].x, nodes[nodeid].y, nodeitems[nodeid]);
               labels[nodeid] = tl;
@@ -462,6 +495,18 @@ var SVGOverlay = function (
     }); // endfunction
   };
 
+  var activateAreaByClick = function(area) {
+    if (getMode() === "polygontracing")
+    {
+      activateArea(area);
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  };
+
   // Create a new connector. We also use this function to join connector and treenode (postsynaptic case)
   // when the locidval is not null, but the id of the connector
   var createConnector = function (locidval, id, phys_x, phys_y, phys_z, pos_x, pos_y, pos_z) {
@@ -574,6 +619,123 @@ var SVGOverlay = function (
     return;
 
   };
+
+  var createArea = function(pos_x, pos_y, pos_z) {
+    var pix_x = pos_x / s;
+    var pix_y = pos_y / s;    
+    requestQueue.register("model/area.create.php", "POST", {
+      pid: project.id,
+      x: pix_x,
+      y: pix_y,
+      z: pos_z
+    }, function (status, text, xml) {
+      var e, jso, a;
+      if (status === 200) {
+        if (text && text !== " ") {
+          e = $.parseJSON(text);
+          if (e.error) {
+            alert(e.error);
+          } else {
+            var jso = $.parseJSON(text);
+            var a = new Area(jso.polygonid, r, pos_x, pos_y, pos_z, area_dragpt_r, 
+              this.updateAreasInDB, function(area){return activateAreaByClick(area)});
+            
+            areas[jso.polygonid] = a;
+            //a.draw();
+            activateArea(a);
+          }
+        }
+      }
+      return true;
+    });
+    return;
+  };
+  
+  this.updateAreasInDB = function() {
+    var areasToUpdate = [], i, j, pos_x, pos_y, pos_z, pix_x, pix_y;
+    var area_str, lbound = [], ubound = [];
+    
+    for (i in areas) {
+      if (areas.hasOwnProperty(i)) {
+        // only updated areas that need sync, e.g.
+        // when they have been editted
+        if (areas[i].needsync) {
+          pos_x = areas[i].x;
+          pos_y = areas[i].y;
+          pos_z = areas[i].z;
+          lbound = [Infinity, Infinity, pos_z];
+          ubound = [-Infinity, -Infinity, pos_z];
+          
+          area_str = '(';
+          for (j = 0; j < pos_x.length; j++) {
+            pix_x = pos_x[j] / s;
+            pix_y = pos_y[j] / s;
+            
+            area_str = area_str + '(' + pix_x + ',' + pix_y + ')';
+            if (j + 1 < pos_x.length) {
+              area_str = area_str + ',';
+            }
+            
+            if (pix_x < lbound[0]) { lbound[0] = pix_x; };            
+            if (pix_y < lbound[1]) { lbound[1] = pix_y; };
+            if (pix_x > ubound[0]) { ubound[0] = pix_x; };
+            if (pix_y > ubound[1]) { ubound[1] = pix_y; };            
+          }
+          
+          area_str = area_str + ')';
+          
+          areas[i].needsync = false;
+
+          areasToUpdate.push({
+            'area_id': areas[i].id,
+            'polygon': area_str,
+            'z': pos_z,
+            'lbound' : '(' + lbound.join() + ')',
+            'ubound' : '(' + ubound.join() + ')'
+          });
+          
+        }
+      }
+    }
+    if (areasToUpdate.length > 0) {
+      updateAreaPositions(areasToUpdate, function(){});
+    }
+  };
+  
+  
+  
+  var updateAreaPositions = function (areaArray, completedCallback) {
+    var requestDicitionary = {}, i, k, node, callback;
+    for (i in areaArray) {
+      if (areaArray.hasOwnProperty(i)) {
+        requestDicitionary['pid' + i] = project.id;
+        area = areaArray[i];
+        for (k in area) {
+          if (area.hasOwnProperty(k)) {
+            requestDicitionary[k + i] = area[k];
+          }
+        }
+      }
+    }
+    callback = function (status, text, xml) {
+      var e;
+      if (status === 200) {
+        if (text && text !== " ") {
+          e = $.parseJSON(text);
+          if (e.error) {
+            alert(e.error);
+            completedCallback(-1);
+          } else {
+            if (completedCallback) {
+              completedCallback(e.updated);
+            }
+          }
+        }
+      }
+      return true;
+    };
+    requestQueue.register("model/area.update.php", "POST", requestDicitionary, callback);
+  };  
 
   var createNode = function (parentid, phys_x, phys_y, phys_z, radius, confidence, pos_x, pos_y, pos_z) {
 
@@ -729,21 +891,84 @@ var SVGOverlay = function (
     }
   };
 
-  this.refreshNodes = function (jso)
+  this.refreshAnnotations = function(jso)
   {
-    var rad, nrtn = 0, nrcn = 0, parid, nid, nn, isRootNode, j;
+    var jso_area = [];
+    var jso_node = [];
+    var i;
+    
+    for (i in jso) {
+      if (jso[i].type === "area") {
+        jso_area.push(jso[i]);
+      } else {
+        jso_node.push(jso[i]);
+      }
+    }
+    
     this.paper.clear();
     nodes = new Object();
     labels = new Object();
+    areas = new Object();
+    
+    this.refreshNodes(jso_node);
+    this.refreshAreas(jso_area);
+  };
+  
+  this.refreshAreas = function(jso)
+  {
+    
+    var i,j;
+    var lastID = -1;
+    
+    if (aa !== null) {
+      lastID = aa.id;
+      aa = null;
+    }
+    
+    for (i in jso)
+    {
+      var pix_x = [];
+      var pix_y = [];
+      var id = parseInt(jso[i].id);
+      var z = jso[i].z;
+      for (j in jso[i].x)
+      {
+        pix_x[j] = jso[i].x[j] * s;
+      }
+    
+      for (j in jso[i].y)
+      {
+        pix_y[j] = jso[i].y[j] * s;
+      }
+
+      a = new Area(id, this.paper, pix_x, pix_y, z, area_dragpt_r,
+        this.updateAreasInDB, function(area){return activateAreaByClick(area)});
+            
+      areas[id] = a;
+      
+      if (id === lastID) {
+        activateArea(a);        
+      } else {
+        a.deactivate();
+      }
+      
+    }
+  };
+  
+
+  this.refreshNodes = function (jso)
+  {
+    var rad, nrtn = 0, nrcn = 0, parid, nid, nn, isRootNode, j;
 
     for (var i in jso)
     {
-      var id = parseInt(jso[i].id);
+      var id = parseInt(jso[i].id);        
       var pos_x = phys2pixX(jso[i].x);
       var pos_y = phys2pixY(jso[i].y);
       var pos_z = phys2pixZ(jso[i].z);
       var zdiff = Math.floor(parseFloat(jso[i].z_diff) / resolution.z);
       var skeleton_id = null;
+      
       if (zdiff == 0)
       {
         if (jso[i].type == "treenode")
@@ -766,7 +991,7 @@ var SVGOverlay = function (
         isRootNode = isNaN(parseInt(jso[i].parentid));
         nn = new Node(id, this.paper, null, rad, pos_x, pos_y, pos_z, zdiff, jso[i].skeleton_id, isRootNode);
         nrtn++;
-      }
+      }     
       else
       {
         nn = new ConnectorNode(id, this.paper, rad, pos_x, pos_y, pos_z, zdiff);
@@ -887,18 +1112,27 @@ var SVGOverlay = function (
   };
 
   this.set_tracing_mode = function (mode) {
+    var lastmode = currentmode;
     // toggels the button correctly
     // might update the mouse pointer
     document.getElementById("trace_button_skeleton").className = "button";
     document.getElementById("trace_button_synapse").className = "button";
+    document.getElementById("trace_button_polygon").className = "button";
 
-    if (mode === "skeletontracing") {
+    if (mode === "skeletontracing") {      
       currentmode = mode;
-      document.getElementById("trace_button_skeleton").className = "button_active";
-    } else if (currentmode === "skeletontracing") {
+      document.getElementById("trace_button_skeleton").className = "button_active";     
+    } else if (mode === "synapsedropping") {
       currentmode = mode;
       document.getElementById("trace_button_synapse").className = "button_active";
-    }
+    } else if (mode === "polygontracing") {
+      currentmode = mode;
+      document.getElementById("trace_button_polygon").className = "button_active";
+      if (currentmode !== lastmode && aa !== null) {
+        aa.activate();
+      }
+    }    
+
   };
 
   var getMode = function (e) {
@@ -930,11 +1164,17 @@ var SVGOverlay = function (
 
     // e.metaKey should correspond to the command key on Mac OS
     if (e.ctrlKey || e.metaKey) {
+      var statusStr = "";
       // ctrl-click deselects the current active node
       if (atn !== null) {
         statusBar.replaceLast("deactivated active node with id " + atn.id);
       }
+      if (aa !== null) {
+        aa.deactivate();
+      }
       activateNode(null);
+      activateArea(null);
+      
     } else if (e.shiftKey) {
       if (atn === null) {
         if (getMode() === "skeletontracing") {
@@ -966,8 +1206,12 @@ var SVGOverlay = function (
           statusBar.replaceLast("created treenode with id " + atn.id + "postsynaptic to activated connector");
           createNodeWithConnector(locid, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
           e.stopPropagation();
-          return true;
+          return true;        
         }
+      }
+      
+      if (aa !== null && getMode() === "polygontracing") {
+        aa.setMode("editvertices");
       }
     } else {
       // depending on what mode we are in
@@ -987,6 +1231,16 @@ var SVGOverlay = function (
       } else if (getMode() === "synapsedropping") {
         // only create single synapses/connectors
         createSingleConnector(phys_x, phys_y, phys_z, pos_x, pos_y, pos_z, 5);
+      } else if (getMode() === "polygontracing") {
+        if (aa === null) {
+          createArea(pos_x, pos_y, pos_z);
+          e.stopPropagation();
+          return true;
+        } else {
+          aa.addXY(pos_x, pos_y);
+          e.stopPropagation();
+          this.updateAreasInDB();
+        }  
       }
     }
     e.stopPropagation();

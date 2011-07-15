@@ -141,6 +141,14 @@ var stringToKeyAction = {
       return false;
     }
   },
+  "0": {
+    helpText: "Switch to polygon tracing mode",
+    buttonID: 'trace_button_polygon',
+    run: function (e) {
+      project.tracingCommand('polygontracing');
+      return false;
+    }
+  },
   "M": {
     helpText: "Deselect the active node",
     run: function (e) {
@@ -779,7 +787,10 @@ function Project(pid) {
 
   this.updateNodes = function () {
     for (var i = 0; i < stacks.length; ++i)
+    {
     stacks[i].updateNodes();
+    stacks[i].updateAreas();
+    }
     return;
   }
 
