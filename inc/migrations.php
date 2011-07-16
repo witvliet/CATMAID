@@ -540,6 +540,20 @@ CREATE TABLE broken_slice (
 EOMIGRATION
 ),
 
+	'2011-07-15T17:43:59' => new Migration(
+		'Add area trace support',
+		<<<EOMIGRATION
+CREATE TABLE polygons (
+    z double precision NOT NULL,
+    polygon polygon NOT NULL,
+    lbound double3d,
+    ubound double3d
+)
+INHERITS (concept);
+ALTER TABLE public.polygons OWNER TO catmaid_user;
+EOMIGRATION
+),
+
 	// INSERT NEW MIGRATIONS HERE
 	// (Don't remove the previous line, or inserting migration templates
 	// won't work.)
