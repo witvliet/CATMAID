@@ -511,9 +511,7 @@ initObjectTree = function (pid) {
         "pid": pid
       },
       success: function (r, status) {
-        if (r !== "True") {
-          $.jstree.rollback(data.rlbk);
-        }
+        return true;
       }
     });
   });
