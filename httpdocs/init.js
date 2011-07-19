@@ -175,7 +175,7 @@ function create_user(
  * update the project menu
  *
  * free the window
- */s
+ */
 function handle_create_user( status, text, xml )
 {
 	if ( status == 200 && text )
