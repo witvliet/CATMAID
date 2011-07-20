@@ -540,6 +540,38 @@ CREATE TABLE broken_slice (
 EOMIGRATION
 ),
 
+	'2011-07-20T16:07:25' => new Migration(
+		'Convert double3d and integer3d to arrays',
+		<<<EOMIGRATION
+DROP INDEX location_x_index;
+DROP INDEX location_y_index;
+DROP INDEX location_z_index;
+DROP INDEX connector_x_index;
+DROP INDEX connector_y_index;
+DROP INDEX connector_z_index;
+ALTER TABLE location
+	ALTER COLUMN location TYPE double precision[] USING ARRAY [ (location).x, (location).y, (location).z ];
+CREATE INDEX location_x_index ON treenode ((location[0]));
+CREATE INDEX location_y_index ON treenode ((location[1]));
+CREATE INDEX location_z_index ON treenode ((location[2]));
+CREATE INDEX connector_x_index ON connector ((location[0]));
+CREATE INDEX connector_y_index ON connector ((location[1]));
+CREATE INDEX connector_z_index ON connector ((location[2]));
+ALTER TABLE project_stack
+	ALTER COLUMN translation DROP DEFAULT,
+	ALTER COLUMN translation TYPE double precision[] USING ARRAY [ (translation).x, (translation).y, (translation).z ],
+	ALTER COLUMN translation SET DEFAULT ARRAY[(0)::double precision, (0)::double precision, (0)::double precision];
+ALTER TABLE stack
+	ALTER COLUMN dimension TYPE integer[] USING ARRAY [ (dimension).x, (dimension).y, (dimension).z ];
+ALTER TABLE stack
+	ALTER COLUMN resolution TYPE double precision[] USING ARRAY [ (resolution).x, (resolution).y, (resolution).z ];
+ALTER TABLE textlabel_location
+	ALTER COLUMN location TYPE double precision[] USING ARRAY [ (location).x, (location).y, (location).z ];
+DROP TYPE double3d;
+DROP TYPE integer3d;
+EOMIGRATION
+),
+
 	// INSERT NEW MIGRATIONS HERE
 	// (Don't remove the previous line, or inserting migration templates
 	// won't work.)

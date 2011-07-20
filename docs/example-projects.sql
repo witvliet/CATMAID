@@ -1,9 +1,9 @@
 INSERT INTO project VALUES (1, 'Default Project', true);
 INSERT INTO project VALUES (2, 'Evaluation data set', true);
 INSERT INTO project VALUES (3, 'Focussed Ion Beam (FIB)', true);
-INSERT INTO stack VALUES (1, 'Original data.', '(4096,4096,16)', '(3.2614000000000001,3.2614000000000001,60)', 'http://fly.mpi-cbg.de/map/evaluation/original/', '<p>&copy;2007 by Stephan Saalfeld.</p>
+INSERT INTO stack VALUES (1, 'Original data.', '{4096,4096,16}', '{3.2614000000000001,3.2614000000000001,60}', 'http://fly.mpi-cbg.de/map/evaluation/original/', '<p>&copy;2007 by Stephan Saalfeld.</p>
 <p>Rendered with <a href="http://www.povray.org/">POV-Ray&nbsp;v3.6</a> using this <a href="http://fly.mpi-cbg.de/~saalfeld/download/volume.tar.bz2">scene-file</a>.</p>', false);
-INSERT INTO stack VALUES (3, 'Focussed Ion Beam (FIB) stack of Rat Striatum	', '(2048,1536,460)', '(5,5,9)', 'http://incf.ini.uzh.ch/image-stack-fib/', '<p>&copy;2009 <a href="http://people.epfl.ch/graham.knott">Graham Knott</a>.</p>
+INSERT INTO stack VALUES (3, 'Focussed Ion Beam (FIB) stack of Rat Striatum	', '{2048,1536,460}', '{5,5,9}', 'http://incf.ini.uzh.ch/image-stack-fib/', '<p>&copy;2009 <a href="http://people.epfl.ch/graham.knott">Graham Knott</a>.</p>
 <p>Public INCF data set available at the <a href="http://www.incf.org/about/nodes/switzerland/data">Swiss INCF Node</a>.</p>', false);
 INSERT INTO "user" VALUES (1, 'saalfeld', '84789cbcbd2daf359a9fa4f34350e50f', 'Stephan Saalfeld');
 INSERT INTO "user" VALUES (2, 'test', '098f6bcd4621d373cade4e832627b4f6', 'Theo Test');
@@ -24,8 +24,8 @@ INSERT INTO relation VALUES (10, 1, '2010-08-26 13:15:31.939089-04', '2010-08-26
 INSERT INTO relation VALUES (9, 1, '2010-08-26 13:15:22.408939-04', '2010-08-26 13:15:22.408939-04', 3, 'part_of', NULL, NULL, false);
 INSERT INTO relation VALUES (8, 1, '2010-08-26 13:08:19.488588-04', '2010-08-26 13:08:19.488588-04', 3, 'is_a', NULL, NULL, false);
 INSERT INTO class_instance VALUES (2323, 3, '2011-01-13 09:10:41.563809-05', '2011-01-13 09:10:41.563809-05', 3, 112, 'neuropile');
-INSERT INTO project_stack VALUES (1, 1, '(0,0,0)');
-INSERT INTO project_stack VALUES (3, 3, '(0,0,0)');
+INSERT INTO project_stack VALUES (1, 1, '{0,0,0}');
+INSERT INTO project_stack VALUES (3, 3, '{0,0,0}');
 INSERT INTO project_user VALUES (1, 1);
 INSERT INTO project_user VALUES (3, 1);
 INSERT INTO project_user VALUES (1, 3);
