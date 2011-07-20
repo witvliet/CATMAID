@@ -106,9 +106,9 @@ try {
     
     $project_stack = $project_stacks[ 0 ];
     $project_stack[ 'editable' ] = $editable;
-    $project_stack[ 'translation' ] = double3dXYZ( $project_stack[ 'translation' ] );
-    $project_stack[ 'resolution' ] = double3dXYZ( $project_stack[ 'resolution' ] );
-    $project_stack[ 'dimension' ] = integer3dXYZ( $project_stack[ 'dimension' ] );
+    $project_stack[ 'translation' ] = pgDoubleArrayToPhp( $project_stack[ 'translation' ] );
+    $project_stack[ 'resolution' ] = pgDoubleArrayToPhp( $project_stack[ 'resolution' ] );
+    $project_stack[ 'dimension' ] = pgIntegerArrayToPhp( $project_stack[ 'dimension' ] );
 	$project_stack[ 'tile_width' ] = 256;
 	$project_stack[ 'tile_height' ] = 256;    
 	$project_stack[ 'broken_slices' ] = $bs;

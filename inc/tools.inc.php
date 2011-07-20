@@ -66,21 +66,22 @@ function tv_node( $data )
 	return $sOutput;
 			
 }
+
 /**
- * create a x,y,z assoziative float array from a trakem2-postgres double3d(x,y,z)
+ * create a float array from a trakem2-postgres double precision[]
  *
  * @return array
  */
-function double3dXYZ( $double3d )
+function pgDoubleArrayToPhp( $doubleArray )
 {
-	$double3d = str_replace( '(', '', $double3d );
-	$double3d = str_replace( ')', '', $double3d );
-	$double3d = explode( ',', $double3d );
-	
-	return array(
-		'x' => floatval( $double3d[ 0 ] ),
-		'y' => floatval( $double3d[ 1 ] ),
-		'z' => floatval( $double3d[ 2 ] ) );
+	$doubleArray = str_replace( '{', '', $doubleArray );
+	$doubleArray = str_replace( '}', '', $doubleArray );
+	$doubleArray = explode( ',', $doubleArray );
+
+	foreach ($doubleArray as &$value)
+		$value = floatval( $value );
+
+	return $doubleArray;
 }
 
 /**
@@ -88,16 +89,16 @@ function double3dXYZ( $double3d )
  * 
  * @return array
  */
-function integer3dXYZ( $integer3d )
+function pgIntegerArrayToPhp( $integerArray )
 {
-	$integer3d = str_replace( '(', '', $integer3d );
-	$integer3d = str_replace( ')', '', $integer3d );
-	$integer3d = explode( ',', $integer3d );
-	
-	return array(
-		'x' => intval( $integer3d[ 0 ] ),
-		'y' => intval( $integer3d[ 1 ] ),
-		'z' => intval( $integer3d[ 2 ] ) );
+	$integerArray = str_replace( '{', '', $integerArray );
+	$integerArray = str_replace( '}', '', $integerArray );
+	$integerArray = explode( ',', $integerArray );
+
+	foreach ($integerArray as &$value)
+		$value = intval( $value );
+
+	return $integerArray;
 }
 
 /** 

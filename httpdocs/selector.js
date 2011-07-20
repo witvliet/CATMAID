@@ -43,8 +43,8 @@ function Selector()
 			var m = ui.getMouse( e );
 			if ( m )
 			{
-				var pos_x = stack.translation.x + ( stack.x + ( m.offsetX - stack.viewWidth / 2 ) / stack.scale ) * stack.resolution.x;
-				var pos_y = stack.translation.y + ( stack.y + ( m.offsetY - stack.viewHeight / 2 ) / stack.scale ) * stack.resolution.y;
+				var pos_x = stack.translation[0] + ( stack.x + ( m.offsetX - stack.viewWidth / 2 ) / stack.scale ) * stack.resolution[0];
+				var pos_y = stack.translation[1] + ( stack.y + ( m.offsetY - stack.viewHeight / 2 ) / stack.scale ) * stack.resolution[1];
 				statusBar.replaceLast( "[" + pos_x.toFixed( 3 ) + ", " + pos_y.toFixed( 3 ) + "]" );
 			}
 			return false;

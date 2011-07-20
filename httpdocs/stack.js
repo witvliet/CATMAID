@@ -76,7 +76,7 @@ function Stack(
 		overview.update( self.z, self.y, self.x, self.s, self.viewHeight, self.viewWidth );
 		updateScaleBar();
 		
-		//statusBar.replaceLast( "[" + ( Math.round( x * 10000 * resolution.x ) / 10000 ) + ", " + ( Math.round( y * 10000 * resolution.y ) / 10000 ) + "]" );
+		//statusBar.replaceLast( "[" + ( Math.round( x * 10000 * resolution[0] ) / 10000 ) + ", " + ( Math.round( y * 10000 * resolution[1] ) / 10000 ) + "]" );
 		
 		if ( !transition.queued( redraw ) )
 		{
@@ -113,11 +113,11 @@ function Stack(
 	{
 		var l =
 		{
-			z : self.z * resolution.z + translation.z,
+			z : self.z * resolution[2] + translation[2],
 			s : self.s,
 			scale : self.scale,
-			y : self.y * resolution.y + translation.y,
-			x : self.x * resolution.x + translation.x
+			y : self.y * resolution[1] + translation[1],
+			x : self.x * resolution[0] + translation[0]
 		};
 		return l;
 	}
@@ -172,12 +172,12 @@ function Stack(
 			self.scale = 1 / Math.pow( 2, self.s );
 		}
 		
-		self.x = Math.max( 0, Math.min( MAX_X, Math.round( ( xp - translation.x ) / resolution.x ) ) );
-		self.y = Math.max( 0, Math.min( MAX_Y, Math.round( ( yp - translation.y ) / resolution.y ) ) );
+		self.x = Math.max( 0, Math.min( MAX_X, Math.round( ( xp - translation[0] ) / resolution[0] ) ) );
+		self.y = Math.max( 0, Math.min( MAX_Y, Math.round( ( yp - translation[1] ) / resolution[1] ) ) );
 		
 		var z1;
 		var z2;
-		z1 = z2 = Math.round( ( zp - translation.z ) / resolution.z );
+		z1 = z2 = Math.round( ( zp - translation[2] ) / resolution[2] );
 		while ( skip_planes[ z1 ] && skip_planes[ z2 ] )
 		{
 			z1 = Math.max( 0, z1 - 1 );
@@ -202,9 +202,9 @@ function Stack(
 		self.scale = 1 / Math.pow( 2, self.s );
 		
 		project.moveTo(
-			zp * resolution.z + translation.z,
-			yp * resolution.y + translation.y,
-			xp * resolution.x + translation.x );
+			zp * resolution[2] + translation[2],
+			yp * resolution[1] + translation[1],
+			xp * resolution[0] + translation[0] );
 		
 		return true;
 	}
@@ -296,9 +296,9 @@ function Stack(
 	var tool = null;
 	var layers = {};
 	
-	var MAX_X = dimension.x - 1;   //!< the last possible x-coordinate
-	var MAX_Y = dimension.y - 1;   //!< the last possible y-coordinate
-	var MAX_Z = dimension.z - 1;   //!< the last possible z-coordinate
+	var MAX_X = dimension[0] - 1;   //!< the last possible x-coordinate
+	var MAX_Y = dimension[1] - 1;   //!< the last possible y-coordinate
+	var MAX_Z = dimension[2] - 1;   //!< the last possible z-coordinate
 	
 	//! estimate the zoom levels
 	self.MAX_S = 0;
@@ -309,7 +309,7 @@ function Stack(
 	
 	//! all possible slices
 	self.slices = new Array();
-	for ( var i = 0; i < dimension.z; ++i )
+	for ( var i = 0; i < dimension[2]; ++i )
 	{
 		if ( !skip_planes[ i ] )
 			self.slices.push( i );
