@@ -301,12 +301,17 @@ function Stack(
 	var MAX_Z = dimension[2] - 1;   //!< the last possible z-coordinate
 	
 	//! estimate the zoom levels
-	self.MAX_S = 0;
-	var min_max = Math.min( MAX_X, MAX_Y );
-	var min_size = 256;
-	while ( min_max / Math.pow( 2, self.MAX_S ) / min_size > 4 )
-		++self.MAX_S;
-	
+	var tile_size = 256;
+	var num_scale_levels = Math.log( dimension[1] / tile_size ) / Math.log( 2 );
+	if ( num_scale_levels < 1 )
+		num_scale_levels = 1;
+	else if ( Math.floor( num_scale_levels ) == num_scale_levels )
+		num_scale_levels = Math.floor (num_scale_levels);
+	else
+		num_scale_levels = Math.floor (num_scale_levels) + 1;
+	self.MAX_S = num_scale_levels - 1;
+
+
 	//! all possible slices
 	self.slices = new Array();
 	for ( var i = 0; i < dimension[2]; ++i )
