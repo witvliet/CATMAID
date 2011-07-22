@@ -4,97 +4,75 @@
 # Generate a tiled scale pyramid of an image and a little overview thumbnail.
 # Call it this way:
 #
-# tile <image file name> <tile size> <thumbnail size>
+# tile <image file name> <tile size> <thumbnail size> <slice_dir_name>
 #
 # e.g.
 # tile image.tif 256 192
 ##
 
-convert +compress ${1} s_0.ppm
+image_name=${1}
+tile_size=${2}
+thumbnail_size=${3}
+slice_dir_name=${4}
+
+if [[ -z ${slice_dir_name} ]]
+then
+	${slice_dir_name} = "."
+fi
+
+convert +compress ${image_name} s_0.ppm
 
 width=`identify -format "%w" s_0.ppm`
 height=`identify -format "%h" s_0.ppm`
 
-s=0
+initial_s=0
+s=${initial_s}
 
 width=$((${width}/(2**${s})))
 height=$((${height}/(2**${s})))
 
-collumns=$((${width}/${2}))
-if [[ $width > $(($collumns*${2})) ]]
-then
-	collumns=$(($collumns+1))
-fi
-rows=$((${height}/${2}))
-if [[ $height > $(($rows*${2})) ]]
-then
-	rows=$(($rows+1))
-fi
-
-echo "${width} => ${collumns}" >&2
-echo "${height} => ${rows}" >&2
-
-convert -crop ${2}x${2} s_${s}.ppm ${s}.jpg
-for file in `ls ${s}-*.jpg`;
+while [ $height -ge $((2*${tile_size})) ];
 do
-	regex="s/${s}-\([0-9][0-9]*\).jpg/\1/"
-	n=`echo ${file} | sed "${regex}"`
-	r=$((${n}/${collumns}))
-	c=$((${n}%${collumns}))
-	mv $file ${r}_${c}_${s}.jpg
-done
+	cols=$((${width}/${tile_size}))
+	if [[ $width > $(($cols*${tile_size})) ]]
+	then
+		cols=$(($cols+1))
+	fi
+	rows=$((${height}/${tile_size}))
+	if [[ $height > $(($rows*${tile_size})) ]]
+	then
+		rows=$(($rows+1))
+	fi
 
-s=$(($s+1))
-width=$((${width}/2))
-height=$((${height}/2))
-collumns=$((${width}/${2}))
-if [[ $width > $(($collumns*${2})) ]]
-then
-	collumns=$(($collumns+1))
-fi
-rows=$((${height}/${2}))
-if [[ $height > $(($rows*${2})) ]]
-then
-	rows=$(($rows+1))
-fi
-
-while [ $height -ge $((2*${2})) ];
-do
-	echo "${width} => ${collumns}" >&2
+	echo "${width} => ${cols}" >&2
 	echo "${height} => ${rows}" >&2
 
-	convert -resize ${width}x${height} s_$((${s}-1)).ppm s_${s}.ppm
+	if [[ ${s} -ne ${initial_s} ]]
+	then
+		convert -resize ${width}x${height} s_$((${s}-1)).ppm s_${s}.ppm
+	fi
 
-	convert -crop ${2}x${2} s_${s}.ppm ${s}.jpg
+	convert -crop ${tile_size}x${tile_size} s_${s}.ppm ${s}.jpg
 	for file in `ls ${s}-*.jpg`;
 	do
 		regex="s/${s}-\([0-9][0-9]*\).jpg/\1/"
 		n=`echo ${file} | sed "${regex}"`
-		r=$((${n}/${collumns}))
-		c=$((${n}%${collumns}))
-		mv $file ${r}_${c}_${s}.jpg
+		r=$((${n}/${cols}))
+		c=$((${n}%${cols}))
+		mkdir -p ${slice_dir_name}/${s}/${r}
+		mv $file ${slice_dir_name}/${s}/${r}/${c}.jpg
 	done
 
 	s=$(($s+1))
 	width=$((${width}/2))
-	height=$((${height}/2))
-	collumns=$((${width}/${2}))
-	if [[ $width > $(($collumns*${2})) ]]
-	then
-		collumns=$(($collumns+1))
-	fi
-	rows=$((${height}/${2}))
-	if [[ $height > $(($rows*${2})) ]]
-	then
-		rows=$(($rows+1))
-	fi
+	height=$((${height}/2))	
 done
 
 if [[ $height < $width ]]
 then
-	convert -resize ${3} s_$((${s}-2)).ppm small.jpg
+	convert -resize ${thumbnail_size} s_$((${s}-2)).ppm ${slice_dir_name}/small.jpg
 else
-	convert -resize x${3} s_$((${s}-2)).ppm small.jpg
+	convert -resize x${thumbnail_size} s_$((${s}-2)).ppm ${slice_dir_name}/small.jpg
 fi
 
 rm *.ppm

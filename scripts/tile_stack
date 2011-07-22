@@ -4,7 +4,7 @@
 # Generate tiled scale pyramids of a stack of images and a little overview
 # thumbnail for each slice.  Call it this way:
 #
-# tile_stack "<image file name search pattern>" <tile size> <thumbnail size>
+# tile_stack "<image file name search pattern>" <tile size> <thumbnail size> <slice_dir_name>
 #
 # e.g.
 # tile_stack "*.tif" 256 192
@@ -20,7 +20,7 @@ do
 	cp $file $s
 	cd $s
 	file=`echo ${file} | sed "s/.*\/\([^\/]\)/\1/"`
-	"$d"/tile $file ${2} ${3}
+	"$d"/tile $file ${2} ${3} ${4}
 	rm $file
 	cd ..
 	s=$(($s+1))
