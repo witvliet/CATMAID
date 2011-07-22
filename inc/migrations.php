@@ -550,7 +550,6 @@ CREATE TABLE polygons (
     ubound double3d
 )
 INHERITS (concept);
-ALTER TABLE public.polygons OWNER TO catmaid_user;
 EOMIGRATION
 ),
 
