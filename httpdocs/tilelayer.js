@@ -188,9 +188,8 @@ function TileLayer(
 				}
 				else
 				{
-					// TODO: use this for the new tile naming scheme:
-					// tiles[ i ][ j ].alt = tileBaseName + stack.s + "/" + ( fr + i ) + "/" + ( fc + j );
-					tiles[ i ][ j ].alt = tileBaseName + r + "_" + c + "_" + stack.s;
+					tiles[ i ][ j ].alt = tileBaseName + stack.s + "/" + r + "/" + c;
+					//tiles[ i ][ j ].alt = tileBaseName + r + "_" + c + "_" + stack.s;
 					tiles[ i ][ j ].src = baseURL + tiles[ i ][ j ].alt + ".jpg";
 				}
 				tiles[ i ][ j ].style.top = t + "px";
