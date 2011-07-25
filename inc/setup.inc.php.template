@@ -56,6 +56,9 @@ $ldap_dn_search_password = "";
 // Not sure about this parameter - seems to be required, anyway:
 $ldap_unbind_between_attempts = TRUE;
 
+// The attribute to look up for the full name of the user
+$ldap_username_attrib = "displayname";
+
 //===============================================================================
 
 //===============================================================================

@@ -110,8 +110,10 @@ class Session
 						$new_ldap_user_id = $v[ 0 ][ 'id' ];
 					else
 						return false;
-					// FIXME: fetch the full name from LDAP as well, and
-					// update the row in the user table to set that.
+
+					$fullName = authLdapGetFullUsername($name);
+					$this->db->getResult('UPDATE "user" SET longname = \''.pg_escape_string( $fullName ).'\' WHERE id = '.$new_ldap_user_id);
+
 					return $new_ldap_user_id;
 				} catch (Exception $e) {
 					// The INSERT failed, which must be because the

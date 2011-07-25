@@ -394,4 +394,77 @@ function authLdapDebug($message)
   error_log($message);
 }
 
+
+
+/* authLdapGetFullUsername($user)
+ *
+ * Gets the full username of the user from LDAP
+ *
+ * $user  - The user name
+ *
+ * Returns:
+ *   The user's name''
+ */
+function authLdapGetFullUsername($user)
+{
+  $fullusername = '';
+  $object = array();
+
+  $res = authLdapAction("authLdapGetFullUsernameCallback", $user, $object);
+
+  if ($res)
+  {
+    $fullusername = $object['fullusername'];
+  }
+  return $fullusername;
+}
+
+
+/* authLdapGetFullUsernameCallback(&$ldap, $base_dn, $dn, $user_search,
+                            $user, &$object)
+ *
+ * Checks if the specified username/password pair are valid
+ *
+ * &$ldap       - Reference to the LDAP object
+ * $base_dn     - The base DN
+ * $dn          - The user's DN
+ * $user_search - The LDAP filter to find the user
+ * $user        - The user name
+ * &$object     - Reference to the generic object
+ *
+ * Returns:
+ *   0        - Didn't find a user
+ *   non-zero - Found a user
+ */
+function authLdapGetFullUsernameCallback(&$ldap, $base_dn, $dn, $user_search,
+                                  $user, &$object)
+{
+  global $ldap_username_attrib;
+
+  authLdapDebug("authLdapGetFullUsername: base_dn $base_dn dn $dn ".
+                "user_search $user_search user $user");
+
+  if ($ldap && $base_dn && $dn && $user_search)
+  {
+	$res = @ldap_read($ldap,
+                        $dn,
+                        "(objectclass=*)",
+                        array($ldap_username_attrib)
+                       );
+    if (@ldap_count_entries($ldap, $res) > 0)
+    {
+      authLdapDebug("authLdapGetFullUsernameCallback: search successful");
+      $entries = ldap_get_entries($ldap, $res);
+      $object['fullusername'] = $entries[0][$ldap_username_attrib][0];
+
+      authLdapDebug("authLdapGetFullUsernameCallback: username is '".
+                    $object['fullusername']."'");
+
+      return 1;
+    }
+  }
+  return 0;
+}
+
+
 ?>
