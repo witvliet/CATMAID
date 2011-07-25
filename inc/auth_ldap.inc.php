@@ -110,6 +110,8 @@ function authLdapAction($callback, $user, &$object)
     foreach ( $all_ldap_base_dn as $idx => $base_dn)
     {
       authLdapDebug("authLdapAction: start of foreach $base_dn");
+      $dn = NULL;
+      $user_search = NULL;
       if (isset($ldap_dn_search_attrib))
       {
         if (isset($ldap_dn_search_dn) &&
@@ -292,6 +294,7 @@ function authValidateUserCallback(&$ldap, $base_dn, $dn, $user_search,
                                   $user, &$object)
 {
   global $ldap_filter;
+  global $ldap_unbind_between_attempts;
 
   authLdapDebug("authValidateUserCallback: base_dn $base_dn dn $dn user $user");
 
