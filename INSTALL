@@ -11,7 +11,7 @@ sudo apt-get install libapache2-mod-php5 php5-pgsql imagemagick
 To use the Python-based helper scripts, you should also install
 the following packages:
 
-sudo apt-get install python-psycopg2 python-yaml
+sudo apt-get install python-psycopg2 python-yaml python-dateutil python-tz
 
 == Ubuntu 10.10 ==
 
