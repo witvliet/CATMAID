@@ -20,6 +20,44 @@ $db_pw[ 'read' ]	= 'catmaid_user_password';
 $db_db[ 'read' ]	= 'catmaid';
 /**#@-*/
 
+//===============================================================================
+// LDAP authentication section
+
+// The options to the next section marker only have any effect if
+// you set this option to TRUE:
+$fallbackToLDAP = FALSE;
+
+// set to true if you have trouble with your ldap communication, errors will
+// show up in apache log.
+$ldap_debug = false;
+
+// ldap port
+$ldap_port = 389;
+
+// ldap version3 ?
+$ldap_v3 = false;
+
+// no encryption by default
+$ldap_tls = false;
+
+$ldap_host = "192.168.0.1";
+
+$ldap_base_dn = "ou=People,dc=ini,dc=uzh,dc=ch";
+
+// the search attribute for the username, use 'sAMAccountName' for ActiveDirectory
+$ldap_dn_search_attrib = "uid";
+
+// some ldap servers don't allow anonymous binding, provide username & password here.
+
+$ldap_dn_search_dn = "";
+
+$ldap_dn_search_password = "";
+
+// Not sure about this parameter - seems to be required, anyway:
+$ldap_unbind_between_attempts = TRUE;
+
+// The attribute to look up for the full name of the user
+$ldap_username_attrib = "displayname";
 
 //===============================================================================
 

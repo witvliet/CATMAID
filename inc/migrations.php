@@ -540,6 +540,13 @@ CREATE TABLE broken_slice (
 EOMIGRATION
 ),
 
+	'2011-07-25T09:49:41' => new Migration(
+		'Add a boolean LDAP column to the "user" table',
+		<<<EOMIGRATION
+ALTER TABLE "user" ADD COLUMN ldap boolean default False;
+EOMIGRATION
+),
+
 	// INSERT NEW MIGRATIONS HERE
 	// (Don't remove the previous line, or inserting migration templates
 	// won't work.)

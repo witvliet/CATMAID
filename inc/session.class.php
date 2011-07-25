@@ -11,6 +11,7 @@
 /**
  */
 include_once( 'db.pg.class.php' );
+include_once( 'auth_ldap.inc.php' );
 
 /**
  * factory method to get the single instance of the object
@@ -81,6 +82,7 @@ class Session
      */
 	function isUserValid( $name, $pwd )
 	{
+		global $fallbackToLDAP;
 		if ( $pwd == '' ) return FALSE;
 		$v = $this->db->getResult(
 			'SELECT	*
@@ -88,9 +90,68 @@ class Session
 				FROM	"user"
 				
 				WHERE	"name" = \''.pg_escape_string( $name ).'\' AND
-						"pwd" = MD5( \''.pg_escape_string( $pwd ).'\' )' );
-		if ( $v && isset( $v[ 0 ] ) && isset( $v[ 0 ][ 'id' ] ) ) return $v[ 0 ][ 'id' ];
-		else return false;
+						"pwd" = MD5( \''.pg_escape_string( $pwd ).'\' ) AND
+						NOT ldap' );
+		if ( $v && isset( $v[ 0 ] ) && isset( $v[ 0 ][ 'id' ] ) )
+			return $v[ 0 ][ 'id' ];
+		else {
+			error_log("fallbackToLDAP is: $fallbackToLDAP");
+			if( isset($fallbackToLDAP) && $fallbackToLDAP ) {
+				$result = authValidateUser($name, $pwd);
+				error_log("got back from ldap: ".print_r($result, TRUE));
+				if ($result == 0) {
+					return false;
+				}
+				error_log("authentication with LDAP was successful!");
+				error_log("result is: ".print_r($result,TRUE));
+				try {
+					$v = $this->db->getResult('INSERT INTO "user" (name, pwd, ldap) VALUES (\''.pg_escape_string( $name ).'\', \'\', True) RETURNING id');
+					if ( $v && isset( $v[ 0 ] ) && isset( $v[ 0 ][ 'id' ] ) )
+						$new_ldap_user_id = $v[ 0 ][ 'id' ];
+					else
+						return false;
+
+					$fullName = authLdapGetFullUsername($name);
+					$this->db->getResult('UPDATE "user" SET longname = \''.pg_escape_string( $fullName ).'\' WHERE id = '.$new_ldap_user_id);
+
+					// Also link the user with all existing projects:
+					$projects = $this->db->getResult(
+						'SELECT	"project"."id" AS "pid"
+							FROM "project"'
+					);
+					foreach ($projects as $p)
+					{
+						$cpid = $p['pid'];
+						$project_user_id = $this->db->insertIntoId('project_user', array('user_id' => $new_ldap_user_id, 'project_id' => $cpid));
+						if (!$project_user_id)
+							return false;
+					}
+
+					return $new_ldap_user_id;
+
+				} catch (Exception $e) {
+					// The INSERT failed, which must be because the
+					// UNIQUE constraint on the name column failed.
+					// This means one of two things - either there's
+					// an existing non-LDAP account associated with
+					// that name, or this isn't the first time someone
+					// has logged in.  Distinguish between these
+					// cases:
+					$v = $this->db->getResult('SELECT id, ldap FROM "user" WHERE name = \''.pg_escape_string( $name ).'\'');
+					if ( $v && isset( $v[0] ) && isset( $v[0]['id'] ) && isset( $v[0]['ldap'] ) ) {
+						if( $v[0]['ldap'] ) {
+							return $v[0]['id'];
+						} else {
+							return false;
+						}
+					} else {
+						return false;
+					}
+				}
+			} else {
+				return false;
+			}
+		}
 	}
 
 	/**
