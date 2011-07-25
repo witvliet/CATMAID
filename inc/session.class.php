@@ -114,7 +114,21 @@ class Session
 					$fullName = authLdapGetFullUsername($name);
 					$this->db->getResult('UPDATE "user" SET longname = \''.pg_escape_string( $fullName ).'\' WHERE id = '.$new_ldap_user_id);
 
+					// Also link the user with all existing projects:
+					$projects = $this->db->getResult(
+						'SELECT	"project"."id" AS "pid"
+							FROM "project"'
+					);
+					foreach ($projects as $p)
+					{
+						$cpid = $p['pid'];
+						$project_user_id = $this->db->insertIntoId('project_user', array('user_id' => $new_ldap_user_id, 'project_id' => $cpid));
+						if (!$project_user_id)
+							return false;
+					}
+
 					return $new_ldap_user_id;
+
 				} catch (Exception $e) {
 					// The INSERT failed, which must be because the
 					// UNIQUE constraint on the name column failed.
