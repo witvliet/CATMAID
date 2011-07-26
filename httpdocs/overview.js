@@ -105,8 +105,8 @@ function Overview( stack )
 	// initialize
 	if ( !ui ) ui = new UI();
 	
-	var maxX = stack.dimension.x - 1;
-	var maxY = stack.dimension.y - 1;
+	var maxX = stack.dimension[0] - 1;
+	var maxY = stack.dimension[1] - 1;
 	
 	var height = parseInt( getPropertyFromCssRules( 3, 3, "height" ) );
 	var width = parseInt( getPropertyFromCssRules( 3, 3, "width" ) );
