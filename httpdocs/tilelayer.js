@@ -250,6 +250,31 @@ function TileLayer(
 	 * Get the stack.
 	 */
 	this.getStack = function(){ return stack; }
+	
+	var OverviewLayer = function()
+	{
+		this.redraw = function()
+		{
+			img.src = baseURL + stack.z + "/small.jpg";
+			return;
+		}
+		
+		this.unregister = function()
+		{
+			if ( img.parentNode )
+				img.parentNode.removeChild( img );
+		}
+		
+		var self = this;
+		
+		var img = document.createElement( "img" );
+		img.className = "smallMapMap";
+		img.src = "map/small.jpg";
+		
+		stack.overview.getView().appendChild( img );
+		stack.overview.addLayer( "tilelayer", this );
+	}
+	
 
 	// initialise
 	var self = this;
@@ -261,6 +286,11 @@ function TileLayer(
 	tilesContainer.className = "sliceTiles";
 	stack.getView().appendChild( tilesContainer );
 	
+	var overviewLayer = new OverviewLayer();
+	
+	
 	var LAST_XT = Math.floor( ( stack.dimension[0] * stack.scale - 1 ) / tileWidth );
 	var LAST_YT = Math.floor( ( stack.dimension[1] * stack.scale - 1 ) / tileHeight );
+	
+	self.baseURL = baseURL;
 }
