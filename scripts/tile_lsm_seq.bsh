@@ -1,0 +1,326 @@
+import ij.*;
+import ij.io.*;
+import ij.process.*;
+
+import loci.plugins.util.*;
+import loci.formats.*;
+import loci.formats.meta.*;
+
+import mpicbg.ij.integral.*;
+
+int tileSize = 256;
+int thumbnailSize = 192;
+int numScaleLevels = -1; // ...compute from image height
+String overviewName = "small";
+
+
+
+ImagePlus openImage( pathName )
+{
+	ImageProcessorReader r = new ImageProcessorReader( new ChannelSeparator( LociPrefs.makeImageReader() ) );
+	MetadataStore store = MetadataTools.createOMEXMLMetadata();
+	r.setMetadataStore( store );
+	try
+	{
+		r.setId( pathName );
+		MetadataRetrieve retrieve = MetadataTools.asRetrieve( r.getMetadataStore() );
+	
+		Double pw = retrieve.getPixelsPhysicalSizeX( 0 ).getValue();
+		pw = pw == null ? new Double( 1.0 ) : pw;
+		Double ph = retrieve.getPixelsPhysicalSizeY( 0 ).getValue();
+		ph = ph == null ? new Double( 1.0 ) : ph;
+		Double pd = retrieve.getPixelsPhysicalSizeZ( 0 ).getValue();
+		pd = pd == null ? new Double( 1.0 ) : pd;
+		Double pt = retrieve.getPixelsTimeIncrement( 0 );
+		pt = pt == null ? new Double( 1.0 ) : pt;
+		
+		n = r.getImageCount();
+		w = r.getSizeX();
+		h = r.getSizeY();
+		l = r.getSizeT();
+		d = r.getSizeZ();
+		s = r.getSizeC();
+		
+		stack = new ImageStack( w, h );
+		lookupTable = new byte[ r.getSizeC() ][][];
+		for ( int t = 0; t < l; ++t )
+			for ( int z = 0; z < d; ++z )
+				for ( int c = 0; c < s; ++c )
+				{
+					i = t * d * s + c * d + z;
+					ip = r.openProcessors( i )[ 0 ];
+					stack.addSlice( "" + ( i + 1 ), ip );
+					ci = r.getZCTCoords( i )[ 1 ];
+					lookupTable[ ci ] = r.get8BitLookupTable();
+				}
+		imp = new ImagePlus( pathName, stack );
+		calibration = imp.getCalibration();
+		calibration.pixelWidth = pw.doubleValue();
+		calibration.pixelHeight = ph.doubleValue();
+		calibration.pixelDepth = pd.doubleValue();
+		calibration.frameInterval = pt.doubleValue();
+		calibration.setUnit( "um" );
+		imp.setDimensions( r.getSizeC(), r.getSizeZ(), r.getSizeT() );
+		imp.setOpenAsHyperStack( true );
+		cimp = new CompositeImage( imp );
+		cimp.setMode( CompositeImage.COMPOSITE );
+		return cimp;
+	}
+	catch ( FormatException exc )
+	{
+		IJ.error("FormatException: Sorry, an error occurred: " + exc.getMessage());
+	}
+	catch ( IOException exc )
+	{
+		IJ.error("IOException: Sorry, an error occurred: " + exc.getMessage());
+	}
+	return null;
+}
+
+/**
+ * crop a tile from a ColorProcessor.
+ *
+ * @param tileWidth    width of a tile
+ * @param tileHieght   height of a tile
+ * @param tileIndexX   grid index of the tile to crop
+ * @param tileIndexY   grid index of the tile to crop
+ */
+ColorProcessor getTile( ColorProcessor cp, int tileWidth, int tileHeight, int tileIndexX, int tileIndexY )
+{
+	int x = tileWidth * tileIndexX;
+	int y = tileHeight * tileIndexY;
+	cp.setRoi( x, y, tileWidth, tileHeight );
+	ColorProcessor cpTile = cp.crop();
+	return cpTile;
+}
+
+/**
+ * choose the number of scale levels required to fit the
+ * image height into 2*tile_size at the highest level.
+ */
+int getNumScaleLevels( int height, int tileSize )
+{
+	double s = Math.log( (double)height / (double)tileSize ) / Math.log( 2 );
+	if ( s < 1 )
+		return 1;
+	else if ( (int) s == s )
+		return (int) s;
+	else
+		return (int) s + 1;
+}
+
+
+String getReplaceStringChannels( String inputFilePattern )
+{
+	String replacePattern = null;
+	int numDigitsTL = 0;
+	
+	int i1 = inputFilePattern.indexOf("{c");
+	int i2 = inputFilePattern.indexOf("c}");
+	if (i1 >= 0 && i2 > 0)
+	{
+		replacePattern = "{";
+		
+		numDigitsTL = i2 - i1;
+		for (int i = 0; i < numDigitsTL; i++)
+			replacePattern += "c";
+		
+		replacePattern += "}";
+	}
+	
+	return replacePattern;
+}
+
+
+String getReplaceStringTimePoints( String inputFilePattern )
+{
+	String replacePattern = null;
+	int numDigitsTL = 0;
+	
+	int i1 = inputFilePattern.indexOf("{t");
+	int i2 = inputFilePattern.indexOf("t}");
+	if (i1 >= 0 && i2 > 0)
+	{
+		replacePattern = "{";
+		
+		numDigitsTL = i2 - i1;
+		for (int i = 0; i < numDigitsTL; i++)
+			replacePattern += "t";
+		
+		replacePattern += "}";
+	}
+	
+	return replacePattern;
+}
+
+
+String getReplaceStringAngle( String inputFilePattern )
+{
+	String replacePattern = null;
+	int numDigitsTL = 0;
+	
+	int i1 = inputFilePattern.indexOf("{a");
+	int i2 = inputFilePattern.indexOf("a}");
+	if (i1 >= 0 && i2 > 0)
+	{
+		replacePattern = "{";
+		
+		numDigitsTL = i2 - i1;
+		for (int i = 0; i < numDigitsTL; i++)
+			replacePattern += "a";
+		
+		replacePattern += "}";
+	}
+	
+	return replacePattern;
+}
+
+
+String getLeadingZeros( int zeros, int number )
+{
+	String output = "" + number;
+	
+	while (output.length() < zeros)
+		output = "0" + output;
+	
+	return output;
+}
+
+
+public class ImageInfo
+{
+	public String filename;
+	public int timepoint;
+
+	public ImageInfo( String filename, int timepoint )
+	{
+		this.filename = filename;
+		this.timepoint = timepoint;
+	}
+}
+
+
+ArrayList getImgFileNames( String pattern, int minTP, int maxTP )
+{
+	ArrayList infos = new ArrayList( maxTP - minTP + 1 );
+	String replaceTL = getReplaceStringTimePoints( pattern );
+	int numDigitsTL = replaceTL == null  ?  0  :  Math.max( 0, replaceTL.length() - 2 );
+	for ( int tp = minTP; tp <= maxTP; ++tp )
+	{
+		String name = pattern.replace( replaceTL, getLeadingZeros( numDigitsTL, tp ) );
+		file = new File( name );
+		if ( file.exists() && file.isFile() ) {
+			infos.add( new ImageInfo( name, tp ) );
+		}
+	}
+	return infos;
+}
+
+
+
+////////////// main ////////////////
+
+String imgFileNamePattern = null;
+if ( bsh.args.length > 0 )
+{
+	imgFileNamePattern = bsh.args[ 0 ];
+}
+else
+{
+	IJ.log( "usage: fiji tile_lsm_seq.bsh <filen name pattern> <output directory>" );
+	imgFileNamePattern = "HisYFP1/raw/spim_TL{t}_Angle0.lsm";
+}
+
+
+stackDirName = "./tile_output/";
+if ( bsh.args.length > 1 )
+	stackDirName = bsh.args[ 1 ];
+
+
+ArrayList infos = getImgFileNames( "HisYFP1/raw/spim_TL{t}_Angle0.lsm", 0, 1000 );
+IJ.log( "found " + infos.size() + " matching lsm files" );
+for ( ImageInfo info : infos )
+{
+	imgFilename = info.filename;
+	imgFile = new File( imgFilename );
+	if ( ! imgFile.exists() || ! imgFile.isFile() )
+	{
+		IJ.log( "File `" + imgFilename + "' not found." );
+		return;
+	}
+	ImagePlus imp = openImage ( imgFilename );
+	if ( imp == null )
+	{
+		IJ.log( "File `" + imgFilename + "' could not be opened." );
+		return;
+	}
+	IJ.log( "Processing file `" + imgFilename + "'." );
+
+	int numSlices = imp.getNSlices();
+	int tileWidth = tileSize;
+	int tileHeight = tileSize;
+	if ( numScaleLevels == -1 )
+		numScaleLevels = getNumScaleLevels( imp.getHeight(), tileSize );
+
+	IJ.log( "computing tiles for "+numScaleLevels+" scale levels, "+numSlices+" slices" );
+
+	for ( int sliceIndex = 0; sliceIndex < numSlices; ++sliceIndex )
+	{
+		imp.setPosition( sliceIndex+1 );
+		imp.updateImage();
+		ColorProcessor cpSlice = new ColorProcessor( imp.getImage() );
+		cpSliceScale = new Scale( cpSlice );
+
+		for ( int scaleLevel = 0; scaleLevel < numScaleLevels; ++scaleLevel )
+		{
+			int width = imp.getWidth() / Math.pow( 2, scaleLevel );
+			int height = imp.getHeight() / Math.pow( 2, scaleLevel );
+			ColorProcessor cp = cpSliceScale.scale( width, height );
+
+			int cols = ( width / tileWidth );
+			if ( width > cols * tileWidth )
+				++cols;
+			int rows = ( height / tileHeight );
+			if ( height > rows * tileHeight )
+				++rows;
+			
+			sliceDirName = stackDirName + "/" + info.timepoint  + "/" + sliceIndex;
+
+			// create tiles
+			for ( int tileIndexY = 0; tileIndexY < rows; ++tileIndexY )
+			{
+				for ( int tileIndexX = 0; tileIndexX < cols; ++tileIndexX )
+				{
+					cpTile = getTile( cp, tileWidth, tileHeight, tileIndexX, tileIndexY );
+					ip = new ImagePlus( "" + tileIndexY + ", " + tileIndexX, cpTile );
+					tileDirName = sliceDirName + "/" + scaleLevel + "/" + tileIndexY;
+					tileFileName = tileDirName + "/" + tileIndexX + ".jpg";
+					// IJ.log( "writing " + tileFileName );
+					new File( tileDirName ).mkdirs();
+					saver = new FileSaver( ip );
+					saver.saveAsJpeg( tileFileName );
+				}
+			}
+
+			// create overview image
+			int width = imp.getWidth();
+			int height = imp.getHeight();
+			if ( width > height )
+			{
+				height = (height * thumbnailSize) / width;
+				width = thumbnailSize;
+			}
+			else
+			{
+				width = (width * thumbnailSize) / height;
+				height = thumbnailSize;
+			}
+			cpOverview = cpSliceScale.scale( width, height );
+			ip = new ImagePlus( "overview", cpOverview );
+			overviewFileName = sliceDirName + "/" + overviewName + ".jpg";
+			saver = new FileSaver( ip );
+			saver.saveAsJpeg( overviewFileName );
+		}
+	}
+}
+
