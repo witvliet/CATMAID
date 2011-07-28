@@ -13,11 +13,9 @@ if (! $db->begin() ) {
 }
 
 try {
-	$project_title = 'HisYFP1';
-	$stack_title   = 'angle0';
-	$stack_base    = 'http://localhost/HisYFP1/';
-
-
+	$project_title = 'HisYFP sequence';
+	$stack_title   = 'angle0 HisYFP sequence';
+	$stack_base    = 'http://localhost/HisYFPseq/';
 
 	$project_id = $db->insertIntoId('project',
 		array(
@@ -36,8 +34,8 @@ try {
 	$stack_id = $db->insertIntoId('stack',
 		array(
 			'title' => $stack_title,
-			'dimension' => '{1388, 1040 ,81}',
-			'resolution' => '{1,1,1}',
+			'dimension' => '{1388, 1040, 81, 16}',
+			'resolution' => '{1, 1, 1, 1}',
 			'image_base' => $stack_base,
 			'comment' => '<p>&copy;2011 Tobias Pietzsch</p>',
 			'trakem2_project' => false
@@ -55,7 +53,7 @@ try {
 		array(
 			'project_id' => $project_id,
 			'stack_id' => $stack_id,
-			'translation' => '{0,0,0}'
+			'translation' => '{0, 0, 0, 0}'
 		) );
 
 	if (false === $q) {
