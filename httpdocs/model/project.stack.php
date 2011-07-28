@@ -113,7 +113,8 @@ try {
       emitErrorAndExit( $db, 'Failed to commit!' );
     }
 
-    echo makeJSON( $project_stack );
+    //echo makeJSON( $project_stack );
+    echo json_encode( $project_stack );
 
   } else {
     echo emitErrorAndExit($db, 'Invalid project stack selection.' );
