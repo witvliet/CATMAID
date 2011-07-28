@@ -38,20 +38,21 @@ function Selector()
 	{
 		pos : function( e )
 		{
-			var xp;
-			var yp;
 			var m = ui.getMouse( e );
 			if ( m )
 			{
-				var pos_x = stack.translation[0] + ( stack.x + ( m.offsetX - stack.viewWidth / 2 ) / stack.scale ) * stack.resolution[0];
-				var pos_y = stack.translation[1] + ( stack.y + ( m.offsetY - stack.viewHeight / 2 ) / stack.scale ) * stack.resolution[1];
+				var pos_x = stack.translation[0] + ( stack.pos[0] + ( m.offsetX - stack.viewWidth / 2 ) / stack.scale ) * stack.resolution[0];
+				var pos_y = stack.translation[1] + ( stack.pos[1] + ( m.offsetY - stack.viewHeight / 2 ) / stack.scale ) * stack.resolution[1];
 				statusBar.replaceLast( "[" + pos_x.toFixed( 3 ) + ", " + pos_y.toFixed( 3 ) + "]" );
 			}
 			return false;
 		},
 		move : function( e )
 		{
-			stack.moveToPixel( stack.z, stack.y - ui.diffY / stack.scale, stack.x - ui.diffX / stack.scale, stack.s );
+			var posp = stack.pos.slice(0);
+			posp[0] -= ui.diffX / stack.scale;
+			posp[1] -= ui.diffY / stack.scale;
+			stack.moveToPixel( posp, stack.s );
 			return false;
 		}
 	};
@@ -95,8 +96,9 @@ function Selector()
 	
 	var onmousewheel = function( e )
 	{
-		var xp = stack.x;
-		var yp = stack.y;
+		var posp = stack.pos.slice(0);
+		var xp = posp[0];
+		var yp = posp[1];
 		var m = ui.getMouse( e );
 		var w = ui.getMouseWheel( e );
 		if ( m )
@@ -111,11 +113,9 @@ function Selector()
 			{
 				if ( stack.s < stack.MAX_S )
 				{
-					stack.moveToPixel(
-						stack.z,
-						stack.y - Math.floor( yp / stack.scale ),
-						stack.x - Math.floor( xp / stack.scale ),
-						stack.s + 1 );
+					posp[0] -= Math.floor( xp / stack.scale );
+					posp[1] -= Math.floor( yp / stack.scale );
+					stack.moveToPixel( posp, stack.s + 1 );
 				}
 			}
 			else
@@ -123,11 +123,9 @@ function Selector()
 				if ( stack.s > 0 )
 				{
 					var ns = stack.scale * 2;
-					stack.moveToPixel(
-						stack.z,
-						stack.y + Math.floor( yp / ns ),
-						stack.x + Math.floor( xp / ns ),
-						stack.s - 1 );
+					posp[0] += Math.floor( xp / ns );
+					posp[1] += Math.floor( yp / ns );
+					stack.moveToPixel( posp, stack.s - 1 );
 				}
 			}
 		}
