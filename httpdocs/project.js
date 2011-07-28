@@ -556,7 +556,10 @@ function Project( pid )
 		if ( stacks.length > 0 )
 		{
 			//coords = stacks[ 0 ].projectCoordinates();		//!< @todo get this from the SELECTED stack to avoid approximation errors!
-			url += "&zp=" + self.coordinates.z + "&yp=" + self.coordinates.y + "&xp=" + self.coordinates.x;
+			for ( var i = 0; i < self.n; ++i )
+			{
+				url += "&d" + i + "=" + self.coordinates[i];
+			}
 			for ( var i = 0; i < stacks.length; ++i )
 			{
 				url += "&sid" + i + "=" + stacks[ i ].id + "&s" + i + "=" + stacks[ i ].s;

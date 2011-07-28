@@ -1,5 +1,5 @@
 /* -*- mode: espresso; espresso-indent-level: 2; indent-tabs-mode: nil -*- */
-/* vim: set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
+/* vim  : set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
 
 
 /* It's very easy to accidentally leave in a console.log if you're
@@ -40,9 +40,7 @@ var message_menu;
 var pid;
 var sids = new Array();
 var ss = new Array();
-var zp;
-var yp;
-var xp;
+var posp = new Array();
 
 var session;
 var msg_timeout;
@@ -345,12 +343,10 @@ function handle_openProjectStack( status, text, xml )
 					{
 						if (
 							typeof ss[ i ] == "number" &&
-							typeof zp == "number" &&
-							typeof yp == "number" &&
-							typeof xp == "number" )
+							posp.length == project.n )
 						{
-							project.moveTo( zp, yp, xp );
-							stack.moveToPixel( stack.z, stack.y, stack.x, ss[i] );
+							project.moveTo( posp );
+							stack.moveToPixel( stack.pos, ss[i] );
 							sids.splice( i, 1 );
 							ss.splice( i, 1 );
 							break;
@@ -555,13 +551,13 @@ var init = function()
 		{
 			if ( values[ "pid" ] ) pid = parseInt( values[ "pid" ] );
 			if ( isNaN( pid ) ) delete pid;
-			if ( values[ "zp" ] ) zp = parseInt( values[ "zp" ] );
-			if ( isNaN( z ) ) delete zp;
-			if ( values[ "yp" ] ) yp = parseInt( values[ "yp" ] );
-			if ( isNaN( y ) ) delete yp;
-			if ( values[ "xp" ] ) xp = parseInt( values[ "xp" ] );
-			if ( isNaN( x ) ) delete xp;
-			
+
+			for ( var i = 0; values[ "d" + i ]; ++i )
+			{
+				var d = parseInt( values[ "d" + i ] );
+				posp[i] = isNaN( d ) ? 0 : d;
+			}
+
 			for ( var i = 0; values[ "sid" + i ]; ++i )
 			{
 				sids.push( parseInt( values[ "sid" + i ] ) );
