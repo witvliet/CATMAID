@@ -32,15 +32,32 @@ function Navigator( n )
 	/* remove all existing dimension sliders */
 	while ( sliders_box.firstChild )
 		sliders_box.removeChild( sliders_box.firstChild );
-	
-	var slider_z = new Slider(
-			SLIDER_HORIZONTAL,
-			true,
-			1,
-			388,
-			388,
-			1,
-			function( val ){ statusBar.replaceLast( "z: " + val ); return; } );
+
+	// TODO: dimension names should be read from the database!
+	DIM_NAMES = ["x", "y", "z", "t", "a", "b", "c", "d"];
+
+	var slider_d = new Array();
+	for ( var i = 2; i < n; ++i )
+	{
+		slider_d[i] = new Slider(
+				SLIDER_HORIZONTAL,
+				true,
+				1,
+				388,
+				388,
+				1,
+				function( val ){ statusBar.replaceLast( "z: " + val ); return; } );
+		var slider_d_box = document.createElement( "div" );
+		slider_d_box.className = "box";
+		slider_d_box.id = "slider_d"+i+"_box";
+		var slider_d_box_label = document.createElement( "p" );
+		slider_d_box_label.appendChild( document.createTextNode( DIM_NAMES[i] + "\u00a0\u00a0" ) );
+		slider_d_box.appendChild( slider_d_box_label );
+		slider_d_box.appendChild( slider_d[i].getView() );
+		slider_d_box.appendChild( slider_d[i].getInputView() );
+		
+		sliders_box.appendChild( slider_d_box );
+	}
 	
 	var slider_s = new Slider(
 			SLIDER_HORIZONTAL,
@@ -55,16 +72,6 @@ function Navigator( n )
 				8 ),
 			8,
 			function( val ){ statusBar.replaceLast( "s: " + val ); } );
-	
-	var slider_z_box = document.createElement( "div" );
-	slider_z_box.className = "box";
-	slider_z_box.id = "slider_z_box";
-	var slider_z_box_label = document.createElement( "p" );
-	slider_z_box_label.appendChild( document.createTextNode( "z-index&nbsp;&nbsp;" ) );
-	slider_z_box.appendChild( slider_z.getView() );
-	slider_z_box.appendChild( slider_z.getInputView() );
-	
-	sliders_box.appendChild( slider_z_box );
 	
 	var slider_s_view = slider_s.getView();
 	slider_s_view.id = "slider_s";
@@ -87,7 +94,8 @@ function Navigator( n )
 	var updateControls = function()
 	{
 		slider_s.setByValue( self.stack.s, true );
-		slider_z.setByValue( self.stack.pos[2], true );
+		for ( var i = 2; i < n; ++i )
+			slider_d[i].setByValue( self.stack.pos[i], true );
 
 		input_x.value = self.stack.pos[0];
 		input_y.value = self.stack.pos[1];
@@ -146,11 +154,11 @@ function Navigator( n )
 		{
 			if ( w > 0 )
 			{
-				slider_z.move( -1 );
+				slider_d[2].move( -1 );
 			}
 			else
 			{
-				slider_z.move( 1 );
+				slider_d[2].move( 1 );
 			}
 		}
 		return false;
@@ -165,11 +173,11 @@ function Navigator( n )
 			{
 				if ( w > 0 )
 				{
-					slider_z.move( -1 );
+					slider_d[2].move( -1 );
 				}
 				else
 				{
-					slider_z.move( 1 );
+					slider_d[2].move( 1 );
 				}
 			}
 			return false;
@@ -226,22 +234,29 @@ function Navigator( n )
 	var changeSliceDelayedAction = function()
 	{
 		window.clearTimeout( changeSliceDelayedTimer );
-		self.changeSlice( changeSliceDelayedParam.z );
+		self.changeSlice( changeSliceDelayedParam.d, changeSliceDelayedParam.v );
 		changeSliceDelayedParam = null;
 		return false;
 	}
 	
-	this.changeSliceDelayed = function( val )
+	this.changeSliceDelayed = new Array();
+	for ( var i = 2; i < n; ++i )
 	{
-		if ( changeSliceDelayedTimer ) window.clearTimeout( changeSliceDelayedTimer );
-		changeSliceDelayedParam = { z : val };
-		changeSliceDelayedTimer = window.setTimeout( changeSliceDelayedAction, 100 );
+		this.changeSliceDelayed[i] = function(i)
+		{
+			return function ( val )
+			{
+				if ( changeSliceDelayedTimer ) window.clearTimeout( changeSliceDelayedTimer );
+				changeSliceDelayedParam = { d : i, v : val };
+				changeSliceDelayedTimer = window.setTimeout( changeSliceDelayedAction, 100 );
+			}
+		}(i);
 	}
 	
-	this.changeSlice = function( val )
+	this.changeSlice = function( dim, val )
 	{
 		var posp = self.stack.pos.slice(0);
-		posp[2] = val;
+		posp[dim] = val;
 		self.stack.moveToPixel( posp, self.stack.s );
 		return;
 	}
@@ -374,21 +389,22 @@ function Navigator( n )
 			self.stack.MAX_S + 1,
 			self.stack.s,
 			self.changeScaleDelayed );
-		
-		if ( self.stack.slices.length < 2 )	//!< hide the slider_z if there is only one slice
+
+
+		for ( var i = 2; i < n; ++i )
 		{
-			slider_z.getView().parentNode.style.display = "none";
+			slider_d[i].getView().parentNode.style.display = "block";
+			slider_d[i].update(
+				0,
+				// TODO handle broken slices properly
+				// This requires updating after sliders for other dimension have changed
+				//0,
+				//self.stack.slices,
+				self.stack.dimension[i]-1,
+				self.stack.dimension[i],
+				self.stack.pos[i],
+				self.changeSliceDelayed[i] );
 		}
-		else
-		{
-			slider_z.getView().parentNode.style.display = "block";
-		}
-		slider_z.update(
-			0,
-			0,
-			self.stack.slices,
-			self.stack.pos[2],
-			self.changeSliceDelayed );
 		
 		input_x.onchange = changeXByInput;
 		try
@@ -453,12 +469,15 @@ function Navigator( n )
 			0,
 			null );
 		
-		slider_z.update(
-			0,
-			1,
-			undefined,
-			0,
-			null );
+		for ( var i = 2; i < n; ++i )
+		{
+			slider_d[i].update(
+				0,
+				1,
+				undefined,
+				0,
+				null );
+		}
 		
 		input_x.onchange = null;
 		try
