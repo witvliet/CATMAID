@@ -308,6 +308,16 @@ function Project( pid )
 		}
 		if ( !opened )
 		{
+			// TODO: number of dimensions should be set on project construction
+			self.n = stack.pos.length;
+			for ( var i = 0; i < self.n; ++i )
+			{
+				if ( typeof this.coordinates[i] == "undefined" )
+				{
+					this.coordinates[i] = 0;
+				}
+			}
+			
 			stacks.push( stack );
 			if ( rootWindow.getChild() == null )
 				rootWindow.replaceChild( stack.getWindow() );
@@ -318,17 +328,17 @@ function Project( pid )
 			ui.onresize();
 		}
 		if ( stacks.length > 1 )
-			self.moveTo( self.coordinates.z, self.coordinates.y, self.coordinates.x );
+			self.moveTo( self.coordinates );
 		else
 		{
 			var c = stack.projectCoordinates();
-			self.moveTo( c.z, c.y, c.x );
+			self.moveTo( c );
 		}
 		
 		self.setFocusedStack( stack );
 		
 		if ( !tool )
-			tool = new Navigator();
+			tool = new Navigator( self.n );
 		self.setTool( tool );
 		
 		return;
@@ -518,18 +528,17 @@ function Project( pid )
 	 * move all stacks to the physical coordinates
 	 */
 	this.moveTo = function(
-		zp,
-		yp,
-		xp,
+		posp,
 		sp )
 	{
-		self.coordinates.x = xp;
-		self.coordinates.y = yp;
-		self.coordinates.z = zp;
+		for ( var i = 0; i < self.n; ++i )
+		{
+			self.coordinates[i] = posp[i];
+		}
 		
 		for ( var i = 0; i < stacks.length; ++i )
 		{
-			stacks[ i ].moveTo( zp, yp, xp, sp );
+			stacks[ i ].moveTo( posp, sp );
 		}
 		if ( tool && tool.redraw )
 			tool.redraw();
@@ -539,6 +548,7 @@ function Project( pid )
 	/**
 	 * create a URL to the current view
 	 */
+	// TODO: n-dimensional version
 	this.createURL = function()
 	{
 		var coords;
@@ -558,6 +568,7 @@ function Project( pid )
 	/**
 	 * create a textlabel on the server
 	 */
+	// TODO: n-dimensional version (?)
 	this.createTextlabel = function( tlx, tly, tlz, tlr, scale )
 	{
 		icon_text_apply.style.display = "block";
@@ -694,6 +705,7 @@ function Project( pid )
 	// initialise
 	var self = this;
 	this.id = pid;
+	this.n = 0;
 	if ( typeof ui == "undefined" ) ui = new UI();
 	if ( typeof requestQueue == "undefined" ) requestQueue = new RequestQueue();
 	
@@ -702,12 +714,7 @@ function Project( pid )
 	var view = rootWindow.getFrame();
 	view.className = "projectView";
 	
-	this.coordinates = 
-	{
-		x : 0,
-		y : 0,
-		z : 0
-	};
+	this.coordinates = new Array();
 	
 	var template;				//!< DTD like abstract object tree (classes)
 	var data;					//!< instances in a DOM representation

@@ -18,7 +18,7 @@
 function getTileBaseName( pixelPos )
 {
 	var n = pixelPos.length;
-	var dir = ""
+	var dir = "";
 	for ( var i = n - 1; i > 1; --i )
 	{
 		dir += pixelPos[ i ] + "/";
@@ -37,6 +37,8 @@ function TileLayer(
 		tileHeight
 		)
 {
+	var n = stack.pos.length;
+
 	/**
 	 * initialise the tiles array
 	 */
@@ -68,81 +70,92 @@ function TileLayer(
 	 */
 	this.redraw = function()
 	{
-		var pixelPos = [ stack.x, stack.y, stack.z ];
-		var tileBaseName = getTileBaseName( pixelPos );
+		var tileBaseName = getTileBaseName( stack.pos );
 
 		var fr = Math.floor( stack.yc / tileHeight );
 		var fc = Math.floor( stack.xc / tileWidth );
 		
 		var xd = 0;
 		var yd = 0;
-		
-		if ( stack.z == stack.old_z && stack.s == stack.old_s )
+
+		if ( stack.s == stack.old_s )
 		{
-			var old_fr = Math.floor( stack.old_yc / tileHeight );
-			var old_fc = Math.floor( stack.old_xc / tileWidth );
-			
-			xd = fc - old_fc;
-			yd = fr - old_fr;
-			
-			// re-order the tiles array on demand
-			if ( xd < 0 )
+			var sameslice = true;
+			for ( var i = 2; i < n; ++i )
 			{
-				for ( var i = 0; i < tiles.length; ++i )
+				if ( stack.pos[i] != stack.old_pos[i] )
 				{
-					tilesContainer.removeChild( tiles[ i ].pop() );
-					var img = document.createElement( "img" );
-					img.alt = "empty";
-					img.src = "gfx/empty256.gif";
-					img.style.visibility = "hidden";
-					tilesContainer.appendChild( img );
-					tiles[ i ].unshift( img );
+					sameslice = false;
+					break;
 				}
 			}
-			else if ( xd > 0 )
+			if ( sameslice )
 			{
-				for ( var i = 0; i < tiles.length; ++i )
+				var old_fr = Math.floor( stack.old_yc / tileHeight );
+				var old_fc = Math.floor( stack.old_xc / tileWidth );
+				
+				xd = fc - old_fc;
+				yd = fr - old_fr;
+				
+				// re-order the tiles array on demand
+				if ( xd < 0 )
 				{
-					tilesContainer.removeChild( tiles[ i ].shift() );
-					var img = document.createElement( "img" );
-					img.alt = "empty";
-					img.src = "gfx/empty256.gif";
-					img.style.visibility = "hidden";
-					tilesContainer.appendChild( img );
-					tiles[ i ].push( img );
+					for ( var i = 0; i < tiles.length; ++i )
+					{
+						tilesContainer.removeChild( tiles[ i ].pop() );
+						var img = document.createElement( "img" );
+						img.alt = "empty";
+						img.src = "gfx/empty256.gif";
+						img.style.visibility = "hidden";
+						tilesContainer.appendChild( img );
+						tiles[ i ].unshift( img );
+					}
 				}
-			}
-			else if ( yd < 0 )
-			{
-				var old_row = tiles.pop();
-				var new_row = new Array();
-				for ( var i = 0; i < tiles[ 0 ].length; ++i )
+				else if ( xd > 0 )
 				{
-					tilesContainer.removeChild( old_row.pop() );
-					var img = document.createElement( "img" );
-					img.alt = "empty";
-					img.src = "gfx/empty256.gif";
-					img.style.visibility = "hidden";
-					tilesContainer.appendChild( img );
-					new_row.push( img );
+					for ( var i = 0; i < tiles.length; ++i )
+					{
+						tilesContainer.removeChild( tiles[ i ].shift() );
+						var img = document.createElement( "img" );
+						img.alt = "empty";
+						img.src = "gfx/empty256.gif";
+						img.style.visibility = "hidden";
+						tilesContainer.appendChild( img );
+						tiles[ i ].push( img );
+					}
 				}
-				tiles.unshift( new_row );
-			}
-			else if ( yd > 0 )
-			{
-				var old_row = tiles.shift();
-				var new_row = new Array();
-				for ( var i = 0; i < tiles[ 0 ].length; ++i )
+				else if ( yd < 0 )
 				{
-					tilesContainer.removeChild( old_row.pop() );
-					var img = document.createElement( "img" );
-					img.alt = "empty";
-					img.src = "gfx/empty256.gif";
-					img.style.visibility = "hidden";
-					tilesContainer.appendChild( img );
-					new_row.push( img );
+					var old_row = tiles.pop();
+					var new_row = new Array();
+					for ( var i = 0; i < tiles[ 0 ].length; ++i )
+					{
+						tilesContainer.removeChild( old_row.pop() );
+						var img = document.createElement( "img" );
+						img.alt = "empty";
+						img.src = "gfx/empty256.gif";
+						img.style.visibility = "hidden";
+						tilesContainer.appendChild( img );
+						new_row.push( img );
+					}
+					tiles.unshift( new_row );
 				}
-				tiles.push( new_row );
+				else if ( yd > 0 )
+				{
+					var old_row = tiles.shift();
+					var new_row = new Array();
+					for ( var i = 0; i < tiles[ 0 ].length; ++i )
+					{
+						tilesContainer.removeChild( old_row.pop() );
+						var img = document.createElement( "img" );
+						img.alt = "empty";
+						img.src = "gfx/empty256.gif";
+						img.style.visibility = "hidden";
+						tilesContainer.appendChild( img );
+						new_row.push( img );
+					}
+					tiles.push( new_row );
+				}
 			}
 		}
 		
@@ -255,7 +268,7 @@ function TileLayer(
 	{
 		this.redraw = function()
 		{
-			img.src = baseURL + stack.z + "/small.jpg";
+			img.src = baseURL + getTileBaseName( stack.pos ) + "small.jpg";
 			return;
 		}
 		

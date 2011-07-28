@@ -14,7 +14,7 @@
 /**
  * Navigator tool.  Moves the stack around 
  */
-function Navigator()
+function Navigator( n )
 {
 	var self = this;
 	this.stack = null;
@@ -87,11 +87,11 @@ function Navigator()
 	var updateControls = function()
 	{
 		slider_s.setByValue( self.stack.s, true );
-		slider_z.setByValue( self.stack.z, true );
+		slider_z.setByValue( self.stack.pos[2], true );
 
-		input_x.value = self.stack.x;
-		input_y.value = self.stack.y;
-		
+		input_x.value = self.stack.pos[0];
+		input_y.value = self.stack.pos[1];
+
 		return;
 	}
 	
@@ -109,12 +109,12 @@ function Navigator()
 	
 	var onmousemove = function( e )
 	{
-		self.lastX = self.stack.x + ui.diffX; // TODO - or + ?
-		self.lastY = self.stack.y + ui.diffY;
-		self.stack.moveToPixel( self.stack.z,
-														self.stack.y - ui.diffY / self.stack.scale,
-														self.stack.x - ui.diffX / self.stack.scale,
-														self.stack.s );
+		self.lastX = self.stack.pos[0] + ui.diffX; // TODO - or + ?
+		self.lastY = self.stack.pos[1] + ui.diffY;
+		var tmp_pos = self.stack.pos.slice(0);
+		tmp_pos[0] = self.stack.pos[0] - ui.diffX / self.stack.scale,
+		tmp_pos[1] = self.stack.pos[1] - ui.diffY / self.stack.scale,
+		self.stack.moveToPixel( tmp_pos, self.stack.s );
 		updateControls();
 		return true;
 	};
@@ -176,8 +176,8 @@ function Navigator()
 		},
 		move : function( e )
 		{
-			var xp = self.stack.x;
-			var yp = self.stack.y;
+			var xp = self.stack.pos[0];
+			var yp = self.stack.pos[1];
 			var m = ui.getMouse( e );
 			var w = ui.getMouseWheel( e );
 			if ( m )
@@ -192,11 +192,10 @@ function Navigator()
 				{
 					if ( self.stack.s < self.stack.MAX_S )
 					{
-						self.stack.moveToPixel(
-							self.stack.z,
-							self.stack.y - Math.floor( yp / self.stack.scale ),
-							self.stack.x - Math.floor( xp / self.stack.scale ),
-							self.stack.s + 1 );
+						var tmp_pos = self.stack.pos.slice(0);
+						tmp_pos[0] = self.stack.pos[0] - Math.floor( xp / self.stack.scale ),
+						tmp_pos[1] = self.stack.pos[1] - Math.floor( yp / self.stack.scale ),
+						self.stack.moveToPixel( tmp_pos, self.stack.s + 1 );
 					}
 				}
 				else
@@ -204,11 +203,9 @@ function Navigator()
 					if ( self.stack.s > 0 )
 					{
 						var ns = self.stack.scale * 2;
-						self.moveToPixel(
-							self.stack.z,
-							self.stack.y + Math.floor( yp / ns ),
-							self.stack.x + Math.floor( xp / ns ),
-							self.stack.s - 1 );
+						tmp_pos[0] = self.stack.pos[0] + Math.floor( xp / ns ),
+						tmp_pos[1] = self.stack.pos[1] + Math.floor( yp / ns ),
+						self.stack.moveToPixel( tmp_pos, self.stack.s - 1 );
 					}
 				}
 			}
@@ -243,7 +240,9 @@ function Navigator()
 	
 	this.changeSlice = function( val )
 	{
-		self.stack.moveToPixel( val, self.stack.y, self.stack.x, self.stack.s );
+		var posp = self.stack.pos.slice(0);
+		posp[2] = val;
+		self.stack.moveToPixel( posp, self.stack.s );
 		return;
 	}
 	//--------------------------------------------------------------------------
@@ -272,8 +271,8 @@ function Navigator()
 	
 	this.changeScale = function( val )
 	{
-		self.stack.moveToPixel( self.stack.z, self.stack.y, self.stack.x, val );
-    return;
+		self.stack.moveToPixel( self.stack.pos, val );
+		return;
 	}
 
   /**
@@ -299,20 +298,32 @@ function Navigator()
   
   
 	//--------------------------------------------------------------------------
-	
+
 	var changeXByInput = function( e )
 	{
 		var val = parseInt( this.value );
-		if ( isNaN( val ) ) this.value = self.stack.x;
-		else self.stack.moveToPixel( self.stack.z, self.stack.y, val, self.stack.s );
+		if ( isNaN( val ) )
+			this.value = self.stack.pos[0];
+		else
+		{
+			var posp = self.stack.pos.slice(0);
+			posp[0] = val;
+			self.stack.moveToPixel( posp, self.stack.s );
+		}
 		return;
 	}
 	
 	var changeYByInput = function( e )
 	{
 		var val = parseInt( this.value );
-		if ( isNaN( val ) ) this.value = self.stack.y;
-		else self.stack.moveToPixel( self.stack.z, val, self.stack.x, self.stack.s );
+		if ( isNaN( val ) )
+			this.value = self.stack.pos[1];
+		else
+		{
+			var posp = self.stack.pos.slice(0);
+			posp[1] = val;
+			self.stack.moveToPixel( posp, self.stack.s );
+		}
 		return;
 	}
 	
@@ -376,7 +387,7 @@ function Navigator()
 			0,
 			0,
 			self.stack.slices,
-			self.stack.z,
+			self.stack.pos[2],
 			self.changeSliceDelayed );
 		
 		input_x.onchange = changeXByInput;

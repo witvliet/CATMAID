@@ -98,8 +98,8 @@ function Stack(
 		var height = self.viewHeight / self.scale;
 		var l =
 		{
-			top : Math.floor( self.y - height / 2 ),
-			left : Math.floor( self.x - width / 2 )
+			top : Math.floor( self.pos[1] - height / 2 ),
+			left : Math.floor( self.pos[0] - width / 2 )
 		};
 		return l;
 	}
@@ -109,14 +109,11 @@ function Stack(
 	 */
 	this.projectCoordinates = function()
 	{
-		var l =
+		var l = new Array();
+		for ( var i = 0; i < n; ++i )
 		{
-			z : self.z * resolution[2] + translation[2],
-			s : self.s,
-			scale : self.scale,
-			y : self.y * resolution[1] + translation[1],
-			x : self.x * resolution[0] + translation[0]
-		};
+			l[i] = self.pos[i] * resolution[i] + translation[i];
+		}
 		return l;
 	}
 
@@ -127,8 +124,8 @@ function Stack(
   this.getWorldTopLeft = function()
   {
     return {
-      worldTop : ( ( self.y - self.viewHeight / self.scale / 2 ) ) * self.resolution.y + self.translation.y,
-      worldLeft : ( ( self.x - self.viewWidth / self.scale / 2 ) ) * self.resolution.x + self.translation.x,
+      worldTop : ( ( self.pos[0] - self.viewHeight / self.scale / 2 ) ) * self.resolution[1] + self.translation[1],
+      worldLeft : ( ( self.pos[0] - self.viewWidth / self.scale / 2 ) ) * self.resolution[0] + self.translation[0],
       scale : self.scale
     }
   }
@@ -138,8 +135,8 @@ function Stack(
 	 */
 	var redraw = function()
 	{
-		self.yc = Math.floor( self.y * self.scale - ( self.viewHeight / 2 ) );
-		self.xc = Math.floor( self.x * self.scale - ( self.viewWidth / 2 ) );
+		self.yc = Math.floor( self.pos[1] * self.scale - ( self.viewHeight / 2 ) );
+		self.xc = Math.floor( self.pos[0] * self.scale - ( self.viewWidth / 2 ) );
 
 		for ( var key in layers )
 			layers[ key ].redraw();
@@ -152,10 +149,11 @@ function Stack(
 		 */
 		var a = view.offsetWidth;
 		//----------------------------------------------------------------------
-			
-		self.old_z = self.z;
-		self.old_y = self.y;
-		self.old_x = self.x;
+		
+		for ( var i = 0; i < n; ++i )
+		{
+			self.old_pos[i] = self.pos[i];
+		}
 		self.old_s = self.s;
 		self.old_scale = self.scale;
 		self.old_yc = self.yc;
@@ -175,7 +173,7 @@ function Stack(
 	/**
 	 * move to project-coordinates
 	 */
-	this.moveTo = function( zp, yp, xp, sp )
+	this.moveTo = function( posp, sp )
 	{
 		if ( typeof sp == "number" )
 		{
@@ -183,20 +181,23 @@ function Stack(
 			self.scale = 1 / Math.pow( 2, self.s );
 		}
 		
-		self.x = Math.max( 0, Math.min( MAX_X, Math.round( ( xp - translation[0] ) / resolution[0] ) ) );
-		self.y = Math.max( 0, Math.min( MAX_Y, Math.round( ( yp - translation[1] ) / resolution[1] ) ) );
-		
-		var z1;
-		var z2;
-		z1 = z2 = Math.round( ( zp - translation[2] ) / resolution[2] );
-		while ( skip_planes[ z1 ] && skip_planes[ z2 ] )
-		{
-			z1 = Math.max( 0, z1 - 1 );
-			z2 = Math.min( MAX_Z, z2 + 1 );
+		for ( var i = 0; i < n; ++i ) {
+			self.pos[i] = Math.max( 0, Math.min( max[i], Math.round( ( posp[i] - translation[i] ) / resolution[i] ) ) );
+			// TODO: handle broken slices for n dimensions
+			if ( i == 2 ) {
+				var z1;
+				var z2;
+				z1 = z2 = Math.round( ( posp[2] - translation[2] ) / resolution[2] );
+				while ( skip_planes[ z1 ] && skip_planes[ z2 ] )
+				{
+					z1 = Math.max( 0, z1 - 1 );
+					z2 = Math.min( max[2], z2 + 1 );
+				}
+				if ( !skip_planes[ z1 ] ) self.pos[2] = z1;
+				else self.pos[2] = z2;
+				self.pos[2] = Math.max( 0, Math.min( max[2], self.pos[2] ) );
+			}
 		}
-		if ( !skip_planes[ z1 ] ) self.z = z1;
-		else self.z = z2;
-		self.z = Math.max( 0, Math.min( MAX_Z, self.z ) );
 		
 		update();
 		
@@ -206,16 +207,17 @@ function Stack(
 	/**
 	 * move to pixel coordinates
 	 */
-	this.moveToPixel = function( zp, yp, xp, sp )
+	this.moveToPixel = function( posp, sp )
 	{
 		self.s = Math.max( 0, Math.min( self.MAX_S, sp ) );
-
 		self.scale = 1 / Math.pow( 2, self.s );
 		
-		project.moveTo(
-			zp * resolution[2] + translation[2],
-			yp * resolution[1] + translation[1],
-			xp * resolution[0] + translation[0] );
+		var p = new Array();
+		for ( var i = 0; i < n; ++i )
+		{
+			p[i] = posp[i] * resolution[i] + translation[i];
+		}
+		project.moveTo( p );
 		
 		return true;
 	}
@@ -226,10 +228,10 @@ function Stack(
 		self.viewHeight = stackWindow.getFrame().offsetHeight;
 		
 		for ( var key in layers ) {
-      if( layers.hasOwnProperty( key )) {
-        layers[ key ].resize( self.viewWidth, self.viewHeight );
-      }
-    }
+			if ( layers.hasOwnProperty( key ) ) {
+				layers[ key ].resize( self.viewWidth, self.viewHeight );
+			}
+		}
 		
 		self.overview.redraw();
 		
@@ -318,9 +320,11 @@ function Stack(
 	var tool = null;
 	var layers = {};
 	
-	var MAX_X = dimension[0] - 1;   //!< the last possible x-coordinate
-	var MAX_Y = dimension[1] - 1;   //!< the last possible y-coordinate
-	var MAX_Z = dimension[2] - 1;   //!< the last possible z-coordinate
+	var max = new Array();
+	for ( var i = 0; i < n; ++i )
+	{
+		max[i] = dimension[i] - 1;
+	}
 	
 	//! estimate the zoom levels
 	var tile_size = 256;
@@ -334,6 +338,7 @@ function Stack(
 	self.MAX_S = num_scale_levels - 1;
 
 
+	// TODO: handle broken slices for n dimensions
 	//! all possible slices
 	self.slices = new Array();
 	for ( var i = 0; i < dimension[2]; ++i )
@@ -398,14 +403,14 @@ function Stack(
 	
 	// take care, that all values are within a proper range
     // Declare the x,y,z,s as coordinates in pixels
-	self.z = 1;
-	self.y = Math.floor( MAX_Y / 2 );
-	self.x = Math.floor( MAX_X / 2 );
-	self.s = self.MAX_S;
-	
-	self.old_z = -1;
-	self.old_y = self.y;
-	self.old_x = self.x;
+	//! stack coordinate currently shown at the center pixel of the stack window
+	self.pos = new Array( Math.floor( max[0] / 2 ), Math.floor( max[1] / 2 ) );
+	for ( var i = 2; i < n; ++i )
+		self.pos[i] = 0;
+	self.s = self.MAX_S
+	self.old_pos = new Array();
+	for ( var i = 0; i < n; ++i )
+		self.old_pos = -1;
 	self.old_s = self.s;
 	
 	self.scale = 1 / Math.pow( 2, self.s );

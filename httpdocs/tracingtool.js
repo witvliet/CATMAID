@@ -16,7 +16,7 @@
  */
 function TracingTool()
 {
-  this.prototype = new Navigator();
+  this.prototype = new Navigator( 3 );
   
   var self = this;
   var tracingLayer = null;

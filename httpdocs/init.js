@@ -172,7 +172,7 @@ function handle_logout()
 			
 	updateProjects();
 	
-	if ( project && project.id ) project.setTool( new Navigator() );
+	if ( project && project.id ) project.setTool( new Navigator( project.n ) );
 	
 	return;
 }
