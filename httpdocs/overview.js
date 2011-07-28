@@ -19,7 +19,10 @@ function Overview( stack )
 			if ( m )
 			{
 				//statusBar.replaceLast( m.offsetX + ", " + m.offsetY );
-				stack.moveToPixel( stack.z, Math.round( m.offsetY / scale ), Math.round( m.offsetX / scale ), stack.s );
+				var posp = stack.pos.slice(0);
+				posp[0] = Math.round( m.offsetX / scale );
+				posp[1] = Math.round( m.offsetY / scale );
+				stack.moveToPixel( posp, stack.s );
 			}
 			return false;
 		},
@@ -38,7 +41,10 @@ function Overview( stack )
 	
 	var onmousemove = function( e )
 	{
-		stack.moveToPixel( stack.z, stack.y + ui.diffY / scale, stack.x + ui.diffX / scale, stack.s );
+		var posp = stack.pos.slice(0);
+		posp[0] += ui.diffX / scale;
+		posp[1] += ui.diffY / scale;
+		stack.moveToPixel( posp, stack.s );
 		return false;
 	};
 	
@@ -56,8 +62,8 @@ function Overview( stack )
 		var width = scale / stack.scale * stack.viewWidth;
 		rect.style.height = Math.floor( height ) + "px";
 		rect.style.width = Math.floor( width ) + "px";
-		rect.style.top = Math.floor( scale * stack.y - height / 2 ) + "px";
-		rect.style.left = Math.floor( scale * stack.x - width / 2 ) + "px";
+		rect.style.top = Math.floor( scale * stack.pos[1] - height / 2 ) + "px";
+		rect.style.left = Math.floor( scale * stack.pos[0] - width / 2 ) + "px";
 		
 		for ( var layer in layers )
 			layers[ layer ].redraw();
