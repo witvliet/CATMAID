@@ -25,6 +25,8 @@ function Navigator( n )
 	var input_x = document.getElementById( "x" );		//!< x_input
 	var input_y = document.getElementById( "y" );		//!< y_input
 
+	var active_slider = 2; // mousewheel and <,> keys move the z slider
+
   // Last mouse position for proper zoom with + and -
   var lastX = 0,
       lastY = 0;
@@ -146,7 +148,8 @@ function Navigator( n )
 		
 		return false;
 	};
-	
+
+	// TODO: remove this function? (is it used anywhere?)
 	var onmousewheel = function( e )
 	{
 		var w = ui.getMouseWheel( e );
@@ -164,22 +167,46 @@ function Navigator( n )
 		return false;
 	};
 
+	/**
+	 * Move the active_slider up or down.
+	 * The X and Y dimensions (which do not have sliders) are handled as well.
+	 * direction > 0 : move up
+	 * direction < 0 : move down
+	 */
+	var moveDimensionSlider = function ( direction, shift, alt )
+	{
+		if ( active_slider == 0 )
+		{
+			var amount = shift ? 100 : ( alt ? 1 : 10 );
+			input_x.value = parseInt( input_x.value ) + ( direction > 0 ? amount : -amount );
+			input_x.onchange( null );
+		}
+		else if ( active_slider == 1 )
+		{
+			var amount = shift ? 100 : ( alt ? 1 : 10 );
+			input_y.value = parseInt( input_y.value ) + ( direction > 0 ? amount : -amount );
+			input_y.onchange( null );
+		}
+		else
+		{
+			var amount = shift ? 10 : 1;
+			slider_d[ active_slider ].move( direction > 0 ? amount : -amount );
+		}
+	}
+
 	var onmousewheel = 
 	{
 		zoom : function( e )
 		{
 			var w = ui.getMouseWheel( e );
+			var shift;
+			var alt;
+			if ( e && e.shiftKey )
+				shift = e.shiftKey;
+			if ( e && e.altKey )
+				alt = e.altKey;
 			if ( w )
-			{
-				if ( w > 0 )
-				{
-					slider_d[2].move( -1 );
-				}
-				else
-				{
-					slider_d[2].move( 1 );
-				}
-			}
+				moveDimensionSlider( active_slider < 2 ? w : -w, shift, alt );
 			return false;
 		},
 		move : function( e )
@@ -352,6 +379,116 @@ function Navigator( n )
 		}
 		return false
 	}
+
+	/**
+	 * The old onkeydown handler is stored here when the tool is registered.
+	 * When the tool is unregistered and our onkeydown handler is still active,
+	 * restore old_onkeydown.
+	 */
+	var old_onkeydown = null;
+
+
+	setActiveSlider = function( s )
+	{
+		if ( s < n )
+			active_slider = s;
+		else
+			active_slider = n - 1;
+	}
+
+	/**
+	 *
+	 */
+	var handle_onkeydown = function( e )
+	{
+		var key;
+		var target;
+		var shift;
+		var alt;
+		var ctrl;
+		if ( e )
+		{
+			if ( e.keyCode ) key = e.keyCode;
+			else if ( e.charCode ) key = e.charCode;
+			else key = e.which;
+			target = e.target;
+			shift = e.shiftKey;
+			alt = e.altKey;
+			ctrl = e.ctrlKey;
+		}
+		else if ( event && event.keyCode )
+		{
+			key = event.keyCode;
+			target = event.srcElement;
+			shift = event.shiftKey;
+			alt = event.altKey;
+			ctrl = event.ctrlKey;
+		}
+		var n = target.nodeName.toLowerCase();
+		if ( !( n == "input" || n == "textarea" || n == "area" ) )		//!< @todo exclude all useful keyboard input elements e.g. contenteditable...
+		{
+			switch( key )
+			{
+			case 61:		//!< +
+			case 107:
+			case 187:		//!< for IE only---take care what this is in other platforms...
+				slider_s.move( 1 );
+				return false;
+			case 109:		//!< -
+			case 189:		//!< for IE only---take care what this is in other platforms...
+				slider_s.move( -1 );
+				return false;
+			case 188:		//!< ,
+				moveDimensionSlider( -1, shift, alt );
+				return false;
+			case 190:		//!< .
+				moveDimensionSlider( 1, shift, alt );
+				return false;
+			case 37:		//!< cursor left
+				input_x.value = parseInt( input_x.value ) - ( shift ? 100 : ( alt ? 1 : 10 ) );
+				input_x.onchange( e );
+				return false;
+			case 39:		//!< cursor right
+				input_x.value = parseInt( input_x.value ) + ( shift ? 100 : ( alt ? 1 : 10 ) );
+				input_x.onchange( e );
+				return false;
+			case 38:		//!< cursor up
+				input_y.value = parseInt( input_y.value ) - ( shift ? 100 : ( alt ? 1 : 10 ) );
+				input_y.onchange( e );
+				return false;
+			case 40:		//!< cursor down
+				input_y.value = parseInt( input_y.value ) + ( shift ? 100 : ( alt ? 1 : 10 ) );
+				input_y.onchange( e );
+				return false;
+			case 9:			//!< tab
+				if ( shift ) project.switchFocus( -1 );
+				else project.switchFocus( 1 );
+				//e.stopPropagation();
+				return false;
+			case 13:		//!< return
+				break;
+			case 49:		//!< 1
+				setActiveSlider( 0 );
+				break;
+			case 50:		//!< 2
+				setActiveSlider( 1 );
+				break;
+			case 51:		//!< 3
+				setActiveSlider( 2 );
+				break;
+			case 52:		//!< 4
+				setActiveSlider( 3 );
+				break;
+			case 53:		//!< 5
+				setActiveSlider( 4 );
+				break;
+			default:
+				console.log( "unassigned key: " + key );
+			}
+			return true;
+		}
+		else return true;
+	}
 	
 	/**
 	 * install this tool in a stack.
@@ -436,6 +573,9 @@ function Navigator( n )
 		
 		updateControls();
 		
+		old_onkeydown = document.onkeydown;
+		document.onkeydown = handle_onkeydown;
+		
 		return;
 	}
 	
@@ -447,6 +587,10 @@ function Navigator( n )
 	{
 		if ( self.stack && self.mouseCatcher.parentNode == self.stack.getView() )
 			self.stack.getView().removeChild( self.mouseCatcher );
+		
+		if (document.onkeydown == handle_onkeydown )
+			document.onkeydown = old_onkeydown;
+		
 		return;
 	}
 	
