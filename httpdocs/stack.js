@@ -410,7 +410,7 @@ function Stack(
 	self.s = self.MAX_S
 	self.old_pos = new Array();
 	for ( var i = 0; i < n; ++i )
-		self.old_pos = -1;
+		self.old_pos[i] = -1;
 	self.old_s = self.s;
 	
 	self.scale = 1 / Math.pow( 2, self.s );

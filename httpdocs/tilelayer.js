@@ -97,7 +97,12 @@ function TileLayer(
 				xd = fc - old_fc;
 				yd = fr - old_fr;
 				
-				// re-order the tiles array on demand
+				/* re-order the tiles array on demand.
+				 * This is done so that existing tiles keep their
+				 * src image when moving to the next row/column.
+				 * Otherwise, setting new src for all the tiles causes
+				 * flickering artefacts.
+				 */
 				if ( xd < 0 )
 				{
 					for ( var i = 0; i < tiles.length; ++i )
