@@ -43,6 +43,8 @@ from neurohdf import stack_models
 from neurohdf import get_tile
 from neurohdf import put_tile
 
+from workflow import flow
+
 from cropping import crop
 from cropping import download_crop
 
