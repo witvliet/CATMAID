@@ -5,7 +5,7 @@ var WebGLApp = new function () {
   self.neurons = [];
 
   var camera, scene, renderer, grid_lines, scale, controls, light, zplane = null, meshes = [], show_meshes = false;
-  var project_id, stack_id, resolution, dimension, translation, canvasWidth, canvasHeight;
+  var project_id, stack_id, resolution, dimension, translation, canvasWidth, canvasHeight, windowleft = 0, windowtop = 0;
 
   this.init = function( divID ) {
 
@@ -84,6 +84,56 @@ var WebGLApp = new function () {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     //renderer = new THREE.CanvasRenderer();
     renderer.setSize( self.divWidth, self.divHeight );
+
+    // picking
+      renderer.domElement.addEventListener('mousedown', function(event) {
+          console.log('mousedown', event);
+          if(!event.shiftKey) {
+              return;
+          }
+
+          //var vector = new THREE.Vector3 ((event.clientX / window.innerWidth)*2-1, -(event.clientY / window.innerHeight)*2+1, 0.5);
+          var projector = new THREE.Projector();
+          //projector.unprojectVector(vector, camera);
+          //var ray = new THREE.Ray(camera.position, vector.subSelf(camera.position).normalize());
+
+          var di = '#viewer-3d-webgl-canvas';
+          console.log('calc', event.clientX, self.windowleft, $( di ).width() )
+          console.log('out', ( ( event.clientX - self.windowleft ) / $( di ).width() )  * 2 - 1 );
+          console.log('out2', -( ( event.clientY - self.windowtop ) / $( di ).height() ) * 2 + 1 );
+          console.log('vect', new THREE.Vector2( 0.2, 3));
+          var _mouse = new THREE.Vector2( ( ( event.clientX - self.windowleft ) / $( di ).width() ) * 2 - 1, -( ( event.clientY - self.windowtop ) / $( di ).height() ) * 2 + 1);
+
+          console.log('mouse', _mouse, event.clientX, event.clientY)
+           // compute according ray
+          var ray = projector.pickingRay( _mouse , camera );
+          console.log(scene.children);
+
+          var intersects = [];
+          // TODO: not selecting box for picking
+          for ( i = 0; i < scene.children.length; i ++ ) {
+            console.log( typeof scene.children[i] )
+            //if( scene.children[i].visible )
+            intersects.push( scene.children[i] );
+          }
+
+          var objects = ray.intersectObjects( intersects );
+          // TODO: cannot pick line or sphere
+          if( objects.length )
+          {
+              console.log( "Picked Object : ", objects[ 0 ].object );
+              console.log( "Picked Face : ", objects[ 0 ].face );
+              console.log( "Picked Position : ", objects[ 0 ].point );
+              objects[ 0 ].object.visible = ! objects[ 0 ].object.visible ;
+          }
+
+          /*var object = ray.intersectObjects(scene.children);
+          if (object.length > 0)
+          {
+              $('#mouse_coords').val('Mouse coordinates:' + '\nx = ' + Math.round(object[0].point.x) + '\ny = ' + Math.round(object[0].point.y) + '\nz = ' + Math.round(object[0].point.z));
+          } */
+
+      });
 
     // Follow size
     // THREEx.WindowResize.bind(renderer, camera);
@@ -343,6 +393,11 @@ var WebGLApp = new function () {
         $('#viewer-3d-webgl-canvas').css("background-color", "#000000");
         renderer.setSize( w, h );
     };
+  }
+
+  self.updateLeftTop = function( left, top ) {
+    self.windowleft = left;
+    self.windowtop = top;
   }
 
   self.resizeView = function (w, h) {

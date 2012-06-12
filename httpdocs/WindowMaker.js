@@ -210,7 +210,8 @@ var WindowMaker = new function()
           case CMWWindow.RESIZE:
             var frame = win.getFrame();
             container.style.height = win.getContentHeight() + "px";
-            WebGLApp.resizeView( parseInt(frame.style.width, 10), parseInt(frame.style.height, 10) )
+            WebGLApp.resizeView( parseInt(frame.style.width, 10), parseInt(frame.style.height, 10) );
+            WebGLApp.updateLeftTop( parseInt( frame.style.left, 10 ), parseInt(frame.style.top, 10) );
             break;
         }
         return true;
