@@ -367,6 +367,13 @@ var WindowMaker = new function()
     add.onclick = GraphWidget.updateGraphFrom3DViewer;
     contentbutton.appendChild(add);
 
+    var add = document.createElement('a');
+    add.setAttribute("id", "export_as_gml");
+    add.setAttribute("href", '#');
+    add.onclick = GraphWidget.exportAsGML;
+    add.appendChild( document.createTextNode("Download as GML") );
+    contentbutton.appendChild(add);
+
     content.appendChild( contentbutton );
 
     var container = createContainer("graph_widget");

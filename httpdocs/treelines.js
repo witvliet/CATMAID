@@ -77,7 +77,9 @@ function basenameToURI(basename, extension) {
 }
 
 $(document).ajaxError(function (event, request, ajaxOptions, thrownError) {
-  alert("Got an AJAX error with status: " + request.status + " for URL: " + ajaxOptions.url);
+  if (request.status != 0) {
+    alert("Got an AJAX error with status: " + request.status + " for URL: " + ajaxOptions.url);
+  }
 });
 
 var contourPoints = [

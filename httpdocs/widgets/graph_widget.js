@@ -24,6 +24,23 @@ var GraphWidget = new function()
       vis = new org.cytoscapeweb.Visualization(div_id, options);
   };
 
+  this.exportAsGML = function() {
+    console.log('export')
+    jQuery.ajax({
+      url: "dj/" + project.id + "/skeletongroup/export_as_gml",
+      type: "POST",
+      dataType: "json",
+      data: { skeleton_list: WebGLApp.getListOfSkeletonIDs() },
+      success: function (data) {
+        console.log('data', data)
+      },
+      error: function( data ) {
+        console.log('error')
+      }
+    });
+    return true;
+  }
+
   this.updateGraph = function( data ) {
 
     for(var k in data.nodes) {

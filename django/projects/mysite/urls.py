@@ -46,6 +46,7 @@ urlpatterns += patterns(
 
     (r'^(?P<project_id>\d+)/skeletongroup/adjacency_matrix$', 'catmaid.control.adjacency_matrix'),
     (r'^(?P<project_id>\d+)/skeletongroup/skeletonlist_subgraph', 'catmaid.control.skeletonlist_subgraph'),
+    (r'^(?P<project_id>\d+)/skeletongroup/export_as_gml', 'catmaid.control.export_as_gml'),
 
     # Segmentation tool
 

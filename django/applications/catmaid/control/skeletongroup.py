@@ -15,6 +15,23 @@ except ImportError:
     pass
 
 import sys
+import cStringIO
+
+@login_required
+def export_as_gml(request, project_id=None):
+    skeletonlist = request.POST.getlist('skeleton_list[]')
+    skeletonlist = map(int, skeletonlist)
+    p = get_object_or_404(Project, pk=project_id)
+    skelgroup = SkeletonGroup( skeletonlist, p.id )
+    f = cStringIO.StringIO()
+
+    nx.write_gml(skelgroup.graph, f)
+    f.seek(0)
+
+    response = HttpResponse(f.read(), mimetype='text/gml')
+    response['Content-Disposition'] = 'attachment; filename=network.gml'
+    return response
+
 
 @login_required
 def adjacency_matrix(request, project_id=None):
