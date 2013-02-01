@@ -384,6 +384,8 @@ var WindowMaker = new function()
     graph.style.width = "100%";
     container.appendChild(graph);
 
+    addListener(win, container);
+
     addLogic(win);
 
     return win;
@@ -391,6 +393,7 @@ var WindowMaker = new function()
 
   var createSegmentsTablesWindow = function()
   {
+    console.log('create...')
     var win = new CMWWindow("Segments Table Widget");
     var content = win.getFrame();
     content.style.backgroundColor = "#ffffff";
@@ -412,6 +415,8 @@ var WindowMaker = new function()
 
     container.innerHTML =
       '<table cellpadding="0" cellspacing="2" border="0" class="display" id="segmentstable"></table>';
+
+    addListener(win, container);
 
     addLogic(win);
 
@@ -1157,6 +1162,7 @@ var WindowMaker = new function()
   {
     if (creators.hasOwnProperty( name )) {
       if (windows[name]) {
+        console.log('only focus')
         windows[name].focus();
       } else {
         windows[name] = creators[name]();
