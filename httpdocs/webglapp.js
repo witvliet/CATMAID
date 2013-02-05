@@ -286,15 +286,14 @@ var WebGLApp = new function () {
     var contours = [];
 
     var ProcessSlice = function( index ) {
-      console.log('index', index, self.assembly_slices.length, self.assembly_slices)
+      //console.log('index', index, self.assembly_slices.length, self.assembly_slices)
       if( index === self.assembly_slices.length ) {
-        console.log('return', index);
         self.add_to_scene();
         render();
         return;
       } 
       var slice = assembly_data.slices[ index ];
-      console.log('register', index);
+      // console.log('register', index);
       requestQueue.register(django_url + project.id + "/stack/" + project.focusedStack.id + '/slice/contour', "GET", {
           nodeid: self.assembly_slices[ index ].node_id
       }, function (status, text, xml) {
@@ -345,7 +344,6 @@ var WebGLApp = new function () {
         //var contour = new THREE.Mesh( contourGeometry, new THREE.MeshFaceMaterial() );
 
         var contour = THREE.SceneUtils.createMultiMaterialObject( contourGeometry, materialArray );
-        console.log('contour reated', contour);
         contour.node_id = id;
 
         /*contour.position.x = bb_center_x*resolution.x*scale;
@@ -850,7 +848,7 @@ var WebGLApp = new function () {
   {
     
     if( !assemblies.hasOwnProperty( assembly_data.assembly_id ) ) {
-      console.log('add assembly', assembly_data);
+      // console.log('add assembly', assembly_data);
       assemblies[ assembly_data.assembly_id ] = new Assembly( assembly_data );
     } else {
       console.log('assembly already exists. Remove and add new')
@@ -1135,35 +1133,22 @@ var WebGLApp = new function () {
 
   function onMouseDown(event) {
     is_mouse_down = true;
+    if( event.shiftKey ) {
+      var vector = new THREE.Vector3( mouse.x, mouse.y, 0.5 );
+      projector.unprojectVector( vector, camera );
 
-    // console.log('on mouse down', vector, projector, camera.position, camera, scene.objects );
+      var raycaster = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );    
+      var intersects = raycaster.intersectObjects( objects, true );
 
-    // event.preventDefault();
+      if ( intersects.length > 0 ) {
+        controls.enabled = false;
+        SegmentationAnnotations.goto_slice( intersects[0].object.parent.node_id );
+        container.style.cursor = 'move';
 
-    var vector = new THREE.Vector3( mouse.x, mouse.y, 0.5 );
-    projector.unprojectVector( vector, camera );
-
-    var raycaster = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );    
-    var intersects = raycaster.intersectObjects( objects, true );
-
-    if ( intersects.length > 0 ) {
-
-      controls.enabled = false;
-
-      // console.log('intersected', intersects[0].object, intersects[0].point);
-      SegmentationAnnotations.goto_slice( intersects[0].object.parent.node_id );
-      // SELECTED = intersects[ 0 ].object;
-
-      // var intersects = raycaster.intersectObject( plane );
-      // offset.copy( intersects[ 0 ].point ).sub( plane.position );
-
-      container.style.cursor = 'move';
-
+      }
     }
-
-    
-
   }
+
   function onMouseUp(event) {
     is_mouse_down = false;
     controls.enabled = true;
