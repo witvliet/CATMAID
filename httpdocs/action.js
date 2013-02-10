@@ -369,6 +369,16 @@ var tracingWindowActions = [
   }),
 
   new Action({
+      helpText: "Compartment Graph widget",
+      buttonID: "data_button_compartment_graph_widget",
+      buttonName: 'graph_widget',
+      run: function (e) {
+          WindowMaker.show('compartment-graph-widget');
+          return true;
+      }
+  }),
+
+  new Action({
     helpText: "Show object tree",
     buttonID: "data_button_tree",
     buttonName: 'tree',
