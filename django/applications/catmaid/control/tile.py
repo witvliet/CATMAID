@@ -1,8 +1,12 @@
 import os
 from contextlib import closing
 import h5py
-from PIL import Image
 import json
+
+try:
+    from PIL import Image
+except:
+    pass
 
 from catmaid.models import *
 from catmaid.control.authentication import *
