@@ -421,15 +421,14 @@ var tracingWindowActions = [
   }),
 
   new Action({
-      helpText: "Segmentation Graph widget",
-      buttonID: "data_button_segmentation_graph_widget",
+      helpText: "Compartment Graph widget",
+      buttonID: "data_button_compartment_graph_widget",
       buttonName: 'graph_widget',
       run: function (e) {
-          WindowMaker.show('cytograph-widget');
+          WindowMaker.show('compartment-graph-widget');
           return true;
       }
   }),
-
 
   new Action({
     helpText: "Show object tree",
