@@ -198,6 +198,12 @@ class Stack(models.Model):
     def __unicode__(self):
         return self.title
 
+class StackSliceInfo(models.Model):
+    stack = models.ForeignKey(Stack)
+    slice_base_url = models.TextField()
+    slice_base_path = models.TextField()
+    file_extension = models.TextField(null=True)
+
 class ProjectStack(models.Model):
     class Meta:
         db_table = "project_stack"
@@ -660,22 +666,90 @@ class SkeletonlistDashboard(UserFocusedModel):
     skeleton_list = IntegerArrayField()
     description = models.TextField()
 
-class Component(UserFocusedModel):
-    class Meta:
-        db_table = "component"
-        managed = False
+class SliceContours(UserFocusedModel):
+
+    coordinates = IntegerArrayField()
+
+    stack = models.ForeignKey(Stack)
+    node_id = models.CharField(max_length=255,db_index=True) # convention: {sectionindex}_{slide_id}
+    length = models.FloatField(null=True)
+
+class Segments(UserFocusedModel):
+
     creation_time = models.DateTimeField(default=now)
     edition_time = models.DateTimeField(default=now)
     stack = models.ForeignKey(Stack)
-    skeleton_id = models.IntegerField()
-    component_id=models.IntegerField()
-    min_x = models.IntegerField()
-    min_y = models.IntegerField()
-    max_x = models.IntegerField()
-    max_y = models.IntegerField()
-    z = models.IntegerField()
+
+    assembly = models.ForeignKey(ClassInstance,null=True)
+
+    segmentid = models.IntegerField(db_index=True)
+    segmenttype = models.IntegerField(db_index=True)
+    origin_section = models.IntegerField(db_index=True)
+    origin_slice_id = models.IntegerField(db_index=True)
+    target_section = models.IntegerField(db_index=True,null=True)
+    target1_slice_id = models.IntegerField(db_index=True,null=True)
+    target2_slice_id = models.IntegerField(db_index=True,null=True)
+    cost = models.FloatField()
+    direction = models.BooleanField() # 0:LR if origin_section< target_section / 1:RL as boolean, otherwise
+
+    center_distance = models.FloatField()
+    set_difference = models.FloatField()
+    set_difference_ratio = models.FloatField()
+    aligned_set_difference = models.FloatField()
+    aligned_set_difference_ratio = models.FloatField()
+    size = models.FloatField()
+    overlap = models.FloatField()
+    overlap_ratio = models.FloatField()
+    aligned_overlap = models.FloatField()
+    aligned_overlap_ratio = models.FloatField()
+    average_slice_distance = models.FloatField()
+    max_slice_distance = models.FloatField()
+    aligned_average_slice_distance = models.FloatField()
+    aligned_max_slice_distance = models.FloatField()
+    histogram_0 = models.FloatField()
+    histogram_1 = models.FloatField()
+    histogram_2 = models.FloatField()
+    histogram_3 = models.FloatField()
+    histogram_4 = models.FloatField()
+    histogram_5 = models.FloatField()
+    histogram_6 = models.FloatField()
+    histogram_7 = models.FloatField()
+    histogram_8 = models.FloatField()
+    histogram_9 = models.FloatField()
+    normalized_histogram_0 = models.FloatField()
+    normalized_histogram_1 = models.FloatField()
+    normalized_histogram_2 = models.FloatField()
+    normalized_histogram_3 = models.FloatField()
+    normalized_histogram_4 = models.FloatField()
+    normalized_histogram_5 = models.FloatField()
+    normalized_histogram_6 = models.FloatField()
+    normalized_histogram_7 = models.FloatField()
+    normalized_histogram_8 = models.FloatField()
+    normalized_histogram_9 = models.FloatField()
+
+
+class Slices(UserFocusedModel):
+
+    creation_time = models.DateTimeField(default=now)
+    edition_time = models.DateTimeField(default=now)
+    stack = models.ForeignKey(Stack)
+
+    assembly = models.ForeignKey(ClassInstance,null=True,db_index=True)
+    sectionindex = models.IntegerField(db_index=True) # index of the section
+    slice_id = models.IntegerField(db_index=True) # int id local to the section
+    node_id = models.CharField(max_length=255,db_index=True) # convention: {sectionindex}_{slide_id}
+
+    # boundingbox (in pixel coordiantes)
+    min_x = models.IntegerField(db_index=True)
+    min_y = models.IntegerField(db_index=True)
+    max_x = models.IntegerField(db_index=True)
+    max_y = models.IntegerField(db_index=True)
+
+    center_x = models.FloatField(db_index=True)
+    center_y = models.FloatField(db_index=True)
     threshold = models.FloatField()
-    status = models.IntegerField(default=0)
+    size = models.IntegerField(db_index=True)
+    status = models.IntegerField(db_index=True, default=0)
 
 class Drawing(UserFocusedModel):
     class Meta:

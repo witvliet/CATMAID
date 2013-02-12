@@ -1,5 +1,6 @@
 __author__ = 'stephan'
 
+from assembly import *
 from authentication import *
 from common import *
 from connector import *
@@ -31,3 +32,5 @@ from segmentation import *
 from data_view import *
 from analytics import *
 from importer import *
+from slice import *
+from drawing import *

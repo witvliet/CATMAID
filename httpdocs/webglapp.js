@@ -5,8 +5,13 @@ var WebGLApp = new function () {
   self.neurons = [];
 
   var scene, renderer, scale, controls, zplane = null, meshes = [], show_meshes = false, show_active_node = false;
+<<<<<<< HEAD
   var resolution, dimension, translation, canvasWidth, canvasHeight, ortho = false,
       bbmesh, floormesh, black_bg = true, debugax, togglevisibleall = true;
+=======
+  var resolution, dimension, translation, canvasWidth, canvasHeight, ortho = false, projector, objects = [],
+      bbmesh, floormesh, black_bg = true, debugax, mouse = new THREE.Vector2();
+>>>>>>> semi
   var is_mouse_down = false, connector_filter = false;
 
   this.init = function( divID ) {
@@ -81,7 +86,7 @@ var WebGLApp = new function () {
   function init_webgl() {
     container = document.getElementById(self.divID);
     scene = new THREE.Scene();
-    //camera = new THREE.PerspectiveCamera( 75, self.divWidth / self.divHeight, 1, 3000 );
+    // camera = new THREE.PerspectiveCamera( 75, self.divWidth / self.divHeight, 1, 3000 );
 
     //camera = new THREE.OrthographicCamera( self.divWidth / -2, self.divWidth / 2, self.divHeight / 2, self.divHeight / -2, 1, 1000 );
       //camera = new THREE.OrthographicCamera( self.divWidth / -2, self.divWidth / 2, self.divHeight / 2, self.divHeight / -2, 1, 1000 );
@@ -97,20 +102,39 @@ var WebGLApp = new function () {
     controls.staticMoving = true;
     controls.dynamicDampingFactor = 0.3;
 
-
+/*
     var ambient = new THREE.AmbientLight( 0x101010 );
     scene.add( ambient );
 
     directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
     directionalLight.position.set( 1, 1, 2 ).normalize();
     scene.add( directionalLight );
+*/
 
     pointLight = new THREE.PointLight( 0xffaa00 );
-    pointLight.position.set( 0, 0, 0 );
     scene.add( pointLight );
-/*
+
     // light representation
 
+    scene.add( new THREE.AmbientLight( 0x505050 ) );
+
+    var light = new THREE.SpotLight( 0xffffff, 1.5 );
+    //light.position.set( 0, 500, 2000 );
+    light.castShadow = true;
+
+    light.shadowCameraNear = 200;
+    light.shadowCameraFar = camera.far;
+    light.shadowCameraFov = 50;
+
+    light.shadowBias = -0.00022;
+    light.shadowDarkness = 0.5;
+
+    light.shadowMapWidth = 2048;
+    light.shadowMapHeight = 2048;
+
+    scene.add( light );
+
+/*
     sphere = new THREE.SphereGeometry( 100, 16, 8, 1 );
     lightMesh = new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0xffaa00 } ) );
     lightMesh.scale.set( 0.05, 0.05, 0.05 );
@@ -118,9 +142,15 @@ var WebGLApp = new function () {
     scene.add( lightMesh );
 */
 
+    projector = new THREE.Projector();
+
     renderer = new THREE.WebGLRenderer({ antialias: true });
     //renderer = new THREE.CanvasRenderer();
+    renderer.sortObjects = false;
     renderer.setSize( self.divWidth, self.divHeight );
+    
+    // renderer.shadowMapEnabled = true;
+    // renderer.shadowMapType = THREE.PCFShadowMap;
 
     // Follow size
     // THREEx.WindowResize.bind(renderer, camera);
@@ -147,6 +177,16 @@ var WebGLApp = new function () {
             dimension.y*resolution.y*scale,
             dimension.z*resolution.z*scale
     );
+
+    pointLight.position.set( 
+      dimension.x*resolution.x*scale,
+      dimension.y*resolution.y*scale, 
+      50 );
+
+    light.position.set( 
+      dimension.x*resolution.x*scale / 2,
+      dimension.y*resolution.y*scale / 2, 
+      50 );
 
     controls.target = new THREE.Vector3(coord[0]*scale,coord[1]*scale,coord[2]*scale);
 
@@ -237,6 +277,102 @@ var WebGLApp = new function () {
     return "0x" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
   }
 
+  var Assembly = function( assembly_data )
+  {
+
+    var self = this;
+    self.assembly_id = assembly_data.assembly_id;
+    self.assembly_slices = assembly_data.slices;
+    var contours = [];
+
+    var ProcessSlice = function( index ) {
+      //console.log('index', index, self.assembly_slices.length, self.assembly_slices)
+      if( index === self.assembly_slices.length ) {
+        self.add_to_scene();
+        render();
+        return;
+      } 
+      var slice = assembly_data.slices[ index ];
+      // console.log('register', index);
+      requestQueue.register(django_url + project.id + "/stack/" + project.focusedStack.id + '/slice/contour', "GET", {
+          nodeid: self.assembly_slices[ index ].node_id
+      }, function (status, text, xml) {
+              if (status === 200) {
+                  if (text && text !== " ") {
+                      var e = $.parseJSON(text);
+                      if (e.error) {
+                          alert(e.error);
+                      } else {
+                          for (var i=0; i<e.length; i++) {
+                            var contourPoints = [];
+                            for (var j=0; j<e[i].length; j = j + 2) {
+                              // TODO: not add min_x/y, but translate the complete mesh
+                              var xx = (slice.min_x+e[i][j])*resolution.x*scale,
+                                  yy = -(slice.min_y+e[i][j+1])*resolution.y*scale+dimension.y*resolution.y*scale;
+                                  contourPoints.push( new THREE.Vector2 ( xx, yy ) );
+                            }
+                            self.addContour( slice.node_id, contourPoints, slice.bb_center_x, slice.bb_center_y, slice.sectionindex );
+                            index++;
+                            ProcessSlice( index );
+                          }
+                      }
+                  }
+              }
+      });
+    }
+
+    ProcessSlice( 0 );
+
+    this.addContour = function( id, contourPoints, bb_center_x, bb_center_y, sectionindex ) {
+         //console.log('add contours for slice', id, contourPoints, bb_center_x, bb_center_y, sectionindex)
+        var extrusionSettings = {
+          size: 10, height: 4, curveSegments: 3, amount:2,
+          bevelThickness: 0.5, bevelSize: 0.5, bevelEnabled: false,
+          //bevelThickness:1,
+          material: 0, extrudeMaterial: 1
+        };
+
+        var contourShape = new THREE.Shape( contourPoints );
+        var contourGeometry = new THREE.ExtrudeGeometry( contourShape, extrusionSettings );
+        
+        // TODO: for light: MeshLambertMaterial
+        var materialFront = new THREE.MeshLambertMaterial( { color: 0xffff00 } );
+        var materialSide = new THREE.MeshLambertMaterial( { color: 0xff8800 } );
+        var materialArray = [ materialFront, materialSide ];
+        // contourGeometry.materials = materialArray;
+        
+        //var contour = new THREE.Mesh( contourGeometry, new THREE.MeshFaceMaterial() );
+
+        var contour = THREE.SceneUtils.createMultiMaterialObject( contourGeometry, materialArray );
+        contour.node_id = id;
+
+        /*contour.position.x = bb_center_x*resolution.x*scale;
+        contour.position.y = -bb_center_y*resolution.y*scale+dimension.y*resolution.y*scale;*/
+        contour.position.z = -sectionindex*resolution.z*scale;
+        contours[ id ] = contour;
+    }
+
+    // TODO: use extrusion
+    // http://stemkoski.github.com/Three.js/Extrusion.html
+    this.add_to_scene = function() {
+      for(var node_id in contours) {
+        if( contours.hasOwnProperty(node_id)) {
+          scene.add( contours[ node_id ] );
+          objects.push( contours[ node_id ] );
+        }
+      }
+    }
+
+    this.remove_from_scene = function() {
+      for(var node_id in contours) {
+        if( contours.hasOwnProperty(node_id)) {
+          scene.remove( contours[ node_id ] );
+          // TODO: remove from objects
+        }
+      }
+    }
+  }
+
   var Skeleton = function( skeleton_data )
   {
     var self = this;
@@ -311,17 +447,17 @@ var WebGLApp = new function () {
     this.removeActorFromScene = function()
     {
       for ( var i=0; i<connectivity_types.length; ++i ) {
-        scene.removeObject( this.actor[connectivity_types[i]] );
+        scene.remove( this.actor[connectivity_types[i]] );
       }
       this.remove_connector_selection();
       for ( var i=0; i<connectivity_types.length; ++i ) {
-        scene.removeObject( this.actor[connectivity_types[i]] );
+        scene.remove( this.actor[connectivity_types[i]] );
       }
       for ( var k in this.labelSphere ) {
-          scene.removeObject( this.labelSphere[k] );
+          scene.remove( this.labelSphere[k] );
       }
       for ( var k in this.otherSpheres ) {
-        scene.removeObject( this.otherSpheres[k] );
+        scene.remove( this.otherSpheres[k] );
       }
     }
 
@@ -378,7 +514,7 @@ var WebGLApp = new function () {
       for ( var i=0; i<connectivity_types.length; ++i ) {
         if( connectivity_types[i] === 'presynaptic_to' || connectivity_types[i] === 'postsynaptic_to') {
           if( this.connectoractor && this.connectoractor[connectivity_types[i]] ) {
-            scene.removeObject( this.connectoractor[connectivity_types[i]] );
+            scene.remove( this.connectoractor[connectivity_types[i]] );
           }
         }
       }
@@ -575,6 +711,9 @@ var WebGLApp = new function () {
   // array of skeletons
   var skeletons = new Object();
 
+  // all assemblies
+  var assemblies = {};
+
   // active node geometry
   var active_node;
 
@@ -661,7 +800,7 @@ var WebGLApp = new function () {
 
   this.removeActiveNode = function() {
     if(active_node) {
-      scene.removeObject( active_node );
+      scene.remove( active_node );
       active_node = null;
     }
   }
@@ -685,6 +824,21 @@ var WebGLApp = new function () {
   this.saveImage = function() {
       self.render();
       window.open(renderer.domElement.toDataURL("image/png"));
+  }
+
+  this.addAssembly = function( assembly_data )
+  {
+    
+    if( !assemblies.hasOwnProperty( assembly_data.assembly_id ) ) {
+      // console.log('add assembly', assembly_data);
+      assemblies[ assembly_data.assembly_id ] = new Assembly( assembly_data );
+    } else {
+      console.log('assembly already exists. Remove and add new')
+      assemblies[ assembly_data.assembly_id ].remove_from_scene();
+      delete assemblies[ assembly_data.assembly_id ];
+      assemblies[ assembly_data.assembly_id ] = new Assembly( assembly_data );
+    }
+    return true;
   }
 
   this.randomizeColors = function()
@@ -961,9 +1115,25 @@ var WebGLApp = new function () {
 
   function onMouseDown(event) {
     is_mouse_down = true;
+    if( event.shiftKey ) {
+      var vector = new THREE.Vector3( mouse.x, mouse.y, 0.5 );
+      projector.unprojectVector( vector, camera );
+
+      var raycaster = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );    
+      var intersects = raycaster.intersectObjects( objects, true );
+
+      if ( intersects.length > 0 ) {
+        controls.enabled = false;
+        SegmentationAnnotations.goto_slice( intersects[0].object.parent.node_id );
+        container.style.cursor = 'move';
+
+      }
+    }
   }
+
   function onMouseUp(event) {
     is_mouse_down = false;
+    controls.enabled = true;
     self.render(); // May need another render on occasions
   }
 
@@ -971,9 +1141,22 @@ var WebGLApp = new function () {
   function onMouseMove(event) {
     //var mouseX = ( event.clientX - self.divWidth );
     //var mouseY = ( event.clientY - self.divHeight );
+    // mouse.x = ( event.clientX / self.divWidth );
+    //mouse.y = -( event.clientY / self.divHeight );
+
+    mouse.x = ( event.offsetX / self.divWidth )*2-1;
+    mouse.y = -( event.offsetY / self.divHeight )*2+1;
+    //mouse.x = ( event.clientX - self.divWidth );
+    //mouse.y = ( event.clientY - self.divHeight );
+
+    //console.log(mouse.x, mouse.y, event.clientX);
+
     if (is_mouse_down) {
       self.render();
     }
+
+    container.style.cursor = 'pointer';
+
   }
 
   /** To execute every time the mouse wheel turns. */
@@ -981,11 +1164,12 @@ var WebGLApp = new function () {
     self.render();
   }
 
-  self.render = function render() {
+  var render = function render() {
     controls.update();
     renderer.clear();
     renderer.render( scene, camera );
   }
+  self.render = render;
 
   self.addSkeletonToTable = function ( skeleton ) {
 
