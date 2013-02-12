@@ -6,8 +6,7 @@ var WebGLApp = new function () {
 
   var scene, renderer, scale, controls, zplane = null, meshes = [], show_meshes = false, show_active_node = false;
   var resolution, dimension, translation, canvasWidth, canvasHeight, ortho = false, projector, objects = [],
-      bbmesh, floormesh, black_bg = true, debugax, togglevisibleall = true, mouse = new THREE.Vector2();;
-
+      bbmesh, floormesh, black_bg = true, debugax, togglevisibleall = true, mouse = new THREE.Vector2();
   var is_mouse_down = false, connector_filter = false;
 
   this.init = function( divID ) {
