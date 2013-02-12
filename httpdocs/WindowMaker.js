@@ -437,6 +437,9 @@ var WindowMaker = new function()
 
     CompartmentGraphWidget.init();
 
+    return win;
+  };
+
   var createSegmentsTablesWindow = function()
   {
     console.log('create...')
@@ -1192,12 +1195,8 @@ var WindowMaker = new function()
     "log-table": createLogTableWindow,
     "export-widget": createExportWidget,
     "graph-widget": createGraphWindow,
-<<<<<<< HEAD
     "compartment-graph-widget": createCompartmentGraphWindow,
-=======
-    "cytograph-widget": createCytoscapeGraphWindow,
     "segmentstable-widget": createSegmentsTablesWindow,
->>>>>>> semi
     "object-tree": createObjectTreeWindow,
     "statistics": createStatisticsWindow,
     "disclaimer": createDisclaimerWindow,
