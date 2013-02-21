@@ -496,9 +496,47 @@ var WindowMaker = new function()
     return win;
   };
 
+  var createAssemblyGraphWindow = function()
+  {
+
+    var win = new CMWWindow("Assembly graph Widget");
+    var content = win.getFrame();
+    content.style.backgroundColor = "#ffffff";
+
+    var contentbutton = document.createElement('div');
+    contentbutton.setAttribute("id", 'assembly_graph_window_buttons');
+
+    var add = document.createElement('input');
+    add.setAttribute("type", "button");
+    add.setAttribute("id", "testbutton");
+    add.setAttribute("value", "Show graph");
+    // add.onclick = CompartmentGraphWidget.updateConfidenceGraphFrom3DViewer;
+    contentbutton.appendChild(add);
+
+    content.appendChild( contentbutton );
+
+    var container = createContainer("assembly_graph_widget");
+    content.appendChild(container);
+
+    var graph = document.createElement('div');
+    graph.setAttribute("id", "cytograph");
+    graph.style.width = "100%";
+    graph.style.height = "100%";
+    graph.style.backgroundColor = "#FFFFF0";
+    container.appendChild(graph);
+
+    addListener(win, container);
+
+    addLogic(win);
+
+
+    return win;
+  };
+
+
   var createSegmentsTablesWindow = function()
   {
-    console.log('create...')
+
     var win = new CMWWindow("Segments Table Widget");
     var content = win.getFrame();
     content.style.backgroundColor = "#ffffff";
@@ -1254,6 +1292,7 @@ var WindowMaker = new function()
     "graph-widget": createGraphWindow,
     "cytograph-widget": createCytoscapeGraphWindow,
     "compartment-graph-widget": createCompartmentGraphWindow,
+    "assemblygraph-widget": createAssemblyGraphWindow,
     "segmentstable-widget": createSegmentsTablesWindow,
     "object-tree": createObjectTreeWindow,
     "statistics": createStatisticsWindow,
