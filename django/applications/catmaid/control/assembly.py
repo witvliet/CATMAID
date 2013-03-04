@@ -6,11 +6,8 @@ from catmaid.objects import *
 from catmaid.control.authentication import *
 from catmaid.control.common import *
 from catmaid.control.common import _create_relation
-from catmaid.transaction import *
-
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
-@report_error
 def save_assembly(request, project_id=None, stack_id=None):
     assemblyid = int(request.POST.get('assemblyid', None))
     sliceslist = request.POST.get('slices')
@@ -34,7 +31,6 @@ def save_assembly(request, project_id=None, stack_id=None):
         i, assemblyid)}))
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
-@report_error
 def create_assembly_and_neuron(request, project_id=None, stack_id=None):
 
     relation_map = get_relation_to_id_map(project_id)
@@ -101,10 +97,8 @@ def create_assembly_and_neuron(request, project_id=None, stack_id=None):
         'neuron_id': new_neuron.id
         }))
 
-
 #TODO: in transaction
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
-@report_error
 def slices_of_assembly_for_section(request, project_id=None, stack_id=None):
 
     assembly_id = int(request.GET['assembly_id'])
@@ -125,7 +119,6 @@ def slices_of_assembly_for_section(request, project_id=None, stack_id=None):
 
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
-@report_error
 def slices_of_assembly(request, project_id=None, stack_id=None):
 
     assembly_id = int(request.GET['assemblyid'])
