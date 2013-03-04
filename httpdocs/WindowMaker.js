@@ -392,35 +392,6 @@ var WindowMaker = new function()
     return win;
   };
 
-  var createSegmentsTablesWindow = function()
-  {
-    console.log('create...')
-    var win = new CMWWindow("Segments Table Widget");
-    var content = win.getFrame();
-    content.style.backgroundColor = "#ffffff";
-
-    /*
-    var container = createContainer("segments_table_widget");
-    content.appendChild(container);
-
-    
-    var graph = document.createElement('div');
-    graph.setAttribute("id", "segmentstable-div");
-    graph.style.height = "100%";
-    graph.style.width = "100%";
-    container.appendChild(graph);
-    */
-
-    var container = createContainer("segmentstable-container");
-    content.appendChild( container );
-
-    container.innerHTML =
-      '<table cellpadding="0" cellspacing="2" border="0" class="display" id="segmentstable"></table>';
-
-    addListener(win, container);
-
-    addLogic(win);
-
 
   var createCompartmentGraphWindow = function()
   {
@@ -560,7 +531,6 @@ var WindowMaker = new function()
 
     addLogic(win);
 
->>>>>>> Fix merge issues
     return win;
   };
 
@@ -1068,7 +1038,7 @@ var WindowMaker = new function()
       action = actions[i];
       keys = action.getKeys();
       for( k in keys ) {
-	result += '<kbd>' + k + '</kbd> ' + action.getHelpText() + "<br />";
+    result += '<kbd>' + k + '</kbd> ' + action.getHelpText() + "<br />";
       }
     }
     return result;
@@ -1082,7 +1052,7 @@ var WindowMaker = new function()
     if (typeof win == 'undefined') {
       win = windows['keyboard-shortcuts'];
       if (!win) {
-	return;
+    return;
       }
     }
 
@@ -1105,13 +1075,13 @@ var WindowMaker = new function()
     if (tool) {
 
       if (tool.hasOwnProperty('getMouseHelp')) {
-	keysHTML += '<h4>Tool-specific Mouse Help</h4>';
-	keysHTML += tool.getMouseHelp();
+    keysHTML += '<h4>Tool-specific Mouse Help</h4>';
+    keysHTML += tool.getMouseHelp();
       }
 
       if (tool.hasOwnProperty('getActions')) {
-	keysHTML += '<h4>Tool-specific Key Help</h4>';
-	keysHTML += getHelpForActions(tool.getActions());
+    keysHTML += '<h4>Tool-specific Key Help</h4>';
+    keysHTML += getHelpForActions(tool.getActions());
       }
     }
     keysHTML += '</p>';
@@ -1238,9 +1208,9 @@ var WindowMaker = new function()
     container.innerHTML =
       '<input type="button" id="refresh_stats" value="Refresh" style="display:block; float:left;" />' +
       '<br clear="all" />' +
-			'<!-- piechart -->' +
+            '<!-- piechart -->' +
       '<div class="project-stats">' +
-				'<h3>Daily Statistics</h3>' +
+                '<h3>Daily Statistics</h3>' +
         '<table cellpadding="0" cellspacing="0" border="0" class="project-stats" id="project_stats_table">' +
           '<tr>' +
             '<td >#skeletons created</td>' +
@@ -1257,16 +1227,16 @@ var WindowMaker = new function()
           '</tr>' +
         '</table>' +
       '</div><br clear="all" />' +
-			'<div class="piechart">' + 
-				'<h3>Annotation User Contribution</h3>' +
-				'<div id="piechart_treenode_holder"></div>' +
+            '<div class="piechart">' + 
+                '<h3>Annotation User Contribution</h3>' +
+                '<div id="piechart_treenode_holder"></div>' +
         '<div id="piechart_editor_holder"></div>' +
         '<div id="piechart_reviewer_holder"></div>' +
-			'</div><br clear="all" />' +
+            '</div><br clear="all" />' +
       '<div class="annotation-history">' + 
-				'<h3 style="text-align: center">Annotation History</h3>' +
-				'<div id="linechart_treenode_holder"></div>' + 
-			'</div><br clear="all" />';
+                '<h3 style="text-align: center">Annotation History</h3>' +
+                '<div id="linechart_treenode_holder"></div>' + 
+            '</div><br clear="all" />';
 
     addListener(win, container);
 
