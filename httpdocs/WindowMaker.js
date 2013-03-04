@@ -369,7 +369,7 @@ var WindowMaker = new function()
     return win;
   };
 
-<<<<<<< HEAD
+
   var createCytoscapeGraphWindow = function()
   {
     var win = new CMWWindow("Cytoscape Graph Widget");
@@ -421,7 +421,7 @@ var WindowMaker = new function()
 
     addLogic(win);
 
-=======
+
   var createCompartmentGraphWindow = function()
   {
     var win = new CMWWindow("Compartment Graph Widget");
@@ -490,9 +490,6 @@ var WindowMaker = new function()
 
     CompartmentGraphWidget.init();
 
-<<<<<<< HEAD
->>>>>>> Added Widget to show connection graph with skeleton compartments segregated using the confidence value
-=======
     return win;
   };
 
