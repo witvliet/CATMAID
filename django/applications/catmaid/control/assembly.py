@@ -7,6 +7,59 @@ from catmaid.control.authentication import *
 from catmaid.control.common import *
 from catmaid.control.common import _create_relation
 
+import scipy.spatial
+import numpy as np
+
+@requires_user_role([UserRole.Annotate, UserRole.Browse])
+def get_mesh(request, project_id=None, stack_id=None, assembly_id=None):
+    p = get_object_or_404(Project, pk=project_id)
+    s = get_object_or_404(Stack, pk=stack_id)
+    assembly_slices = Slices.objects.filter(
+        project=p,
+        stack=s,
+        assembly_id = assembly_id
+    ).values('node_id', 'sectionindex')
+    print 'assembly slices', assembly_slices
+    slices_dict = {}
+    for e in assembly_slices:
+        slices_dict[ e['node_id'] ] = e['sectionindex']
+    print 'slices list', slices_dict
+    slicecontours = SliceContours.objects.filter(node_id__in=slices_dict.keys()).values('node_id', 'coordinates')
+    print 'slices contours', slicecontours
+    bigarray = None
+    for j, tup in enumerate(slicecontours):
+        print tup
+        count = len(tup['coordinates'])/2
+        coords = np.zeros( (count, 3), dtype = np.float32 )
+        coords[:,:2] = np.array( tup['coordinates'] ).reshape( count, 2 )
+        coords[:,2] = slices_dict[ tup['node_id'] ] # sectionindex
+        print 'coords', coords
+        if bigarray is None:
+            bigarray = coords
+        else:
+            bigarray = np.vstack( (bigarray, coords) )
+    hull=scipy.spatial.Delaunay(bigarray)
+    mesh_data = {'metadata': {
+                    'colors': 0,
+                    'faces': 2,
+                    'formatVersion': 3,
+                    'generatedBy': 'NeuroHDF',
+                    'materials': 0,
+                    'morphTargets': 0,
+                    'normals': 0,
+                    'uvs': 0,
+                    'vertices': 4},
+                'morphTargets': [],
+                'normals': [],
+                'scale': 1.0,
+                'uvs': [[]],
+                'vertices': hull.points.flatten().tolist(),
+                'faces': hull.vertices.flatten().tolist(),
+                'materials': [],
+                'colors': []
+            }
+    return HttpResponse(json.dumps(mesh_data), mimetype="text/json")
+
 def _get_neuronname_from_assemblyid( project_id, assembly_id ):
     p = get_object_or_404(Project, pk=project_id)
     qs = ClassInstanceClassInstance.objects.filter(

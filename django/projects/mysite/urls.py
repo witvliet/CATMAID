@@ -62,6 +62,7 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/assembly/create-assembly-and-neuron$', 'catmaid.control.create_assembly_and_neuron'),
     (r'^(?P<project_id>\d+)/assembly/(?P<assembly_id>\d+)/neuronname$', 'catmaid.control.update_assembly_neuronname'),
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/assembly/save$', 'catmaid.control.save_assembly'),
+    (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/assembly/(?P<assembly_id>\d+)/mesh$', 'catmaid.control.get_mesh'),
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slice-info$', 'catmaid.control.slice_info'),
 
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slices-cog$', 'catmaid.control.slices_cog'),

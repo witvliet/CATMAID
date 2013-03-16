@@ -340,7 +340,9 @@ var WebGLApp = new function () {
       });
     }
 
-    ProcessSlice( 0 );
+    this.add_contour_to_scene = function() {
+      ProcessSlice( 0 );
+    }
 
     this.addContour = function( id, contourPoints, bb_center_x, bb_center_y, sectionindex ) {
          //console.log('add contours for slice', id, contourPoints, bb_center_x, bb_center_y, sectionindex)
@@ -864,6 +866,7 @@ var WebGLApp = new function () {
       self.removeAssembly( assembly_data.id );
     }
     assemblies[ assembly_data.id ] = new Assembly( assembly_data, high_res );
+    //assemblies[ assembly_data.id ].add_contour_to_scene();
     return assemblies[ assembly_data.id ];
   }
 
@@ -1032,8 +1035,9 @@ var WebGLApp = new function () {
   }
 
   function createScene( geometry, start ) {
+    console.log('scale', scale);
     //addMesh( geometry, scale, 0, 0, 0,  0,0,0, new THREE.MeshPhongMaterial( { ambient: 0x030303, color: 0x030303, specular: 0x990000, shininess: 30 } ) );
-    addMesh( geometry, scale, 0, 0, 0,  0,0,0, new THREE.MeshBasicMaterial( { color: 0xff0000, opacity:0.2, side: THREE.DoubleSide } ) ); // , transparent:true
+    addMesh( geometry, scale, 0, 0, 0,  0,0,0, new THREE.MeshBasicMaterial( { color: 0xff0000, opacity:0.2, side: THREE.DoubleSide, wireframe: true, wireframeLinewidth: 2 } ) ); // , transparent:true
   }
 
   function drawmesh() {
@@ -1434,7 +1438,7 @@ var WebGLApp = new function () {
           {
             self.removeAssembly( assembly.id );
           })
-          .attr('src','widgets/themes/kde/delete.png')
+          .attr('src', STATIC_URL_JS + 'widgets/themes/kde/delete.png')
           .text('Remove!')
     );
     rowElement.append( td );
@@ -1532,7 +1536,7 @@ var WebGLApp = new function () {
       {
         TracingTool.goToNearestInNeuronOrSkeleton( 'skeleton', skeleton.id );
       })
-      .attr('src','widgets/themes/kde/activate.gif')
+      .attr('src', STATIC_URL_JS + 'widgets/themes/kde/activate.gif')
     );
     td.append( $(document.createElement("img")).attr({
           id:    'skeletonaction-remove-' + skeleton.id,
@@ -1542,7 +1546,7 @@ var WebGLApp = new function () {
           {
             self.removeSkeleton( skeleton.id );
           })
-          .attr('src','widgets/themes/kde/delete.png')
+          .attr('src', STATIC_URL_JS + 'widgets/themes/kde/delete.png')
           .text('Remove!')
     );
     rowElement.append( td );
@@ -1669,6 +1673,36 @@ var WebGLApp = new function () {
     }
   }
 
+  self.load_assembly_mesh = function() {
+    console.log('load assembly mesh ...');
+    var loader = new THREE.JSONLoader( true );
+    var s = Date.now(),
+        callback = function( geometry ) { createScene( geometry, s ) };
+    jQuery.ajax({
+        url: django_url+self.project_id+"/stack/"+self.stack_id+"/assembly/"+ SegmentationAnnotations.current_active_assembly +"/mesh",
+        type: "POST",
+        dataType: "json",
+        success: function ( mesh ) {
+          console.log('mesh', mesh);
+          // loop over objects
+          var vert = mesh.vertices;
+          var vert2 = [];
+          for ( var i = 0; i < vert.length; i+=3 ) {
+            var fv = transform_coordinates([vert[i]*resolution.x,
+              vert[i+1]*resolution.y,
+              vert[i+2]*resolution.z]);
+            console.log('before', [vert[i],vert[i+1],vert[i+2]], 'after', fv )
+            vert2.push( fv[0] );
+            vert2.push( fv[1] );
+            vert2.push( fv[2] );
+          }
+          mesh.vertices = vert2;
+          console.log('create object with mesh', mesh);
+          loader.createModel( mesh, callback );
+        }
+      });
+  }
+
   self.addActiveAssemblyToView = function() {
     requestQueue.register(django_url + project.id + '/assembly/' + SegmentationAnnotations.current_active_assembly + '/neuronname', "POST", {}, function (status, text, xml) {
       var e;
@@ -1682,6 +1716,9 @@ var WebGLApp = new function () {
           var assembly_data = SegmentationAnnotations.get_assemblydata_to_visualize();
           assembly_data['baseName'] = e['neuronname'];
           var assembly = self.addAssembly( assembly_data, false ); // TODO: how to active highres?
+
+          self.load_assembly_mesh();
+
           self.addAssemblyToTable( assembly );
       }}});
   }
