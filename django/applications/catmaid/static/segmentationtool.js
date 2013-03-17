@@ -655,6 +655,20 @@ function SegmentationTool()
       }
     }) );
 
+    this.addAction( new Action({
+      helpText: "Run async job",
+      keyShortcuts: {
+          'L': [ 76 ]
+      },
+      run: function (e) {
+          if (!mayEdit()) {
+              return false;
+          }
+          SegmentationAnnotations.run_async_process();
+          return true;
+      }
+    }) );
+
     var keyCodeToAction = getKeyCodeToActionMap(actions);
 
     /** This function should return true if there was any action

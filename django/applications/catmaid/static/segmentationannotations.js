@@ -196,6 +196,19 @@ var SegmentationAnnotations = new function()
         self.stack.update();
     }
 
+    self.run_async_process = function() {
+        $.ajax({
+          "dataType": 'json',
+          "type": "POST",
+          "cache": false,
+          "url": django_url + project.id + '/stack/' + get_current_stack().id + '/run-sopnet',
+          "data": {},
+          "success": function(data) {
+             console.log('returned run sopnet', data)
+          }
+        });
+    }
+
     self.save_assembly = function() {
         // update all slices and segment with assembly id
         var result = self.find_loose_ends();
