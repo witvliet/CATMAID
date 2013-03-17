@@ -245,27 +245,27 @@ var editToolActions = [
 		}
 	}),
 
-/*    new Action({
-       helpText: "Canvas Tool",
-       buttonID: 'edit_button_canvas',
-       buttonName: 'canvas',
-       keyShortcuts: {
+  new Action({
+     helpText: "Canvas Tool",
+     buttonID: 'edit_button_canvas',
+     buttonName: 'canvas_drawing',
+     keyShortcuts: {
 
-       },
-       run: function (e) {
-         // check if zoom level 0 active
-          if( project.focusedStack.s !== 0 ) {
-            alert('Segmentation Tool only works on zoom-level 0!');
-            return;
-          }
-          project.setTool( new CanvasTool() );
-       }
-    }), */
+     },
+     run: function (e) {
+       // check if zoom level 0 active
+        if( project.focusedStack.s !== 0 ) {
+          alert('Segmentation Tool only works on zoom-level 0!');
+          return;
+        }
+        project.setTool( new CanvasTool() );
+     }
+  }),
 
   new Action({
      helpText: "Segmentation Tool",
      buttonID: 'edit_button_segmentation',
-     buttonName: 'canvas',
+     buttonName: 'canvas_segmentation',
      keyShortcuts: {
      },
      run: function (e) {
