@@ -1,0 +1,20 @@
+{% block extrahead %}
+<script src="{{ catmaid_url }}libs/jquery/jquery.js" type="text/javascript"></script>
+{% endblock %}
+
+{% block breadcrumbs %}
+{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <h2>Segment Decision</h2>
+    
+    <h3>Origin Section / Target Section</h3>
+    <img src="{{ catmaid_url }}/segment/image?segmentid={{ segmentid }}" />
+
+    <br />
+    YES | NO
+
+  </div>
+{% endblock %}
+

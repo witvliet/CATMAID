@@ -79,6 +79,42 @@ def get_slice(request, project_id=None, stack_id=None):
 
     return HttpResponse(JSONEncoder().encode(list(slices)), mimetype="text/json")
 
+def get_sliceimage(request):
+    project_id=11
+    stack_id=15
+
+    sectionindex = int(request.GET.get('sectionindex', '0'))
+    sliceid = int(request.GET.get('sliceid', '0'))
+
+    stack = get_object_or_404(Stack, pk=stack_id)
+    p = get_object_or_404(Project, pk=project_id)
+    
+    # slices = Slices.objects.filter(
+    #     stack = stack,
+    #     project = p,
+    #     sectionindex = sectionindex,
+    #     center_x__lt = x + width,
+    #     center_x__gt = x,
+    #     center_y__lt = y + height,
+    #     center_y__gt = y,
+    #     assembly__isnull = False
+    #     ).all().values('assembly_id', 'sectionindex', 'slice_id',
+    #     'node_id', 'min_x', 'min_y', 'max_x', 'max_y', 'center_x',
+    #     'center_y', 'threshold', 'size', 'status')
+    # sliceinfo = StackSliceInfo.objects.get(stack=stack)
+    height, width = 50, 50
+    data = np.zeros( (height, width), dtype = np.uint8 )
+    # for slice in slices:
+    #     # print >> sys.stderr, 'slice', slice['slice_id']
+    #     data[slice['min_y']-y:slice['max_y']-y, slice['min_x']-x:slice['max_x']-x] = 255
+    #     #pic = Image.open(os.path.join(sliceinfo.slice_base_path, '0', '1.png'))
+    #     #arr = np.array( pic.getdata() ).reshape(pic.size[0], pic.size[1], 2)
+
+    pilImage = Image.frombuffer('RGBA',(width,height),data,'raw','L',0,1)
+    response = HttpResponse(mimetype="image/png")
+    pilImage.save(response, "PNG")
+    return response
+
 def slices_cog(request, project_id=None, stack_id=None):
     """ Return all slice centers """
     height = int(request.GET.get('height', '0'))
