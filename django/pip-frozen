@@ -20,3 +20,7 @@ python-libuuid==0.9.0
 pillow==1.7.8
 south==0.7.6
 scipy==0.11.0
+python-openid>=2.2.5
+requests>=1.0.3
+requests-oauthlib>=0.3.0
+django-allauth==0.9.0

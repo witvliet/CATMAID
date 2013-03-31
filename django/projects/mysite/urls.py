@@ -2,12 +2,8 @@ from django.conf.urls.defaults import patterns, include, url
 from django.conf import settings
 from django.views.generic import TemplateView
 
-<<<<<<< HEAD
 from catmaid.views import *
-=======
-from catmaid.views import HomepageView, UseranalyticsView, ExportWidgetView
-from neurocity.views import SegmentDecisionView
->>>>>>> Create new app with authentication backends
+from neurocity.views import *
 
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
@@ -27,6 +23,9 @@ urlpatterns = patterns('',
     (r'^segmentdecision', SegmentDecisionView.as_view()),
     (r'^segment/image$', 'neurocity.control.segment.get_segment_image'),
     (r'^accounts/', include('allauth.urls')),
+
+    # NeuroCity home
+    url(r'^nc/$', HomePageView.as_view(), name='home'),
 )
 
 # urlpatterns += patterns('',
@@ -54,9 +53,9 @@ urlpatterns += patterns('',
 urlpatterns += patterns(
     '',
     
-    (r'^accounts/login$', 'catmaid.control.login_user'),
-    (r'^accounts/logout$', 'catmaid.control.logout_user'),
-    (r'^accounts/(?P<project_id>\d+)/all-usernames$', 'catmaid.control.all_usernames'),
+    (r'^accounts/catmaid/login$', 'catmaid.control.login_user' ),
+    (r'^accounts/catmaid/logout$', 'catmaid.control.logout_user'),
+    (r'^accounts/catmaid/(?P<project_id>\d+)/all-usernames$', 'catmaid.control.all_usernames'),
 
     (r'^projects$', 'catmaid.control.projects'),
     (r'^user-list$', 'catmaid.control.user_list'),

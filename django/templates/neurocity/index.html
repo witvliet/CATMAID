@@ -1,0 +1,20 @@
+{% extends "neurocity/common.html" %}
+
+{% block main %}
+
+<h1>NeuroCity</h1>
+
+<p>Welcome</p>
+
+{% if messages %}
+	<div>
+	  <strong>Messages:</strong>
+	  <ul>
+		{% for message in messages %}
+			<li>{{message}}</li>
+		{% endfor %}
+	  </ul>
+	</div>
+{% endif %}
+
+{% endblock %}

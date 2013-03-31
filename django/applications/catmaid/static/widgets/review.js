@@ -271,7 +271,7 @@ var ReviewSystem = new function()
                     if ("REPLACED" === skeleton_data.error) { return; }
                     alert( skeleton_data.error );
                 } else {
-                    requestQueue.register(django_url + "accounts/" + projectID + "/all-usernames", "POST", {},
+                    requestQueue.register(django_url + "accounts/catmaid/" + projectID + "/all-usernames", "POST", {},
                         function(status, text) {
                             if (200 !== status) { return; }
                             var usernames = $.parseJSON(text);

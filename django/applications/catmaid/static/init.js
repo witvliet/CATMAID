@@ -115,7 +115,7 @@ function login(
 	if ( account || password ) {
 		// Attempt to login.
 		requestQueue.register(
-			django_url + 'accounts/login',
+			django_url + 'accounts/catmaid/login',
 			'POST',
 			{ name : account, pwd : password },
 			loginCompletion );
@@ -123,7 +123,7 @@ function login(
 	else {
 		// Check if the user is logged in.
 		requestQueue.register(
-			django_url + 'accounts/login',
+			django_url + 'accounts/catmaid/login',
 			'GET',
 			undefined,
 			loginCompletion );
@@ -187,7 +187,7 @@ function logout() {
   if (msg_timeout) window.clearTimeout(msg_timeout);
 
   ui.catchEvents("wait");
-  requestQueue.register(django_url + 'accounts/logout', 'POST', undefined, handle_logout);
+  requestQueue.register(django_url + 'accounts/catmaid/logout', 'POST', undefined, handle_logout);
 
   return;
 }
