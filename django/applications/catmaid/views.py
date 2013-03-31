@@ -14,6 +14,7 @@ class HomepageView(TemplateView):
         profile_context = self.request.user.userprofile.as_dict()
         return dict(context.items() + profile_context.items())
 
+
 class UseranalyticsView(TemplateView):
     template_name = "catmaid/useranalytics.html"
 

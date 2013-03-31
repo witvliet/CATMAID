@@ -2,7 +2,12 @@ from django.conf.urls.defaults import patterns, include, url
 from django.conf import settings
 from django.views.generic import TemplateView
 
+<<<<<<< HEAD
 from catmaid.views import *
+=======
+from catmaid.views import HomepageView, UseranalyticsView, ExportWidgetView
+from neurocity.views import SegmentDecisionView
+>>>>>>> Create new app with authentication backends
 
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
@@ -19,7 +24,9 @@ intlist = r'[0-9]+(,[0-9]+)*'
 # Add the main index.html page at the root:
 urlpatterns = patterns('',
     (r'^$', HomepageView.as_view()),
-    (r'^segment/image$', 'catmaid.control.get_segment_image'),
+    (r'^segmentdecision', SegmentDecisionView.as_view()),
+    (r'^segment/image$', 'neurocity.control.segment.get_segment_image'),
+    (r'^accounts/', include('allauth.urls')),
 )
 
 # urlpatterns += patterns('',
@@ -47,7 +54,6 @@ urlpatterns += patterns('',
 urlpatterns += patterns(
     '',
     
-    (r'^login$', 'catmaid.control.login_vnc'),
     (r'^accounts/login$', 'catmaid.control.login_user'),
     (r'^accounts/logout$', 'catmaid.control.logout_user'),
     (r'^accounts/(?P<project_id>\d+)/all-usernames$', 'catmaid.control.all_usernames'),

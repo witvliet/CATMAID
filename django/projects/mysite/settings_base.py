@@ -48,13 +48,33 @@ INSTALLED_APPS = (
     'catmaid',
     'guardian',
     'south',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    # ... include the providers you want to enable:
+    # 'allauth.socialaccount.providers.dropbox',
+    'allauth.socialaccount.providers.facebook',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.linkedin',
+    'allauth.socialaccount.providers.openid',
+    'allauth.socialaccount.providers.persona',
+    'allauth.socialaccount.providers.soundcloud',
+    'allauth.socialaccount.providers.stackexchange',
+    # 'allauth.socialaccount.providers.twitch',
+    'allauth.socialaccount.providers.twitter',
+    # 'allauth.socialaccount.providers.weibo',
+    # 'bootstrapform',
 )
 
 # Use the default template context processors. If custom ones should be
 # added, please append it to the tuple to make sure the default processors
 # are still available. See this page for further detail:
 # http://blog.madpython.com/2010/04/07/django-context-processors-best-practice/
-TEMPLATE_CONTEXT_PROCESSORS = DEFAULT_SETTINGS.TEMPLATE_CONTEXT_PROCESSORS
+TEMPLATE_CONTEXT_PROCESSORS = DEFAULT_SETTINGS.TEMPLATE_CONTEXT_PROCESSORS + (
+    "allauth.account.context_processors.account",
+    "allauth.socialaccount.context_processors.socialaccount",
+    )
 
 # The URL requests are redirected after login
 LOGIN_REDIRECT_URL = '/'
@@ -65,6 +85,8 @@ LOGIN_URL = '/accounts/login'
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend', # default
     'guardian.backends.ObjectPermissionBackend',
+    # `allauth` specific authentication methods, such as login by e-mail
+    "allauth.account.auth_backends.AuthenticationBackend",
 )
 
 # User-ID of the anonymous (i.e. not-logged-in) user. This is usualld -1.
