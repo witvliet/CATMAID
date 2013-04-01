@@ -65,6 +65,7 @@ INSTALLED_APPS = (
     'allauth.socialaccount.providers.twitter',
     # 'allauth.socialaccount.providers.weibo',
     # 'bootstrapform',
+    # 'twitter_bootstrap',
 )
 
 # Use the default template context processors. If custom ones should be

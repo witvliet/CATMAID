@@ -1,0 +1,20 @@
+ul.socialaccount_providers li {
+display: inline;
+}
+a.socialaccount_provider, span.socialaccount_provider {
+width: 25px;
+height: 25px;
+display: inline-block;
+text-indent: -9000px;
+overflow: hidden;
+vertical-align: middle;
+}
+
+.socialaccount_provider.openid.google,
+.socialaccount_provider.google {
+	background: url(../google2.png);
+}
+
+.socialaccount_provider.facebook {
+	background: url(../facebook2.png);
+}

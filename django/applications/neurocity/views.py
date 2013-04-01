@@ -15,7 +15,7 @@ class SegmentDecisionView(TemplateView):
 
 class HomePageView(TemplateView):
 
-    template_name = "neurocity/index.html"
+    template_name = "neurocity/index2.html"
 
     def get_context_data(self, **kwargs):
         context = super(HomePageView, self).get_context_data(**kwargs)
