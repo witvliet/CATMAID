@@ -55,17 +55,19 @@ INSTALLED_APPS = (
     # 'allauth.socialaccount.providers.dropbox',
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.google',
-    'allauth.socialaccount.providers.github',
-    'allauth.socialaccount.providers.linkedin',
-    'allauth.socialaccount.providers.openid',
-    'allauth.socialaccount.providers.persona',
-    'allauth.socialaccount.providers.soundcloud',
-    'allauth.socialaccount.providers.stackexchange',
+    # 'allauth.socialaccount.providers.github',
+    # 'allauth.socialaccount.providers.linkedin',
+    # 'allauth.socialaccount.providers.openid',
+    # 'allauth.socialaccount.providers.persona',
+    # 'allauth.socialaccount.providers.soundcloud',
+    # 'allauth.socialaccount.providers.stackexchange',
     # 'allauth.socialaccount.providers.twitch',
-    'allauth.socialaccount.providers.twitter',
+    # 'allauth.socialaccount.providers.twitter',
     # 'allauth.socialaccount.providers.weibo',
     # 'bootstrapform',
     # 'twitter_bootstrap',
+    # 'registration',
+    'uni_form',
 )
 
 # Use the default template context processors. If custom ones should be
@@ -75,10 +77,11 @@ INSTALLED_APPS = (
 TEMPLATE_CONTEXT_PROCESSORS = DEFAULT_SETTINGS.TEMPLATE_CONTEXT_PROCESSORS + (
     "allauth.account.context_processors.account",
     "allauth.socialaccount.context_processors.socialaccount",
+    "django.core.context_processors.request",
     )
 
 # The URL requests are redirected after login
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/nc'
 
 # The URL where requests are redirected after login
 LOGIN_URL = '/accounts/login'
@@ -99,6 +102,8 @@ ANONYMOUS_USER_ID = -1
 ONTOLOGY_DUMMY_PROJECT_ID = -1
 
 SOUTH_DATABASE_ADAPTERS = {'default': 'south.db.postgresql_psycopg2'}
+
+# ACCOUNT_ACTIVATION_DAYS = 7 # One-week activation window; you may, of course, use a different value.
 
 # The current site in the django_site database table. This is used so that
 # applications can hook into specific site(s) and a single database can manage

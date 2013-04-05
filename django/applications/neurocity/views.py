@@ -13,11 +13,35 @@ class SegmentDecisionView(TemplateView):
         context['target_section'] = 0
         return context
 
-class HomePageView(TemplateView):
+class NeurocityHomeView(TemplateView):
 
-    template_name = "neurocity/index2.html"
+    template_name = "neurocity/home.html"
 
     def get_context_data(self, **kwargs):
-        context = super(HomePageView, self).get_context_data(**kwargs)
+        context = super(NeurocityHomeView, self).get_context_data(**kwargs)
         # context['latest_articles'] = Article.objects.all()[:5]
+        return context
+
+class LearnView(TemplateView):
+
+    template_name = "neurocity/learn.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(LearnView, self).get_context_data(**kwargs)
+        return context
+
+class TestView(TemplateView):
+
+    template_name = "neurocity/test.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(TestView, self).get_context_data(**kwargs)
+        return context
+
+class ContributeView(TemplateView):
+
+    template_name = "neurocity/contribute.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(Contribute, self).get_context_data(**kwargs)
         return context

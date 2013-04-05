@@ -23,9 +23,13 @@ urlpatterns = patterns('',
     (r'^segmentdecision', SegmentDecisionView.as_view()),
     (r'^segment/image$', 'neurocity.control.segment.get_segment_image'),
     (r'^accounts/', include('allauth.urls')),
+    # (r'^nc/accounts/', include('registration.backends.default.urls')),
 
     # NeuroCity home
-    url(r'^nc/$', HomePageView.as_view(), name='home'),
+    url(r'^nc/$', NeurocityHomeView.as_view(), name='home'),
+    url(r'^nc/learn$', LearnView.as_view(), name='home'),
+    url(r'^nc/test$', TestView.as_view(), name='home'),
+    url(r'^nc/contribute$', ContributeView.as_view(), name='home'),
 )
 
 # urlpatterns += patterns('',
