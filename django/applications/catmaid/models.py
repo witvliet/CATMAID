@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from django_countries import CountryField
 
 from .fields import Double3DField, Integer3DField, IntegerArrayField, RGBAField
 
@@ -863,6 +864,8 @@ class UserProfile(models.Model):
         default=settings.PROFILE_SHOW_TRACING_TOOL)
     show_ontology_tool = models.BooleanField(
         default=settings.PROFILE_SHOW_ONTOLOGY_TOOL)
+
+    country = CountryField(default='US')
 
     def __unicode__(self):
         return self.user.username

@@ -75,19 +75,33 @@
               </ul>
 
             {% if user.is_authenticated %}
-                <a href="{% url 'account_email' %}">Change E-mail</a> |
-                <a href="{% url 'account_logout' %}">Sign Out</a>
 
-                {% trans "Logged in" %}: {{ user.username }} 
-                
-                
+            <div class="navbar-form pull-right">
+              <ul class="nav">
+                <li class="dropdown ">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                    {% trans "Logged in" %}: {{ user.username }}  <b class="caret"></b></a>
+                  <ul class="dropdown-menu">
+                    <li><a href="{% url 'account_email' %}">Change E-mail</a></li>
+                    <li><a href="#">Another action</a></li>
+                    <li><a href="#">Something else here</a></li>
+                    <li class="divider"></li>
+                    <li class="nav-header">Nav header</li>
+                    <li><a href="#">Separated link</a></li>
+                    <li><a href="{% url 'account_logout' %}">Sign Out</a></li>
+                  </ul>
+                </li> 
+              </ul>
+            </div>
+              
 
             {% else %}
+              
               <div class="navbar-form pull-right">
+                <a href="/accounts/signup" role="button" class="btn btn-small btn-inverse" data-toggle="modal">Sign up</a>
                   <a href="/accounts/login" 
                     role="button" class="btn btn-small btn-inverse" data-toggle="modal">Sign in</a>
-                  <a href="/accounts/signup" role="button" class="btn btn-small btn-inverse" data-toggle="modal">Register</a>
-
+                  
               </div>
             {% endif %}
 
@@ -139,7 +153,7 @@
 -->
 
 
-<div class="container">
+<div class="container-fluid">
 
   <!-- Main hero unit for a primary marketing message or call to action -->
   <div class="hero-unit">

@@ -7,11 +7,25 @@
     <div id="myCarousel" class="carousel slide">
       <div class="carousel-inner">
         <div class="item active">
-          <img src="{{ STATIC_URL }}neurocity/slide-03.jpg" alt="">
+          <!-- <img src="{{ STATIC_URL }}neurocity/slide-03.jpg" alt=""> -->
+
           <div class="container">
             <div class="carousel-caption">
+
               <h1>Learn</h1>
               <p class="lead">Contributions...</p>
+              <br />
+              <div align="center">
+                <table>
+                  <tr>
+                    <td><img src="http://localhost:8000/segment/image?originsection=3&targetsection=4&segmentid=3052&edge=0"></td>
+                    <td><img src="http://localhost:8000/segment/image?originsection=3&targetsection=4&segmentid=3052&edge=1"></td>
+                  </tr>
+                </table>
+
+                <a class="btn btn-large btn-primary btn-success" href="#">Correct</a>
+                <a class="btn btn-large btn-primary btn-danger" href="#">Wrong</a>
+              </div>
               
             </div>
           </div>

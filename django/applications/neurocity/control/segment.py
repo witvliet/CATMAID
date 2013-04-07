@@ -17,24 +17,8 @@ try:
 except:
     pass
 
-def get_segment_image(request):
-
-    project_id = 11
-    stack_id = 15
-    scale = 0
-    xboundary = 20
-    yboundary = 20
-    spacing = 40
-
-    segmentid = request.GET.get('segmentid', '0')
-    sectionindex = int(request.GET.get('sectionindex', '0'))
-    sliceid = int(request.GET.get('sliceid', '0'))
-
-    stack = get_object_or_404(Stack, pk=stack_id)
-    p = get_object_or_404(Project, pk=project_id)
-
-    fpath=os.path.join( settings.HDF5_STORAGE_PATH, '{0}_{1}_raw.hdf'.format( project_id, stack_id) )
-
+def get_segment_sequence():
+    """ Sampling from the data volume """
     segments = Segments.objects.filter(
             stack = stack,
             project = p,
@@ -44,86 +28,131 @@ def get_segment_image(request):
     segment = random.choice( segments ) #segments[0]
     print 'segment selected', segment.segmentid, segment.id
 
-    if segment.segmenttype == 2:
-        origin_slice = Slices.objects.get(
-            stack = stack,
-            project = p,
-            node_id = str(segment.origin_section) + '_' + str(segment.origin_slice_id) )
+    return segment
 
-        target_slice = Slices.objects.get(
+def get_segment( project, stack, origin_section, target_section, segment_id ):
+    """ TODO: add segment node_id column to database """
+    segments = Segments.objects.filter(
             stack = stack,
-            project = p,
-            node_id = str(segment.target_section) + '_' + str(segment.target1_slice_id) )
-        print 'target slice', target_slice
+            project = project,
+            origin_section = origin_section,
+            target_section = target_section,
+            segmentid = segment_id ).all()
+    if len(segments) == 0:
+        return None
     else:
-        return
+        return segments[0] # what if more than one found?
 
+def get_segment_image(request):
+
+    project_id = 11
+    stack_id = 15
+    scale = 0
+    xboundary = 20
+    yboundary = 20
+    spacing = 40
+    border = 30
+    edge = 0
+    only_raw = False
+    segment_node_id = '5_10'
+
+    stack = get_object_or_404(Stack, pk=stack_id)
+    project = get_object_or_404(Project, pk=project_id)
+    fpath = os.path.join( settings.HDF5_STORAGE_PATH, '{0}_{1}_raw.hdf'.format( project_id, stack_id) )
     sliceinfo = StackSliceInfo.objects.get(stack=stack)
 
-    def slice_parameters( slice ):
-        width = slice.max_x - slice.min_x 
-        height = slice.max_y - slice.min_y
-        x = slice.min_x
-        y = slice.min_y
-        z = slice.sectionindex
-        x -= xboundary        
-        width += 2*xboundary
-        y -= yboundary
-        height += 2*yboundary
-    
-        fnametuple = tuple(str(slice.slice_id))
+    segmentid = request.GET.get('segmentid', '0')
+    originsection = int(request.GET.get('originsection', '0'))
+    targetsection = int(request.GET.get('targetsection', '0'))
+    edge = int(request.GET.get('edge', '0'))
+
+    # retrieve segment
+    segment = get_segment( project, stack, originsection, targetsection, segmentid )
+
+    if segment is None:
+        result_img = Image.fromarray(np.random.random_integers(0, 255, (512,512)).astype(np.uint8) )
+        response = HttpResponse(mimetype="image/png")
+        result_img.save(response, "PNG")
+        return response
+
+    # retrieve associated slices
+    slice_node_ids = [ str(segment.origin_section) + '_' + str(segment.origin_slice_id) ]
+    sections = [ segment.origin_section ]
+    if segment.segmenttype == 2:
+        slice_node_ids.append( str(segment.target_section) + '_' + str(segment.target1_slice_id) )
+        sections.append( segment.target_section )
+        slicelist = [0] if edge == 0 else [1]
+    elif segment.segmenttype == 3:
+        slice_node_ids.append( str(segment.target_section) + '_' + str(segment.target1_slice_id) ,
+            str(segment.target_section) + '_' + str(segment.target2_slice_id) )
+        sections.append( segment.target_section )
+        sections.append( segment.target_section )
+        slicelist = [0] if edge == 0 else [1,2]
+
+    slices = Slices.objects.filter(
+        stack = stack,
+        project = project,
+        node_id__in = slice_node_ids )
+
+    # find maximal bounding box across all slices
+    min_x, min_y, max_x, max_y = slices[0].min_x, slices[0].min_y, slices[0].max_x, slices[0].max_y
+    for slice in slices[1:]:
+        min_x = min(min_x, slice.min_x)
+        min_y = min(min_y, slice.min_y)
+        max_x = max(max_x, slice.max_x)
+        max_y = max(max_y, slice.max_y)
+
+    # compute offsets
+    offsets = []
+    for slice in slices:
+        offsets.append( (abs(slice.min_x - min_x), abs(slice.min_y - min_y) ) )
+
+    width, height = max_x - min_x, max_y - min_y
+
+    def slice_path( node_id ):
+        sectionindex, slice_id = node_id.split('_')
+        fnametuple = tuple(str(slice_id))
         fname = fnametuple[-1] + '.' + sliceinfo.file_extension
         fpathslice = fnametuple[:-1]
         slice_path = os.path.join( 
             str(sliceinfo.slice_base_path).rstrip('\n'), 
-            str(slice.sectionindex), 
+            str(sectionindex), 
             '/'.join(fpathslice),
             fname )
+        return slice_path
 
-        if os.path.exists( slice_path ):
-            pic = Image.open( slice_path )
-            pix = np.array(pic.getdata()).reshape(pic.size[1], pic.size[0], 2)
-            pix = pix[:,:,0]
-            pixarr = np.zeros( (height,width), dtype = np.uint8 )
-            pixarr[yboundary:yboundary+pix.shape[0],xboundary:xboundary+pix.shape[1]] = pix
+    merged_image = np.zeros( (height+2*border, width+2*border, 4), dtype = np.uint8 )
 
+    def load_raw( min_x, min_y, max_x, max_y, z ):
         with closing(h5py.File(fpath, 'r')) as hfile:
             hdfpath = '/' + str(int(scale)) + '/' + str(z) + '/data'
-            image_data=hfile[hdfpath]
-            yends = y+height
-            xends = x+width
-            if yends > image_data.shape[0]:
-                yends = image_data.shape[0]
-            if xends > image_data.shape[1]:
-                xends = image_data.shape[1]
-            if x < 0: x = 0
-            if y < 0: y = 0
-            data=image_data[y:yends,x:xends]
-            mask = pixarr[:,:] == 255
-            data[mask] = 100
-            pilImage = Image.frombuffer('RGBA',(width,height),data,'raw','L',0,1)
+            image_data = hfile[hdfpath]
+            print 'miny', min_y,(max_y-min_y)
+            print 'minx', min_x,(max_x-min_x)
+            data = image_data[min_y:min_y+(max_y-min_y),min_x:min_x+(max_x-min_x)]
+        return data
 
-        return pilImage
-        # return x,y,slice.sectionindex,width,height,pixarr
-    
-    # x,y,z,width,height,pixarr = slice_parameters( origin_slice )
-    # x,y,z,width,height,pixarr = slice_parameters( target_slice )
+    if edge == 0:
+        data = load_raw( min_x-border, min_y-border, max_x+border, max_y+border, sections[0] )
+    else:
+        data = load_raw( min_x-border, min_y-border, max_x+border, max_y+border, sections[1] )
 
-    origin_img = slice_parameters( origin_slice )
-    target_img = slice_parameters( target_slice )
+    merged_image[:,:,0] = data
+    merged_image[:,:,1] = data
+    merged_image[:,:,2] = data
+    merged_image[:,:,3] = 255
 
-    bigwidth = origin_img.size[0] + spacing + target_img.size[0]
-    bigheight = max( origin_img.size[1], target_img.size[1] )
-    print 'bigheight', bigheight, 'bigwidth', bigwidth
+    if not only_raw:
+        for sliceindex in slicelist:
+            if os.path.exists( slice_path( slice_node_ids[sliceindex] ) ):
+                pic = Image.open( slice_path( slice_node_ids[sliceindex] ) )
+                pix = np.array(pic.getdata()).reshape(pic.size[1], pic.size[0], 2)
+                pix = pix[:,:,0].astype(np.uint8)
+                from_y = offsets[sliceindex][1]+border
+                from_x = offsets[sliceindex][0]+border
+                merged_image[from_y:from_y+pix.shape[0], from_x:from_x+pix.shape[1],3] -= pix*0.7
 
-    result_img = Image.new('RGBA', (bigheight, bigwidth) )
-    result_img.paste( origin_img, (0, 0))
-    result_img.paste( target_img, (0, origin_img.size[0] + spacing))
-    #origin_img = origin_img.resize( (400, 400) )
-
-    
-
-
+    result_img =  Image.fromarray( merged_image ) # Image.new('RGBA', (height, width) )
     response = HttpResponse(mimetype="image/png")
     result_img.save(response, "PNG")
     return response
