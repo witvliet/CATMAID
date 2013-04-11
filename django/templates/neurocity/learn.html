@@ -1,4 +1,5 @@
 {% extends "neurocity/base.html" %}
+{% load i18n %}
 
 {% block content %}
 
@@ -12,7 +13,7 @@
           <div class="container">
             <div class="carousel-caption">
 
-              <h1>Learn</h1>
+              <h1>{% trans "Learn" %}</h1>
               <p class="lead">Contributions...</p>
               <br />
               <div align="center">
@@ -23,8 +24,9 @@
                   </tr>
                 </table>
 
-                <a class="btn btn-large btn-primary btn-success" href="#">Correct</a>
-                <a class="btn btn-large btn-primary btn-danger" href="#">Wrong</a>
+                <a class="btn btn-large btn-primary btn-success" href="#">Good</a>
+                <a class="btn btn-large btn-primary btn-danger" href="#">Bad</a>
+                <a class="btn btn-large btn-primary btn-warning" href="#">Unclear</a>
               </div>
               
             </div>

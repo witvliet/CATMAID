@@ -1,0 +1,23 @@
+{% extends "neurocity/base.html" %}
+{% load i18n %}
+
+{% block content %}
+
+<h2>{% trans "Set language" %}</h2>
+
+{% trans "Current selected language" %}: {{ LANGUAGE_CODE|language_name_local }}
+
+<form action="/i18n/setlang/" method="post">
+{% csrf_token %}
+<input name="next" type="hidden" value="/nc/" />
+<select name="language">
+{% get_language_info_list for LANGUAGES as languages %}
+{% for language in languages %}
+<option value="{{ language.code }}">{{ language.name_local }} ({{ language.code }})</option>
+{% endfor %}
+</select>
+<input type="submit" value="Set" />
+</form>
+
+{% endblock %}
+

@@ -1,4 +1,12 @@
 from django.views.generic import TemplateView
+from django.utils.translation import ugettext as _
+
+from django.shortcuts import render_to_response
+from django.template import RequestContext
+
+def language_view(request):
+    return render_to_response('neurocity/setlanguage.html', {},
+                          context_instance=RequestContext(request))
 
 class SegmentDecisionView(TemplateView):
     """ This view returns a page to decide on the correctness of a segment.
@@ -44,4 +52,4 @@ class ContributeView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(Contribute, self).get_context_data(**kwargs)
-        return context
+        return get_context_data

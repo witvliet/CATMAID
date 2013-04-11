@@ -24,13 +24,14 @@ TEMPLATE_LOADERS = (
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'catmaid.middleware.AnonymousAuthenticationMiddleware',
     'catmaid.middleware.AjaxExceptionMiddleware', 
     'django.middleware.transaction.TransactionMiddleware',
-    )
+)
 
 ROOT_URLCONF = 'mysite.urls'
 
@@ -68,6 +69,7 @@ INSTALLED_APPS = (
     # 'twitter_bootstrap',
     # 'registration',
     'uni_form',
+    'rosetta',
 )
 
 # Use the default template context processors. If custom ones should be
@@ -78,6 +80,8 @@ TEMPLATE_CONTEXT_PROCESSORS = DEFAULT_SETTINGS.TEMPLATE_CONTEXT_PROCESSORS + (
     "allauth.account.context_processors.account",
     "allauth.socialaccount.context_processors.socialaccount",
     "django.core.context_processors.request",
+    "django.core.context_processors.i18n"
+
     )
 
 # The URL requests are redirected after login

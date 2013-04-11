@@ -1,4 +1,5 @@
 from django.conf.urls.defaults import patterns, include, url
+from django.conf.urls.i18n import i18n_patterns
 from django.conf import settings
 from django.views.generic import TemplateView
 
@@ -23,18 +24,19 @@ urlpatterns = patterns('',
     (r'^segmentdecision', SegmentDecisionView.as_view()),
     (r'^segment/image$', 'neurocity.control.segment.get_segment_image'),
     (r'^accounts/', include('allauth.urls')),
-    # (r'^nc/accounts/', include('registration.backends.default.urls')),
-
-    # NeuroCity home
-    url(r'^nc/$', NeurocityHomeView.as_view(), name='home'),
-    url(r'^nc/learn$', LearnView.as_view(), name='home'),
-    url(r'^nc/test$', TestView.as_view(), name='home'),
-    url(r'^nc/contribute$', ContributeView.as_view(), name='home'),
+    (r'^i18n/', include('django.conf.urls.i18n')),
+    url(r'^rosetta/', include('rosetta.urls')),
 )
 
-# urlpatterns += patterns('',
+urlpatterns += i18n_patterns('',
+    # NeuroCity home
+    url(r'^nc/$', NeurocityHomeView.as_view(), name='nc_home'),
+    url(r'^nc/learn$', LearnView.as_view(), name='nc_learn'),
+    url(r'^nc/test$', TestView.as_view(), name='nc_test'),
+    url(r'^nc/contribute$', ContributeView.as_view(), name='nc_contribute'),
+    url(r'^nc/setlanguage$', language_view, name='set_language'),
 
-# )
+)
 
 # Neuron Catalog
 urlpatterns += patterns('',
