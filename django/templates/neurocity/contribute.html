@@ -1,0 +1,27 @@
+{% extends "neurocity/base.html" %}
+{% load i18n %}
+
+{% block content %}
+
+<div align="center">
+
+  <a class="btn btn-large btn-primary btn-success" href="">Good</a>
+  <a class="btn btn-large btn-primary btn-danger" href="">Bad</a>
+  <a class="btn btn-large btn-primary btn-warning" href="">Unclear</a>
+  <br /><br />
+
+  <table>
+    <tr>
+      <td><img src="http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=0"></td>
+      <td><img src="http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=1"></td>
+    </tr>
+  </table>
+
+  <br />
+
+  <h4>Cost: {{ cost }}</h4>
+
+</div>
+
+{% endblock %}
+

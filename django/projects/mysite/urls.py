@@ -32,7 +32,7 @@ urlpatterns += i18n_patterns('',
     # NeuroCity home
     url(r'^nc/$', NeurocityHomeView.as_view(), name='nc_home'),
     url(r'^nc/learn$', LearnView.as_view(), name='nc_learn'),
-    url(r'^nc/test$', TestView.as_view(), name='nc_test'),
+    url(r'^nc/dashboard$', DashboardView.as_view(), name='nc_dashboard'),
     url(r'^nc/contribute$', ContributeView.as_view(), name='nc_contribute'),
     url(r'^nc/setlanguage$', language_view, name='set_language'),
 

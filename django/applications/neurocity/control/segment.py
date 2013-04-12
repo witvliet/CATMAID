@@ -19,6 +19,7 @@ except:
 
 def get_segment_sequence():
     """ Sampling from the data volume """
+
     segments = Segments.objects.filter(
             stack = stack,
             project = p,
@@ -28,6 +29,24 @@ def get_segment_sequence():
     segment = random.choice( segments ) #segments[0]
     print 'segment selected', segment.segmentid, segment.id
 
+    return segment
+
+def get_random_segment():
+
+    project_id = 11
+    stack_id = 15
+
+    stack = get_object_or_404(Stack, pk=stack_id)
+    project = get_object_or_404(Project, pk=project_id)
+
+    segments = Segments.objects.filter(
+            stack = stack,
+            project = project,
+            randomforest_cost__lt = 5.0).all()
+
+    # TODO: intelligent sampling of the segments
+    segment = random.choice( segments ) #segments[0]
+    # print 'segment selected', segment.origin_section, segment.target_section, segment.segmentid
     return segment
 
 def get_segment( project, stack, origin_section, target_section, segment_id ):
@@ -51,7 +70,7 @@ def get_segment_image(request):
     xboundary = 20
     yboundary = 20
     spacing = 40
-    border = 30
+    border = 0
     edge = 0
     only_raw = False
     segment_node_id = '5_10'

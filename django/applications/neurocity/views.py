@@ -4,6 +4,8 @@ from django.utils.translation import ugettext as _
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 
+from neurocity.control.segment import get_random_segment
+
 def language_view(request):
     return render_to_response('neurocity/setlanguage.html', {},
                           context_instance=RequestContext(request))
@@ -38,12 +40,12 @@ class LearnView(TemplateView):
         context = super(LearnView, self).get_context_data(**kwargs)
         return context
 
-class TestView(TemplateView):
+class DashboardView(TemplateView):
 
-    template_name = "neurocity/test.html"
+    template_name = "neurocity/dashboard.html"
 
     def get_context_data(self, **kwargs):
-        context = super(TestView, self).get_context_data(**kwargs)
+        context = super(DashboardView, self).get_context_data(**kwargs)
         return context
 
 class ContributeView(TemplateView):
@@ -51,5 +53,12 @@ class ContributeView(TemplateView):
     template_name = "neurocity/contribute.html"
 
     def get_context_data(self, **kwargs):
-        context = super(Contribute, self).get_context_data(**kwargs)
-        return get_context_data
+        context = super(ContributeView, self).get_context_data(**kwargs)
+        segment = get_random_segment()
+
+        context['originsection'] = segment.origin_section
+        context['targetsection'] = segment.target_section
+        context['segmentid'] = segment.segmentid
+        context['cost'] = segment.cost
+        
+        return context
