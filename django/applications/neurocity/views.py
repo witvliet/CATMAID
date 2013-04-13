@@ -30,9 +30,10 @@ class NeurocityHomeView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(NeurocityHomeView, self).get_context_data(**kwargs)
         # context['latest_articles'] = Article.objects.all()[:5]
+        context['flag'] = self.request.user.userprofile.country.code.lower()
         return context
 
-class LearnView(TemplateView):
+class LearnView(NeurocityHomeView):
 
     template_name = "neurocity/learn.html"
 
@@ -40,7 +41,7 @@ class LearnView(TemplateView):
         context = super(LearnView, self).get_context_data(**kwargs)
         return context
 
-class DashboardView(TemplateView):
+class DashboardView(NeurocityHomeView):
 
     template_name = "neurocity/dashboard.html"
 
@@ -48,7 +49,7 @@ class DashboardView(TemplateView):
         context = super(DashboardView, self).get_context_data(**kwargs)
         return context
 
-class ContributeView(TemplateView):
+class ContributeView(NeurocityHomeView):
 
     template_name = "neurocity/contribute.html"
 
@@ -60,5 +61,5 @@ class ContributeView(TemplateView):
         context['targetsection'] = segment.target_section
         context['segmentid'] = segment.segmentid
         context['cost'] = segment.cost
-        
+
         return context

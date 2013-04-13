@@ -5,9 +5,9 @@
 
 <div align="center">
 
-  <a class="btn btn-large btn-primary btn-success" href="">Good</a>
-  <a class="btn btn-large btn-primary btn-danger" href="">Bad</a>
-  <a class="btn btn-large btn-primary btn-warning" href="">Unclear</a>
+  <a class="btn btn-large btn-primary btn-success" href="">Good (A)</a>
+  <a class="btn btn-large btn-primary btn-warning" href="">Unclear (S)</a>
+  <a class="btn btn-large btn-primary btn-danger" href="">Bad (D)</a>
   <br /><br />
 
   <table>
@@ -20,6 +20,17 @@
   <br />
 
   <h4>Cost: {{ cost }}</h4>
+
+  <script>
+
+    $(document).keyup(function(e) { 
+      console.log( e.keyCode, e)
+      if (e.keyCode == 65) { console.log('left');  location.reload(); }
+      if (e.keyCode == 83) { console.log('down'); }
+      if (e.keyCode == 68) { console.log('right'); } 
+
+    });
+  </script>
 
 </div>
 

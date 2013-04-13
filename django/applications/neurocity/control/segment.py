@@ -6,6 +6,7 @@ import os, os.path
 from contextlib import closing
 import h5py
 import random
+import time
 
 from catmaid.models import *
 from catmaid.objects import *
@@ -42,7 +43,7 @@ def get_random_segment():
     segments = Segments.objects.filter(
             stack = stack,
             project = project,
-            randomforest_cost__lt = 5.0).all()
+            randomforest_cost__lt = 5.0).all()[:10]
 
     # TODO: intelligent sampling of the segments
     segment = random.choice( segments ) #segments[0]
@@ -95,6 +96,7 @@ def get_segment_image(request):
         return response
 
     # retrieve associated slices
+    ts = time.time()
     slice_node_ids = [ str(segment.origin_section) + '_' + str(segment.origin_slice_id) ]
     sections = [ segment.origin_section ]
     if segment.segmenttype == 2:
@@ -112,6 +114,9 @@ def get_segment_image(request):
         stack = stack,
         project = project,
         node_id__in = slice_node_ids )
+
+    print 'retrieve slices', time.time() - ts
+    ts = time.time()
 
     # find maximal bounding box across all slices
     min_x, min_y, max_x, max_y = slices[0].min_x, slices[0].min_y, slices[0].max_x, slices[0].max_y
@@ -156,10 +161,16 @@ def get_segment_image(request):
     else:
         data = load_raw( min_x-border, min_y-border, max_x+border, max_y+border, sections[1] )
 
+    print 'load raw', time.time() - ts
+    ts = time.time()
+
     merged_image[:,:,0] = data
     merged_image[:,:,1] = data
     merged_image[:,:,2] = data
     merged_image[:,:,3] = 255
+
+    print 'store in merged image', time.time() - ts
+    ts = time.time()
 
     if not only_raw:
         for sliceindex in slicelist:
@@ -170,6 +181,8 @@ def get_segment_image(request):
                 from_y = offsets[sliceindex][1]+border
                 from_x = offsets[sliceindex][0]+border
                 merged_image[from_y:from_y+pix.shape[0], from_x:from_x+pix.shape[1],3] -= pix*0.7
+
+    print 'load slicie overlay', time.time() - ts
 
     result_img =  Image.fromarray( merged_image ) # Image.new('RGBA', (height, width) )
     response = HttpResponse(mimetype="image/png")
