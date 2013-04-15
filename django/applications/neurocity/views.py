@@ -7,21 +7,18 @@ from django.template import RequestContext
 from neurocity.control.segment import get_random_segment
 
 def language_view(request):
-    return render_to_response('neurocity/setlanguage.html', {},
+    return render_to_response('neurocity/setlanguage.html', {
+            # flag: request.user.userprofile.country.code.lower()
+        }, context_instance=RequestContext(request))
+
+def about_view(request):
+    return render_to_response('neurocity/about.html', {},
                           context_instance=RequestContext(request))
 
-class SegmentDecisionView(TemplateView):
-    """ This view returns a page to decide on the correctness of a segment.
-    """
-    template_name = "neurocity/segmentdecision.html"
+def terms_view(request):
+    return render_to_response('neurocity/terms.html', {},
+                          context_instance=RequestContext(request))
 
-    def get_context_data(self, **kwargs):
-        context = super(self.__class__, self).get_context_data(**kwargs)
-        # TODO: segmentid
-        context['origin_section'] = 0
-        context['origin_sliceid'] = 123
-        context['target_section'] = 0
-        return context
 
 class NeurocityHomeView(TemplateView):
 
@@ -60,6 +57,8 @@ class ContributeView(NeurocityHomeView):
         context['originsection'] = segment.origin_section
         context['targetsection'] = segment.target_section
         context['segmentid'] = segment.segmentid
+        context['segmentkey'] = segment.id
         context['cost'] = segment.cost
 
         return context
+

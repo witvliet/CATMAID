@@ -21,7 +21,6 @@ intlist = r'[0-9]+(,[0-9]+)*'
 # Add the main index.html page at the root:
 urlpatterns = patterns('',
     (r'^$', HomepageView.as_view()),
-    (r'^segmentdecision', SegmentDecisionView.as_view()),
     (r'^segment/image$', 'neurocity.control.segment.get_segment_image'),
     (r'^accounts/', include('allauth.urls')),
     (r'^i18n/', include('django.conf.urls.i18n')),
@@ -34,7 +33,11 @@ urlpatterns += i18n_patterns('',
     url(r'^nc/learn$', LearnView.as_view(), name='nc_learn'),
     url(r'^nc/dashboard$', DashboardView.as_view(), name='nc_dashboard'),
     url(r'^nc/contribute$', ContributeView.as_view(), name='nc_contribute'),
+    url(r'^nc/about$', about_view, name='nc_about'),
+    url(r'^nc/terms$', terms_view, name='nc_terms'),
     url(r'^nc/setlanguage$', language_view, name='set_language'),
+
+    url(r'^nc/segment-vote$', 'neurocity.control.segment.segment_vote'),
 
 )
 

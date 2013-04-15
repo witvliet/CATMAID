@@ -18,6 +18,41 @@ try:
 except:
     pass
 
+# change roles; prevent random vote requests (how?)
+# @requires_user_role([UserRole.Annotate, UserRole.Browse])
+def segment_vote(request):
+
+    project_id = 11
+    stack_id = 15
+
+    project = get_object_or_404(Project, pk=project_id)
+    stack = get_object_or_404(Stack, pk=stack_id)
+
+    segmentkey = int(request.POST.get('segmentkey', -1))
+    vote = int(request.POST.get('vote', -1))
+    comment = request.POST.get('comment', None)
+
+    if segmentkey == -1:
+        return HttpResponse(json.dumps({'error':'Invalid segmentkey'}), mimetype='text/json')
+    else:
+        segment = Segments.objects.get(pk=segmentkey)
+
+    if vote == -1 or not vote in [1,2,3]:
+        return HttpResponse(json.dumps({'error':'Invalid vote'}), mimetype='text/json')
+    
+    sv = SegmentVote()
+
+    sv.user = request.user
+    sv.project = project
+    sv.stack = stack
+    sv.vote = vote
+    sv.segment = segment
+    sv.save()
+
+    return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
+
+
+
 def get_segment_sequence():
     """ Sampling from the data volume """
 

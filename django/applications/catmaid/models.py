@@ -678,7 +678,10 @@ class Segments(UserFocusedModel):
     stack = models.ForeignKey(Stack)
 
     assembly = models.ForeignKey(ClassInstance,null=True)
-
+    # convention: {origin_section}_{target_section}-{node_id}
+    node_id = models.CharField(max_length=255,db_index=True)
+    # nr of human votes
+    nr_of_votes = models.IntegerField(db_index=True, default=0) 
     segmentid = models.IntegerField(db_index=True)
     segmenttype = models.IntegerField(db_index=True)
     origin_section = models.IntegerField(db_index=True)
@@ -731,6 +734,23 @@ class SegmentsData(models.Model):
     normalized_histogram_8 = models.FloatField(default=0.0)
     normalized_histogram_9 = models.FloatField(default=0.0)
 
+class SegmentVote(UserFocusedModel):
+
+    creation_time = models.DateTimeField(default=datetime.now)
+    stack = models.ForeignKey(Stack)
+
+    segment = models.ForeignKey(Segments,null=False)
+    # segment_node_id = models.CharField(max_length=255,db_index=True)
+
+    vote = models.IntegerField(db_index=True,null=False)
+    # convention is 1: good; 2: unclear; 3: bad
+
+class SegmentComment(UserFocusedModel):
+
+    creation_time = models.DateTimeField(default=datetime.now)
+    stack = models.ForeignKey(Stack)
+
+    segmentvote = models.ForeignKey(SegmentVote,null=False)
 
 class Slices(UserFocusedModel):
 

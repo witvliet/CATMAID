@@ -3,11 +3,28 @@
 
 {% block content %}
 
+ 
+<!-- Modal -->
+<div id="myModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Add a comment</h3>
+  </div>
+  <div class="modal-body">
+    Tell us why it is unclear?<br />
+    <input type="text" id="commentfield" maxlength="50" size="50">
+  </div>
+  <div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="btn btn-primary" id="submitvote">Submit vote</button>
+  </div>
+</div>
+
 <div align="center">
 
-  <a class="btn btn-large btn-primary btn-success" href="">Good (A)</a>
-  <a class="btn btn-large btn-primary btn-warning" href="">Unclear (S)</a>
-  <a class="btn btn-large btn-primary btn-danger" href="">Bad (D)</a>
+  <a class="btn btn-large btn-primary btn-success" href="#" id='buttongood'>Good (A)</a>
+  <a class="btn btn-large btn-primary btn-warning" href="#" id='buttonunclear'>Unclear (S)</a>
+  <a class="btn btn-large btn-primary btn-danger" href="#" id='buttonbad'>Bad (D)</a>
   <br /><br />
 
   <table>
@@ -19,17 +36,78 @@
 
   <br />
 
-  <h4>Cost: {{ cost }}</h4>
+  <h4>Cost: {{ cost }}, Segmentid:  {{ segmentkey }}</h4>
 
   <script>
+    var segmentkey = {{ segmentkey }};
 
-    $(document).keyup(function(e) { 
-      console.log( e.keyCode, e)
-      if (e.keyCode == 65) { console.log('left');  location.reload(); }
-      if (e.keyCode == 83) { console.log('down'); }
-      if (e.keyCode == 68) { console.log('right'); } 
+    var vote = function( segmentkey, value, comment ) {
+      var data = {
+            segmentkey: segmentkey,
+            vote: value,
+          };
+      if (comment !== undefined)
+        data['comment'] = comment;
+      $.ajax({
+        "dataType": 'json',
+        "type": "POST",
+        "cache": false,
+        "url": 'segment-vote',
+        "data": data,
+        "success": function(data) {
+           console.log('success', data)
+           location.reload();
+        }
+      });
 
+    }
+
+    var show_unclear_modal = function() {
+      $(document).off('keyup');
+      $('#commentfield').val('');
+      $('#myModal').on('shown', function() {$('#commentfield').focus();});
+      $('#myModal').modal('show');
+    }
+
+    var register_keyevents = function() {
+      $(document).on('keyup', function(e) { 
+        console.log('keyup');
+        if (e.keyCode == 65) { 
+          vote( segmentkey, 1 );
+        }
+        if (e.keyCode == 83) {
+          show_unclear_modal();
+        }
+        if (e.keyCode == 68) {
+          vote( segmentkey, 3 );
+        }
+      });      
+    }
+
+    $('#buttongood').on('click', function() {
+      vote( segmentkey, 1 );
     });
+
+    $('#buttonunclear').on('click', function() {
+      show_unclear_modal();
+    });
+
+    $('#buttonbad').on('click', function() {
+      vote( segmentkey, 3 );
+    });
+
+    $('#submitvote').on('click', function() {
+      $('#myModal').modal('hide');
+      vote( segmentkey, 2, $('#commentfield').val() );
+    });
+
+    $('#myModal').on('hidden', function() {
+      console.log('hidden')
+      register_keyevents();
+    });
+
+    register_keyevents();
+
   </script>
 
 </div>
