@@ -35,6 +35,7 @@ urlpatterns += i18n_patterns('',
     url(r'^nc/contribute$', ContributeView.as_view(), name='nc_contribute'),
     url(r'^nc/about$', about_view, name='nc_about'),
     url(r'^nc/terms$', terms_view, name='nc_terms'),
+    url(r'^nc/mission$', mission_view, name='nc_mission'),
     url(r'^nc/setlanguage$', language_view, name='set_language'),
 
     url(r'^nc/segment-vote$', 'neurocity.control.segment.segment_vote'),

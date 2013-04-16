@@ -34,11 +34,43 @@
     </tr>
   </table>
 
+  <canvas id="c" width="200" height="200" style="border:1px solid #aaa"></canvas>
+
   <br />
 
   <h4>Cost: {{ cost }}, Segmentid:  {{ segmentkey }}</h4>
 
+  <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.modified.js"></script>
   <script>
+
+var canvas = new fabric.Canvas('c');
+var radius = 300;
+
+fabric.Image.fromURL('http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=0', function(img) {
+  img.scale(0.5).set({
+    left: 250,
+    top: 250,
+    angle: -15,
+    clipTo: function (ctx) {
+      ctx.arc(0, 0, radius, 0, Math.PI * 2, true);
+    }
+  });
+  canvas.add(img).setActiveObject(img);
+});
+
+(function animate() {
+  fabric.util.animate({
+    startValue: Math.round(radius) === 50 ? 50 : 300,
+    endValue: Math.round(radius) === 50 ? 300 : 50,
+    duration: 1000,
+    onChange: function(value) {
+      radius = value;
+      canvas.renderAll();
+    },
+    onComplete: animate
+  });
+})();
+
     var segmentkey = {{ segmentkey }};
 
     var vote = function( segmentkey, value, comment ) {
