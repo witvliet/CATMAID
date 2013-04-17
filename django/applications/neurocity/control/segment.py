@@ -49,8 +49,16 @@ def segment_vote(request):
     sv.segment = segment
     sv.save()
 
-    return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
+    if not comment is None or not comment == "":
+        sc = SegmentComment()
+        sc.user = request.user
+        sc.project = project
+        sc.stack = stack
+        sc.segmentvote = sv
+        sc.comment = comment
+        sc.save()
 
+    return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
 
 
 def get_segment_sequence():
@@ -97,6 +105,98 @@ def get_segment( project, stack, origin_section, target_section, segment_id ):
         return None
     else:
         return segments[0] # what if more than one found?
+
+def slice_path( node_id, sliceinfo ):
+    sectionindex, slice_id = node_id.split('_')
+    fnametuple = tuple(str(slice_id))
+    fname = fnametuple[-1] + '.' + sliceinfo.file_extension
+    fpathslice = fnametuple[:-1]
+    slice_path_local = os.path.join( 
+        str(sliceinfo.slice_base_path).rstrip('\n'), 
+        str(sectionindex), 
+        '/'.join(fpathslice),
+        fname )
+    return slice_path_local
+
+def slice_path2( node_id, sliceinfo ):
+    sectionindex, slice_id = node_id.split('_')
+    fnametuple = tuple(str(slice_id))
+    fname = fnametuple[-1] + '.' + sliceinfo.file_extension
+    fpathslice = fnametuple[:-1]
+    slice_path_url = os.path.join( 
+        str(sliceinfo.slice_base_url).rstrip('\n'), 
+        str(sectionindex), 
+        '/'.join(fpathslice),
+        fname )
+    return slice_path_url
+
+def get_segment_boundingbox(request):
+
+    project_id = 11
+    stack_id = 15
+
+    stack = get_object_or_404(Stack, pk=stack_id)
+    project = get_object_or_404(Project, pk=project_id)
+    sliceinfo = StackSliceInfo.objects.get(stack=stack)
+
+    segmentid = request.GET.get('segmentid', '0')
+    originsection = int(request.GET.get('originsection', '0'))
+    targetsection = int(request.GET.get('targetsection', '0'))
+    edge = int(request.GET.get('edge', '0'))
+
+    segment = get_segment( project, stack, originsection, targetsection, segmentid )
+
+    slice_node_ids = [ str(segment.origin_section) + '_' + str(segment.origin_slice_id) ]
+    sections = [ segment.origin_section ]
+    if segment.segmenttype == 2:
+        slice_node_ids.append( str(segment.target_section) + '_' + str(segment.target1_slice_id) )
+        sections.append( segment.target_section )
+        slicelist = [0] if edge == 0 else [1]
+    elif segment.segmenttype == 3:
+        slice_node_ids.append( str(segment.target_section) + '_' + str(segment.target1_slice_id) ,
+            str(segment.target_section) + '_' + str(segment.target2_slice_id) )
+        sections.append( segment.target_section )
+        sections.append( segment.target_section )
+        slicelist = [0] if edge == 0 else [1,2]
+
+    slices = Slices.objects.filter(
+        stack = stack,
+        project = project,
+        node_id__in = slice_node_ids )
+
+    # find maximal bounding box across all slices
+    min_x, min_y, max_x, max_y = slices[0].min_x, slices[0].min_y, slices[0].max_x, slices[0].max_y
+    originsection = [{
+            'min_x': slices[0].min_x, 'max_x': slices[0].max_x,
+            'min_y': slices[0].min_y, 'max_y': slices[0].max_y,
+            'slicepath': slice_path2( slices[0].node_id, sliceinfo ) }]
+
+    targetsection = []
+    for slice in slices[1:]:
+        min_x = min(min_x, slice.min_x)
+        min_y = min(min_y, slice.min_y)
+        max_x = max(max_x, slice.max_x)
+        max_y = max(max_y, slice.max_y)
+        targetsection.append({
+            'min_x': slice.min_x, 'max_x': slice.max_x,
+            'min_y': slice.min_y, 'max_y': slice.max_y,
+            'slicepath': slice_path2( slice.node_id, sliceinfo ) })
+
+    totalbb = {
+            'min_x': min_x, 'max_x': max_x,
+            'min_y': min_y, 'max_y': max_y,
+            'width': max_x - min_x,
+            'height': max_y - min_y }
+
+    return HttpResponse(json.dumps({
+        'segmenttype': segment.segmenttype,
+        'originsection': originsection,
+        'targetsection': targetsection,
+        'totalbb': totalbb,
+        'tile_width': stack.tile_width,
+        'tile_height': stack.tile_height 
+    }), mimetype="text/json")
+
 
 def get_segment_image(request):
 
@@ -168,18 +268,6 @@ def get_segment_image(request):
 
     width, height = max_x - min_x, max_y - min_y
 
-    def slice_path( node_id ):
-        sectionindex, slice_id = node_id.split('_')
-        fnametuple = tuple(str(slice_id))
-        fname = fnametuple[-1] + '.' + sliceinfo.file_extension
-        fpathslice = fnametuple[:-1]
-        slice_path = os.path.join( 
-            str(sliceinfo.slice_base_path).rstrip('\n'), 
-            str(sectionindex), 
-            '/'.join(fpathslice),
-            fname )
-        return slice_path
-
     merged_image = np.zeros( (height+2*border, width+2*border, 4), dtype = np.uint8 )
 
     def load_raw( min_x, min_y, max_x, max_y, z ):
@@ -209,8 +297,8 @@ def get_segment_image(request):
 
     if not only_raw:
         for sliceindex in slicelist:
-            if os.path.exists( slice_path( slice_node_ids[sliceindex] ) ):
-                pic = Image.open( slice_path( slice_node_ids[sliceindex] ) )
+            if os.path.exists( slice_path( slice_node_ids[sliceindex], sliceinfo ) ):
+                pic = Image.open( slice_path( slice_node_ids[sliceindex], sliceinfo ) )
                 pix = np.array(pic.getdata()).reshape(pic.size[1], pic.size[0], 2)
                 pix = pix[:,:,0].astype(np.uint8)
                 from_y = offsets[sliceindex][1]+border

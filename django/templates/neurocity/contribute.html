@@ -11,7 +11,7 @@
     <h3 id="myModalLabel">Add a comment</h3>
   </div>
   <div class="modal-body">
-    Tell us why it is unclear?<br />
+    Tell us why you think the segment is unclear?<br />
     <input type="text" id="commentfield" maxlength="50" size="50">
   </div>
   <div class="modal-footer">
@@ -29,47 +29,114 @@
 
   <table>
     <tr>
-      <td><img src="http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=0"></td>
-      <td><img src="http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=1"></td>
+      <td>
+        <canvas id="c2" style="border:1px solid #aaa"></canvas>
+        <!-- <img src="http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=0"> -->
+      </td>
+      <td>
+        <canvas id="c3" style="border:1px solid #aaa"></canvas>
+        <!-- <img src="http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=1"> -->
+      </td>
     </tr>
   </table>
 
-  <canvas id="c" width="200" height="200" style="border:1px solid #aaa"></canvas>
+  <!-- <canvas id="c1" width="200" height="200" style="border:1px solid #aaa"></canvas> -->
+  
+  
+  <!-- <canvas id="c4" width="200" height="200" style="border:1px solid #aaa"></canvas> -->
 
   <br />
 
-  <h4>Cost: {{ cost }}, Segmentid:  {{ segmentkey }}</h4>
+  <h4>AI guess: {{ aiguess }}</h4>
 
   <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.modified.js"></script>
   <script>
 
-var canvas = new fabric.Canvas('c');
+var canvas2 = new fabric.Canvas('c2'),
+    canvas3 = new fabric.Canvas('c3'),
+    border = 80;
+
 var radius = 300;
 
-fabric.Image.fromURL('http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=0', function(img) {
-  img.scale(0.5).set({
-    left: 250,
-    top: 250,
-    angle: -15,
-    clipTo: function (ctx) {
-      ctx.arc(0, 0, radius, 0, Math.PI * 2, true);
-    }
-  });
-  canvas.add(img).setActiveObject(img);
-});
+      $.ajax({
+        "dataType": 'json',
+        "type": "GET",
+        "cache": false,
+        "url": 'segment-bb',
+        "data": {
+          'originsection': {{ originsection }},
+          'targetsection': {{ targetsection }},
+          'segmentid': {{ segmentid }},
+        },
+        "success": function(data) {
+           console.log('success bb', data ); //data['min_x'], data['max_x'], data['min_y'], data['max_y'])
+           canvas2.setWidth(data['totalbb']['width']+2*border);
+           canvas2.setHeight(data['totalbb']['height']+2*border);
+           canvas2.renderAll();
 
-(function animate() {
-  fabric.util.animate({
-    startValue: Math.round(radius) === 50 ? 50 : 300,
-    endValue: Math.round(radius) === 50 ? 300 : 50,
-    duration: 1000,
-    onChange: function(value) {
-      radius = value;
-      canvas.renderAll();
-    },
-    onComplete: animate
-  });
-})();
+           canvas3.setWidth(data['totalbb']['width']+2*border);
+           canvas3.setHeight(data['totalbb']['height']+2*border);
+           canvas3.renderAll();
+
+           tile_col_min = Math.floor(data['totalbb']['min_x'] / data['tile_width'] );
+           tile_col_max = Math.ceil(data['totalbb']['max_x'] / data['tile_width'] );
+           tile_row_min = Math.floor(data['totalbb']['min_y'] / data['tile_height'] );
+           tile_row_max = Math.ceil(data['totalbb']['max_y'] / data['tile_height'] );
+
+           console.log('tile_col_min', tile_col_min, tile_col_max, tile_row_min, tile_row_max )
+           for(var xi = tile_col_min; xi < tile_col_max; xi++) {
+            for(var yi = tile_row_min; yi < tile_row_max; yi++) {
+
+              // 'http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=0'
+              fabric.Image.fromURL('http://localhost:8000/static/stack2/raw/{{ originsection }}/'+yi+'_'+xi+'_0.jpg', function(img) {
+                img.set({
+                  left: 0,
+                  top: 0,
+                  // clipTo: function (ctx) {
+                  //   ctx.arc(0, 0, radius, 0, Math.PI * 2, true);
+                  // }
+                });
+                canvas2.add(img).setActiveObject(img);
+              });
+
+              fabric.Image.fromURL('http://localhost:8000/static/stack2/raw/{{ targetsection }}/'+yi+'_'+xi+'_0.jpg', function(img) {
+                img.set({
+                  left: 0,
+                  top: 0,
+                  // clipTo: function (ctx) {
+                  //   ctx.arc(0, 0, radius, 0, Math.PI * 2, true);
+                  // }
+                });
+                canvas3.add(img).setActiveObject(img);
+              });
+
+            }
+           }
+
+           // add slices to canvas, need to be in the foreground
+           for(var sliceidx = 0; sliceidx < data['originsection'].length; sliceidx++) {
+              fabric.Image.fromURL(data['originsection'][sliceidx]['slicepath'], function(img) {
+                img.set({
+                  left: 20,
+                  top: 20,
+                });
+                canvas2.add(img).setActiveObject(img);
+              });
+           }
+
+           for(var sliceidx = 0; sliceidx < data['targetsection'].length; sliceidx++) {
+              fabric.Image.fromURL(data['targetsection'][sliceidx]['slicepath'], function(img) {
+                img.set({
+                  left: 20,
+                  top: 20,
+                });
+                canvas3.add(img).setActiveObject(img);
+              });
+           }
+
+
+        }
+      });
 
     var segmentkey = {{ segmentkey }};
 
@@ -87,7 +154,6 @@ fabric.Image.fromURL('http://localhost:8000/segment/image?originsection={{ origi
         "url": 'segment-vote',
         "data": data,
         "success": function(data) {
-           console.log('success', data)
            location.reload();
         }
       });

@@ -751,6 +751,7 @@ class SegmentComment(UserFocusedModel):
     stack = models.ForeignKey(Stack)
 
     segmentvote = models.ForeignKey(SegmentVote,null=False)
+    comment = models.CharField(max_length=1024)
 
 class Slices(UserFocusedModel):
 

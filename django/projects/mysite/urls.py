@@ -39,6 +39,8 @@ urlpatterns += i18n_patterns('',
     url(r'^nc/setlanguage$', language_view, name='set_language'),
 
     url(r'^nc/segment-vote$', 'neurocity.control.segment.segment_vote'),
+    url(r'^nc/segment-bb$', 'neurocity.control.segment.get_segment_boundingbox'),
+    
 
 )
 
