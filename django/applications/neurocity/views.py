@@ -85,7 +85,10 @@ class ContributeView(NeurocityHomeView):
         context['segmentid'] = segment.segmentid
         context['segmentkey'] = segment.id
         context['cost'] = segment.cost
-        context['aiguess'] = 1./segment.cost
-
+        if segment.cost != 0.0:
+            context['aiguess'] = 1./segment.cost
+        else:
+            context['aiguess'] = 0.0
+            
         return context
 

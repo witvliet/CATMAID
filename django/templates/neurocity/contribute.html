@@ -47,7 +47,7 @@
 
   <br />
 
-  <h4>AI guess: {{ aiguess }}</h4>
+  <h4>AI guess: {{ cost }}</h4>
 
   <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.modified.js"></script>
   <script>
@@ -69,68 +69,98 @@ var radius = 300;
           'segmentid': {{ segmentid }},
         },
         "success": function(data) {
-           console.log('success bb', data ); //data['min_x'], data['max_x'], data['min_y'], data['max_y'])
+           // console.log('success bb', data ); //data['min_x'], data['max_x'], data['min_y'], data['max_y'])
+
+           // canvas2.setWidth(1000);
+           // canvas2.setHeight(1000);
            canvas2.setWidth(data['totalbb']['width']+2*border);
            canvas2.setHeight(data['totalbb']['height']+2*border);
            canvas2.renderAll();
+           canvas2.selection = false;
 
            canvas3.setWidth(data['totalbb']['width']+2*border);
            canvas3.setHeight(data['totalbb']['height']+2*border);
            canvas3.renderAll();
+           canvas3.selection = false;
 
-           tile_col_min = Math.floor(data['totalbb']['min_x'] / data['tile_width'] );
-           tile_col_max = Math.ceil(data['totalbb']['max_x'] / data['tile_width'] );
-           tile_row_min = Math.floor(data['totalbb']['min_y'] / data['tile_height'] );
-           tile_row_max = Math.ceil(data['totalbb']['max_y'] / data['tile_height'] );
+           tile_col_min = Math.floor( (data['totalbb']['min_x'] - border) / data['tile_width']);
+           tile_col_max = Math.ceil( (data['totalbb']['max_x'] + border) / data['tile_width'] );
+           tile_row_min = Math.floor( (data['totalbb']['min_y'] - border) / data['tile_height'] );
+           tile_row_max = Math.ceil( (data['totalbb']['max_y'] + border) / data['tile_height'] );
+           // console.log('min row',  (data['totalbb']['min_y'] - border) / data['tile_height'], data['totalbb']['min_y'] - border)
+           // console.log('max row', (data['totalbb']['max_y'] + border) / data['tile_height'], data['totalbb']['max_y'] + border)
 
-           console.log('tile_col_min', tile_col_min, tile_col_max, tile_row_min, tile_row_max )
+           tile_left_offset = (data['totalbb']['min_x'] - border) - tile_col_min * data['tile_width'];
+           tile_top_offset = (data['totalbb']['min_y'] - border) - tile_row_min * data['tile_height'];
+
+           // console.log('tile_col_min', tile_col_min, 'tile col max', tile_col_max)
+           // console.log('tile row min', tile_row_min, 'tile row max', tile_row_max)
+
+           var build_callback2 = function (xi, yi) {
+                return function(img) {
+                    // console.log('returned2', xi, yi)
+                    // console.log('added shift x', data['tile_width'] * (xi - tile_col_min))
+                    // console.log('added shift y', data['tile_height'] * (yi - tile_row_min))
+                    img.set({
+                      left: -tile_left_offset + data['tile_width'] / 2. + data['tile_width'] * (xi - tile_col_min),
+                      top: -tile_top_offset + data['tile_height'] / 2. + data['tile_height'] * (yi - tile_row_min),
+                    });
+                    img.hasControls = img.hasBorders = false;
+                    img.lockMovementX = img.lockMovementY = true;
+                    canvas2.add(img).sendToBack(img);
+                };
+              },
+              build_callback3 = function (xi, yi) {
+                return function(img) {
+                    img.set({
+                      left: -tile_left_offset + data['tile_width'] / 2. + data['tile_width'] * (xi - tile_col_min),
+                      top: -tile_top_offset + data['tile_height'] / 2. + data['tile_height'] * (yi - tile_row_min),
+                    });
+                    img.hasControls = img.hasBorders = false;
+                    img.lockMovementX = img.lockMovementY = true;
+                    canvas3.add(img).sendToBack(img);
+                };
+              };
+
            for(var xi = tile_col_min; xi < tile_col_max; xi++) {
             for(var yi = tile_row_min; yi < tile_row_max; yi++) {
 
-              // 'http://localhost:8000/segment/image?originsection={{ originsection }}&targetsection={{ targetsection }}&segmentid={{ segmentid }}&edge=0'
-              fabric.Image.fromURL('http://localhost:8000/static/stack2/raw/{{ originsection }}/'+yi+'_'+xi+'_0.jpg', function(img) {
-                img.set({
-                  left: 0,
-                  top: 0,
-                  // clipTo: function (ctx) {
-                  //   ctx.arc(0, 0, radius, 0, Math.PI * 2, true);
-                  // }
-                });
-                canvas2.add(img).setActiveObject(img);
-              });
+              fabric.Image.fromURL('http://localhost:8000/static/stack2/raw/{{ originsection }}/'+yi+'_'+xi+'_0.jpg', build_callback2(xi, yi));
 
-              fabric.Image.fromURL('http://localhost:8000/static/stack2/raw/{{ targetsection }}/'+yi+'_'+xi+'_0.jpg', function(img) {
-                img.set({
-                  left: 0,
-                  top: 0,
-                  // clipTo: function (ctx) {
-                  //   ctx.arc(0, 0, radius, 0, Math.PI * 2, true);
-                  // }
-                });
-                canvas3.add(img).setActiveObject(img);
-              });
+              fabric.Image.fromURL('http://localhost:8000/static/stack2/raw/{{ targetsection }}/'+yi+'_'+xi+'_0.jpg', build_callback3(xi, yi));
 
             }
            }
 
            // add slices to canvas, need to be in the foreground
            for(var sliceidx = 0; sliceidx < data['originsection'].length; sliceidx++) {
+
+              var slice_left_offset = data['originsection'][sliceidx]['min_x'] - data['totalbb']['min_x'] + border + data['originsection'][sliceidx]['width'] / 2. ,
+                slice_top_offset = data['originsection'][sliceidx]['min_y'] - data['totalbb']['min_y'] + border  + data['originsection'][sliceidx]['height'] / 2.;
               fabric.Image.fromURL(data['originsection'][sliceidx]['slicepath'], function(img) {
                 img.set({
-                  left: 20,
-                  top: 20,
+                  left: slice_left_offset,
+                  top: slice_top_offset,
                 });
-                canvas2.add(img).setActiveObject(img);
+                img.hasControls = img.hasBorders = false;
+                img.lockMovementX = img.lockMovementY = true;
+                img.opacity = 0.8;
+                canvas2.add(img).bringToFront(img);
               });
            }
 
            for(var sliceidx = 0; sliceidx < data['targetsection'].length; sliceidx++) {
+              var slice2_left_offset = data['targetsection'][sliceidx]['min_x'] - data['totalbb']['min_x'] + border + data['targetsection'][sliceidx]['width'] / 2. ,
+                slice2_top_offset = data['targetsection'][sliceidx]['min_y'] - data['totalbb']['min_y'] + border  + data['targetsection'][sliceidx]['height'] / 2.;
               fabric.Image.fromURL(data['targetsection'][sliceidx]['slicepath'], function(img) {
                 img.set({
-                  left: 20,
-                  top: 20,
+                  left: slice2_left_offset,
+                  top: slice2_top_offset,
                 });
-                canvas3.add(img).setActiveObject(img);
+                img.hasControls = img.hasBorders = false;
+                img.lockMovementX = img.lockMovementY = true;
+                img.opacity = 0.8;
+                canvas3.add(img).bringToFront(img);
               });
            }
 
@@ -169,7 +199,6 @@ var radius = 300;
 
     var register_keyevents = function() {
       $(document).on('keyup', function(e) { 
-        console.log('keyup');
         if (e.keyCode == 65) { 
           vote( segmentkey, 1 );
         }
@@ -178,6 +207,10 @@ var radius = 300;
         }
         if (e.keyCode == 68) {
           vote( segmentkey, 3 );
+        }
+
+        if (e.keyCode == 84) {
+          console.log('toggle'); // TODO
         }
       });      
     }
@@ -200,7 +233,6 @@ var radius = 300;
     });
 
     $('#myModal').on('hidden', function() {
-      console.log('hidden')
       register_keyevents();
     });
 

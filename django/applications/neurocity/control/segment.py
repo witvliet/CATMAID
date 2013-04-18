@@ -86,10 +86,10 @@ def get_random_segment():
     segments = Segments.objects.filter(
             stack = stack,
             project = project,
-            randomforest_cost__lt = 5.0).all()[:10]
+            randomforest_cost__lt = 5.0).all()[:70]
 
     # TODO: intelligent sampling of the segments
-    segment = random.choice( segments ) #segments[0]
+    segment = random.choice( segments ) # random.choice( segments ) #segments[0]
     # print 'segment selected', segment.origin_section, segment.target_section, segment.segmentid
     return segment
 
@@ -153,8 +153,8 @@ def get_segment_boundingbox(request):
         sections.append( segment.target_section )
         slicelist = [0] if edge == 0 else [1]
     elif segment.segmenttype == 3:
-        slice_node_ids.append( str(segment.target_section) + '_' + str(segment.target1_slice_id) ,
-            str(segment.target_section) + '_' + str(segment.target2_slice_id) )
+        slice_node_ids.append( str(segment.target_section) + '_' + str(segment.target1_slice_id) )
+        slice_node_ids.append( str(segment.target_section) + '_' + str(segment.target2_slice_id) )
         sections.append( segment.target_section )
         sections.append( segment.target_section )
         slicelist = [0] if edge == 0 else [1,2]
@@ -169,7 +169,9 @@ def get_segment_boundingbox(request):
     originsection = [{
             'min_x': slices[0].min_x, 'max_x': slices[0].max_x,
             'min_y': slices[0].min_y, 'max_y': slices[0].max_y,
-            'slicepath': slice_path2( slices[0].node_id, sliceinfo ) }]
+            'slicepath': slice_path2( slices[0].node_id, sliceinfo ),
+            'width': slices[0].max_x - slices[0].min_x,
+            'height': slices[0].max_y - slices[0].min_y }]
 
     targetsection = []
     for slice in slices[1:]:
@@ -180,7 +182,9 @@ def get_segment_boundingbox(request):
         targetsection.append({
             'min_x': slice.min_x, 'max_x': slice.max_x,
             'min_y': slice.min_y, 'max_y': slice.max_y,
-            'slicepath': slice_path2( slice.node_id, sliceinfo ) })
+            'slicepath': slice_path2( slice.node_id, sliceinfo ),
+            'width': slice.max_x - slice.min_x,
+            'height': slice.max_y - slice.min_y })
 
     totalbb = {
             'min_x': min_x, 'max_x': max_x,
