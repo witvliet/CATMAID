@@ -5,7 +5,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>NeuroCity</title>
+    <title>NeuroCity - Mapping brain connectivity</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="author" content="">
@@ -66,7 +66,7 @@
                       <li>Statistics</li>
                   </ul>
                 </li>
-                <li><a href="{% url 'nc_contribute' %}">Play!</a></li>
+                <li><a href="{% url 'nc_contribute' %}">Contribute!</a></li>
               </ul>
 
             {% if user.is_authenticated %}
@@ -126,7 +126,7 @@
     <p>
       <a href="{% url 'nc_about' %}">About</a> |
       <a href="{% url 'nc_terms' %}">Terms</a> |
-      <a href="{% url 'nc_mission' %}">Mission</a>
+      <a href="{% url 'nc_contact' %}">Contact</a>
     </p>
   </div>
 

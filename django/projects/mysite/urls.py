@@ -20,7 +20,7 @@ intlist = r'[0-9]+(,[0-9]+)*'
 
 # Add the main index.html page at the root:
 urlpatterns = patterns('',
-    (r'^$', HomepageView.as_view()),
+    (r'^cm/$', HomepageView.as_view()),
     (r'^segment/image$', 'neurocity.control.segment.get_segment_image'),
     (r'^accounts/', include('allauth.urls')),
     (r'^i18n/', include('django.conf.urls.i18n')),
@@ -29,17 +29,17 @@ urlpatterns = patterns('',
 
 urlpatterns += i18n_patterns('',
     # NeuroCity home
-    url(r'^nc/$', NeurocityHomeView.as_view(), name='nc_home'),
-    url(r'^nc/learn$', LearnView.as_view(), name='nc_learn'),
-    url(r'^nc/dashboard$', DashboardView.as_view(), name='nc_dashboard'),
-    url(r'^nc/contribute$', ContributeView.as_view(), name='nc_contribute'),
-    url(r'^nc/about$', about_view, name='nc_about'),
-    url(r'^nc/terms$', terms_view, name='nc_terms'),
-    url(r'^nc/mission$', mission_view, name='nc_mission'),
-    url(r'^nc/setlanguage$', language_view, name='set_language'),
+    url(r'^$', NeurocityHomeView.as_view(), name='nc_home'),
+    url(r'^learn$', LearnView.as_view(), name='nc_learn'),
+    url(r'^dashboard$', DashboardView.as_view(), name='nc_dashboard'),
+    url(r'^contribute$', ContributeView.as_view(), name='nc_contribute'),
+    url(r'^about$', about_view, name='nc_about'),
+    url(r'^terms$', terms_view, name='nc_terms'),
+    url(r'^contact$', contact_view, name='nc_contact'),
+    url(r'^setlanguage$', language_view, name='set_language'),
 
-    url(r'^nc/segment-vote$', 'neurocity.control.segment.segment_vote'),
-    url(r'^nc/segment-bb$', 'neurocity.control.segment.get_segment_boundingbox'),
+    url(r'^segment-vote$', 'neurocity.control.segment.segment_vote'),
+    url(r'^segment-bb$', 'neurocity.control.segment.get_segment_boundingbox'),
     
 
 )

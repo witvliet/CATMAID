@@ -12,6 +12,7 @@
   </div>
   <div class="modal-body">
     Tell us why you think the segment is unclear?<br />
+    <!-- TODO: select a category of unclear -->
     <input type="text" id="commentfield" maxlength="50" size="50">
   </div>
   <div class="modal-footer">
@@ -54,7 +55,9 @@
 
 var canvas2 = new fabric.Canvas('c2'),
     canvas3 = new fabric.Canvas('c3'),
-    border = 80;
+    border = 80,
+    show_slices = true
+    origimg = null;
 
 var radius = 300;
 
@@ -144,8 +147,12 @@ var radius = 300;
                 });
                 img.hasControls = img.hasBorders = false;
                 img.lockMovementX = img.lockMovementY = true;
-                img.opacity = 0.8;
+                img.opacity = 0.9;
+                img.set('visible', false);
                 canvas2.add(img).bringToFront(img);
+                // canvas2.renderAll();
+
+                origimg = img;
               });
            }
 
@@ -210,7 +217,15 @@ var radius = 300;
         }
 
         if (e.keyCode == 84) {
-          console.log('toggle'); // TODO
+          console.log('toggle', show_slices, origimg )
+          if( show_slices ) {
+            show_slices = false;
+            origimg.visible = false;
+          } else {
+            show_slices = true;
+            origimg.visible = true;
+
+          }
         }
       });      
     }

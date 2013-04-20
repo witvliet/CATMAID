@@ -3,11 +3,17 @@
 
 {% block content %}
 
-  <h2>{% trans "Welcome to NeuroCity!" %}</h2>
-  
-  <p>Citizen scientist around the globe come together in NeuroCity to help neuroscience research
-  	untangling and mapping the network of neurons that make up brains.</p>
-  	
-  <p><a href="#" class="btn btn-primary btn-large">Get started &raquo;</a></p>
+  <!-- <h2>{% trans "Welcome to NeuroCity!" %}</h2> -->
+  <table cellpadding="20">
+  	<tr>
+  		<td width="200px"><img src="{{ STATIC_URL }}neurocity/brain/neurocity2.png" width="300"></td>
+  		<td>
+  	Join the NeuroCity community to untangle the networks of the brain. As a <a href="http://en.wikipedia.org/wiki/Citizen_science">citizen scientist</a>, you can contribute to basic neuroscience research by helping to map individual neurons and their connections to each other. After a short tutorial, you will understand the scientific goals and the task at hand to start to participate.
+  	<br /><br />
+  	<a href="#" class="btn btn-primary btn-medium btn-inverse">Get started &raquo;</a>
+  	<!-- Example of a neuron reconstructed -->
+  		</td>
+  	</tr>
+  </table>
 
 {% endblock %}

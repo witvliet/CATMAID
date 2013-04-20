@@ -24,8 +24,8 @@ def terms_view(request):
     return render_to_response('neurocity/terms.html', {},
                           context_instance=RequestContext(request))
 
-def mission_view(request):
-    return render_to_response('neurocity/mission.html', {},
+def contact_view(request):
+    return render_to_response('neurocity/contact.html', {},
                           context_instance=RequestContext(request))
 
 
