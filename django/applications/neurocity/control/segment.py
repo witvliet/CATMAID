@@ -40,8 +40,10 @@ def segment_vote(request):
     if vote == -1 or not vote in [1,2,3]:
         return HttpResponse(json.dumps({'error':'Invalid vote'}), mimetype='text/json')
     
-    sv = SegmentVote()
+    # TODO: increase nr_votes for segment
+    # segment.update(...)
 
+    sv = SegmentVote()
     sv.user = request.user
     sv.project = project
     sv.stack = stack
