@@ -16,7 +16,6 @@
 
     <!-- Le styles -->
     <link rel="stylesheet" href="{{ STATIC_URL }}neurocity/uni_form/uni-form.css" type="text/css" />
-    <link rel="stylesheet" href="{{ STATIC_URL }}neurocity/uni_form/default.uni-form.css" type="text/css" />
     
     <link href="{{ STATIC_URL }}neurocity/css/bootstrap.css" rel="stylesheet">
     <link href="{{ STATIC_URL }}neurocity/css/bootstrap-responsive.css" rel="stylesheet">
@@ -58,15 +57,16 @@
             <!-- Responsive Navbar Part 2: Place all navbar contents you want collapsed withing .navbar-collapse.collapse. -->
             <div class="nav-collapse collapse">
               <ul class="nav">
-                <li class="active"><a href="{% url 'nc_home' %}">Home</a></li>
-                <li><a href="{% url 'nc_learn' %}">Get started</a></li>
-                <li><a href="{% url 'nc_dashboard' %}">Dashboard</a>
+                <!-- TODO active set  class="active" -->
+                <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">Home</a></li>
+                <li class="{{ nc_learn_active }}"><a href="{% url 'nc_learn' %}">Get started</a></li>
+                <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Dashboard</a>
                   <ul class="dropdown-menu">
                       <li>Unclear segments</li>
                       <li>Statistics</li>
                   </ul>
                 </li>
-                <li><a href="{% url 'nc_contribute' %}">Contribute!</a></li>
+                <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Contribute!</a></li>
               </ul>
 
             {% if user.is_authenticated %}
@@ -75,23 +75,22 @@
               <ul class="nav">
                 <li class="dropdown ">
                   <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                    {% trans "Logged in as " %} {{ user.username }} <img src="{{ STATIC_URL }}neurocity/flags/{{ flag }}.gif"></a>
-                    
+                    {% trans "Logged in as " %} {{ user.username }}&nbsp;&nbsp;<img src="{{ STATIC_URL }}neurocity/flags/{{ flag }}.gif"></a>
                     
                   <ul class="dropdown-menu">
-                    <li><a href="{% url 'set_language' %}">Set language</a></li>
-                    <li><a href="{% url 'account_email' %}">Change profile</a></li>
-                    <li><a href="{% url 'account_email' %}">Change E-mail</a></li>
-                    <li><a href="{% url 'account_change_password' %}">Change password</a></li>
-                    <li><a href="">Statistics</a></li>
-                    <li class="divider"></li>                    
+                    <li><a href="{% url 'nc_userstatistics' %}">Statistics</a></li>
+                    <li class="divider"></li>
+                    <li><a href="{% url 'nc_profile' %}">Profile</a></li>
+                    <li><a href="{% url 'account_email' %}">Email</a></li>
+                    <li><a href="{% url 'account_change_password' %}">Password</a></li>
+                    <li><a href="{% url 'set_language' %}">Language</a></li>
+                    <li class="divider"></li>
                     <li><a href="{% url 'account_logout' %}">Sign Out</a></li>
                   </ul>
                 </li> 
               </ul>
             </div>
               
-
             {% else %}
               
               <div class="navbar-form pull-right">

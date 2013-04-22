@@ -49,7 +49,7 @@ def segment_vote(request):
     sv.segment = segment
     sv.save()
 
-    if not comment is None or not comment == "":
+    if not comment is None and len(comment) > 0:
         sc = SegmentComment()
         sc.user = request.user
         sc.project = project

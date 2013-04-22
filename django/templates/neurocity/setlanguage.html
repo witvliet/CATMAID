@@ -3,13 +3,13 @@
 
 {% block content %}
 
-<h2>{% trans "Set language" %}</h2>
+<h2>{% trans "Choose interface language" %}</h2>
 
-{% trans "Current selected language" %}: {{ LANGUAGE_CODE|language_name_local }}
+{% trans "The current selected language is: " %} {{ LANGUAGE_CODE|language_name_local }}
 
 <form action="/i18n/setlang/" method="post">
 	{% csrf_token %}
-	<input name="next" type="hidden" value="/nc/" />
+	<input name="next" type="hidden" value="/" />
 	<select name="language">
 	{% get_language_info_list for LANGUAGES as languages %}
 	{% for language in languages %}

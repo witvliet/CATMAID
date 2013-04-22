@@ -9,10 +9,16 @@ body {
   background-color: #000000;
 }
 
+h1 {
+  font-size: 40px;
+}
+
 .hero-unit {
   background-color: #eee;
 }
-
+.hero-unit h1 {
+  font-size: 40px;
+}
 
 /* CUSTOMIZE THE NAVBAR
 -------------------------------------------------- */

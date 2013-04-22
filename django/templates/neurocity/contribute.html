@@ -182,8 +182,11 @@ var radius = 300;
             segmentkey: segmentkey,
             vote: value,
           };
-      if (comment !== undefined)
+      
+      if (comment !== undefined) {
         data['comment'] = comment;
+      }
+        
       $.ajax({
         "dataType": 'json',
         "type": "POST",

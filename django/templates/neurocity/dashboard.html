@@ -6,28 +6,28 @@
 
 <h3>Daily Top 20 contributors</h3>
 
-<table class="table table-striped table-condensed">
+<table class="table-striped table-condensed" width="70%">
 <thead>
 	<tr>
-		<th>rank</th>
-		<th>user</th>
-		<th>country</th>
-		<th>votes</th>
+		<th width="20px" align="left">rank</th>
+		<th align="left">user</th>
+		<th width="80px" align="left">country</th>
+		<th width="20px" align="left">votes</th>
 	</tr>
 </thead>
 {% for nc_user in result_score %}
 <tr>
-	<td> {{ nc_user.0 }} </td>
-	<td> {{ nc_user.1 }} </td>
-	<td> {{ nc_user.2 }} </td>
-	<td> {{ nc_user.3 }} </td>
+	<td align="center">{{ nc_user.0 }}</td>
+	<td>{{ nc_user.1 }}</td>
+	<td align="center"><img src="{{ STATIC_URL }}neurocity/flags/{{ nc_user.2 }}.gif" alt="{{ nc_user.2 }}"></td>
+	<td align="center">{{ nc_user.3 }}</td>
 </tr>
 {% endfor %}
 </table>
 
-<h3>Decisions made today: {{ sv_count }}</h3>
+<h3>Total votes made today: {{ sv_count }}</h3>
 
-<h3>Registered neurocitizen scientists: {{ nc_users }}</h3>
+<h3>Neurocitizen scientists community: {{ nc_users }} members</h3>
 
 </p>
 

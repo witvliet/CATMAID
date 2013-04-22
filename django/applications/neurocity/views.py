@@ -11,48 +11,69 @@ from catmaid.models import SegmentVote
 
 import datetime
 
+def userstatistics_view(request):
+    return render_to_response('neurocity/statistics.html', {
+        'flag': request.user.userprofile.country.code.lower()
+        }, context_instance=RequestContext(request))
+
+def profile_view(request):
+    return render_to_response('neurocity/profile.html', {
+        'flag': request.user.userprofile.country.code.lower()
+        }, context_instance=RequestContext(request))
+
 def language_view(request):
     return render_to_response('neurocity/setlanguage.html', {
-            # flag: request.user.userprofile.country.code.lower()
+        'flag': request.user.userprofile.country.code.lower()
         }, context_instance=RequestContext(request))
 
 def about_view(request):
-    return render_to_response('neurocity/about.html', {},
-                          context_instance=RequestContext(request))
+    return render_to_response('neurocity/about.html', {
+        'flag': request.user.userprofile.country.code.lower()
+        }, context_instance=RequestContext(request))
 
 def terms_view(request):
-    return render_to_response('neurocity/terms.html', {},
-                          context_instance=RequestContext(request))
+    return render_to_response('neurocity/terms.html', {
+        'flag': request.user.userprofile.country.code.lower()
+        }, context_instance=RequestContext(request))
 
 def contact_view(request):
-    return render_to_response('neurocity/contact.html', {},
-                          context_instance=RequestContext(request))
+    return render_to_response('neurocity/contact.html', {
+        'flag': request.user.userprofile.country.code.lower()
+        }, context_instance=RequestContext(request))
 
+class NeurocityBaseView(TemplateView):
 
-class NeurocityHomeView(TemplateView):
+    def get_context_data(self, **kwargs):
+        context = super(NeurocityBaseView, self).get_context_data(**kwargs)
+        context['flag'] = self.request.user.userprofile.country.code.lower()
+        return context
+
+class NeurocityHomeView(NeurocityBaseView):
 
     template_name = "neurocity/home.html"
 
     def get_context_data(self, **kwargs):
         context = super(NeurocityHomeView, self).get_context_data(**kwargs)
-        # context['latest_articles'] = Article.objects.all()[:5]
         context['flag'] = self.request.user.userprofile.country.code.lower()
+        context['nc_home_active'] = 'active'
         return context
 
-class LearnView(NeurocityHomeView):
+class LearnView(NeurocityBaseView):
 
     template_name = "neurocity/learn.html"
 
     def get_context_data(self, **kwargs):
         context = super(LearnView, self).get_context_data(**kwargs)
+        context['nc_learn_active'] = 'active'
         return context
 
-class DashboardView(NeurocityHomeView):
+class DashboardView(NeurocityBaseView):
 
     template_name = "neurocity/dashboard.html"
 
     def get_context_data(self, **kwargs):
         context = super(DashboardView, self).get_context_data(**kwargs)
+        context['nc_dashboard_active'] = 'active'
 
         context['sv_count'] = SegmentVote.objects.filter(
             creation_time__gte=datetime.date.today(),
@@ -72,14 +93,14 @@ class DashboardView(NeurocityHomeView):
 
         return context
 
-class ContributeView(NeurocityHomeView):
+class ContributeView(NeurocityBaseView):
 
     template_name = "neurocity/contribute.html"
 
     def get_context_data(self, **kwargs):
         context = super(ContributeView, self).get_context_data(**kwargs)
+        context['nc_contribute_active'] = 'active'
         segment = get_random_segment()
-
         context['originsection'] = segment.origin_section
         context['targetsection'] = segment.target_section
         context['segmentid'] = segment.segmentid
@@ -91,4 +112,3 @@ class ContributeView(NeurocityHomeView):
             context['aiguess'] = 0.0
             
         return context
-
