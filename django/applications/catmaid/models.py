@@ -736,7 +736,6 @@ class SegmentsData(models.Model):
 
 class SegmentVote(UserFocusedModel):
 
-    creation_time = models.DateTimeField(default=datetime.now)
     stack = models.ForeignKey(Stack)
 
     segment = models.ForeignKey(Segments,null=False)
@@ -747,7 +746,6 @@ class SegmentVote(UserFocusedModel):
 
 class SegmentComment(UserFocusedModel):
 
-    creation_time = models.DateTimeField(default=datetime.now)
     stack = models.ForeignKey(Stack)
 
     segmentvote = models.ForeignKey(SegmentVote,null=False)
@@ -1002,7 +1000,6 @@ class ChangeRequest(UserFocusedModel):
         if self.status == ChangeRequest.OPEN:
             # Run the request's validation code snippet to determine whether it is still valid.
             try:
-                from catmaid.control import *
                 is_valid = eval(self.validate_action)
                 if not is_valid:
                     # Cache the result so we don't have to do the eval next time.
