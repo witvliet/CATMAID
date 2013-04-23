@@ -50,16 +50,15 @@
 
   <h4>AI guess: {{ cost }}</h4>
 
-  <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.modified.js"></script>
+  <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.js"></script>
   <script>
 
 var canvas2 = new fabric.Canvas('c2'),
     canvas3 = new fabric.Canvas('c3'),
     border = 80,
-    show_slices = true
-    origimg = null;
+    show_slices = true;
 
-var radius = 300;
+var radius = 300, origin_slices = [], target_slices = [];
 
       $.ajax({
         "dataType": 'json',
@@ -137,7 +136,6 @@ var radius = 300;
 
            // add slices to canvas, need to be in the foreground
            for(var sliceidx = 0; sliceidx < data['originsection'].length; sliceidx++) {
-
               var slice_left_offset = data['originsection'][sliceidx]['min_x'] - data['totalbb']['min_x'] + border + data['originsection'][sliceidx]['width'] / 2. ,
                 slice_top_offset = data['originsection'][sliceidx]['min_y'] - data['totalbb']['min_y'] + border  + data['originsection'][sliceidx]['height'] / 2.;
               fabric.Image.fromURL(data['originsection'][sliceidx]['slicepath'], function(img) {
@@ -147,12 +145,10 @@ var radius = 300;
                 });
                 img.hasControls = img.hasBorders = false;
                 img.lockMovementX = img.lockMovementY = true;
-                img.opacity = 0.9;
-                img.set('visible', false);
+                img.opacity = 0.8;
+                // img.visible = false;
                 canvas2.add(img).bringToFront(img);
-                // canvas2.renderAll();
-
-                origimg = img;
+                origin_slices.push( img );
               });
            }
 
@@ -168,6 +164,7 @@ var radius = 300;
                 img.lockMovementX = img.lockMovementY = true;
                 img.opacity = 0.8;
                 canvas3.add(img).bringToFront(img);
+                target_slices.push( img );
               });
            }
 
@@ -176,6 +173,29 @@ var radius = 300;
       });
 
     var segmentkey = {{ segmentkey }};
+
+    var hide_slices_image = function() {
+      for(var idx = 0; idx < origin_slices.length; idx++) {
+        origin_slices[ idx ].setOpacity( 0.3 );
+      }
+      for(var idx = 0; idx < target_slices.length; idx++) {
+        target_slices[ idx ].setOpacity( 0.3 );
+      }
+      canvas2.renderAll();
+      canvas3.renderAll();
+    }
+
+    var show_slices_image = function() {
+      for(var idx = 0; idx < origin_slices.length; idx++) {
+        origin_slices[ idx ].setOpacity( 0.9 );
+      }
+      canvas2.renderAll();
+      for(var idx = 0; idx < target_slices.length; idx++) {
+        target_slices[ idx ].setOpacity( 0.9 );
+      }
+      canvas2.renderAll();
+      canvas3.renderAll();
+    }
 
     var vote = function( segmentkey, value, comment ) {
       var data = {
@@ -220,14 +240,12 @@ var radius = 300;
         }
 
         if (e.keyCode == 84) {
-          console.log('toggle', show_slices, origimg )
           if( show_slices ) {
             show_slices = false;
-            origimg.visible = false;
+            hide_slices_image();
           } else {
             show_slices = true;
-            origimg.visible = true;
-
+            show_slices_image();
           }
         }
       });      
