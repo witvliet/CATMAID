@@ -13,11 +13,17 @@
   <div class="modal-body">
     Tell us why you think the segment is unclear?<br />
     <!-- TODO: select a category of unclear -->
-    <input type="text" id="commentfield" maxlength="50" size="50">
+    <input type="checkbox" name="reason" value="not-fit-boundary">Does not fit boundary<br>
+    <input type="checkbox" name="reason" value="">Slice shifted<br>
+    <input type="checkbox" name="reason" value="">More than one neuron covered<br>
+    <input type="checkbox" name="reason" value="">Should be branch<br>
+    <input type="checkbox" name="reason" value="">...<br>
+    <br />
+    Other reason: <input type="text" id="commentfield" maxlength="50" size="50">
   </div>
   <div class="modal-footer">
-    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button class="btn btn-primary" id="submitvote">Submit vote</button>
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
+    <button class="btn btn-primary" id="submitvote">Submit comment</button>
   </div>
 </div>
 
@@ -27,7 +33,12 @@
   <a class="btn btn-large btn-primary btn-warning" href="#" id='buttonunclear'>Unclear (S)</a>
   <a class="btn btn-large btn-primary btn-danger" href="#" id='buttonbad'>Bad (D)</a>
   <br /><br />
-
+  <div id="help" style="position:absolute; right:80px; top:100px">
+    <p align="right">
+      <a class="btn btn-medium btn-primary btn-info" href="#" id='buttontoggle'>Toggle (T)</a><br />
+      <a class="btn btn-medium btn-primary btn-info" href="#" id='buttonskip'>Skip (X)</a><br />
+    </p>
+  </div>
   <table>
     <tr>
       <td>
@@ -48,10 +59,10 @@
 
   <br />
 
-  <h4>AI guess: {{ cost }}</h4>
+  <h4>Artificial Intelligence says {{ aiguess }}% correct.</h4>
 
   <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.js"></script>
-  <script>
+  <script type="text/javascript" >
 
 var canvas2 = new fabric.Canvas('c2'),
     canvas3 = new fabric.Canvas('c3'),
@@ -227,6 +238,20 @@ var radius = 300, origin_slices = [], target_slices = [];
       $('#myModal').modal('show');
     }
 
+    var skip_segment = function() {
+      location.reload();
+    }
+
+    var toggle_slice = function() {
+      if( show_slices ) {
+        show_slices = false;
+        hide_slices_image();
+      } else {
+        show_slices = true;
+        show_slices_image();
+      }
+    }
+
     var register_keyevents = function() {
       $(document).on('keyup', function(e) { 
         if (e.keyCode == 65) { 
@@ -238,18 +263,22 @@ var radius = 300, origin_slices = [], target_slices = [];
         if (e.keyCode == 68) {
           vote( segmentkey, 3 );
         }
-
         if (e.keyCode == 84) {
-          if( show_slices ) {
-            show_slices = false;
-            hide_slices_image();
-          } else {
-            show_slices = true;
-            show_slices_image();
-          }
+          toggle_slice();
+        }
+        if (e.keyCode == 88) {
+          skip_segment();
         }
       });      
     }
+
+    $('#buttonskip').on('click', function() {
+      skip_segment();
+    });
+
+    $('#buttontoggle').on('click', function() {
+      toggle_slice();
+    });
 
     $('#buttongood').on('click', function() {
       vote( segmentkey, 1 );

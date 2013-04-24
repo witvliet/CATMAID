@@ -5,52 +5,6 @@
 
 <!-- TODO: left and right keycodes to switch  -->
 
-<h2>{% trans "Scientific goals" %}</h2>
-
-What is connectomics?
-
-Neuroscience basics (neurons, synapses)
-
-Large-brain numbers, start with small brains
-
-<h2>{% trans "Electron microscopy" %}</h2>
-
-Need for the resolution
-
-Cartoon from animal, to brain, to sections
-
-<h2>{% trans "The dataset" %}</h2>
-
-Particulars
-
-<h2>{% trans "One section" %}</h2>
-
-neurons membranes, mitochondria, vesicles, synapses, neuron slices
-Cartoon to see how they are sliced, show 3d and 2d corresponding.
-
-<h2>{% trans "The Voting Task" %}</h2>
-
-What is a segment, what are the vote options.
-Imagine things in 3d. Toggle button
-
-<h2>{% trans "Good examples" %}</h2>
-
-Examples, Show Button
-
-<h2>{% trans "Bad examples" %}</h2>
-
-Examples, Show Button
-
-<h2>{% trans "Unclear examples" %}</h2>
-
-Examples, Show Button
-
-<h2>{% trans "Contribution" %}</h2>
-
-Need an account, information of contributors, procedure (who contributed what),
-Dashboard, Personal statistics
-
-
     <!-- Carousel
     ================================================== -->
     <div id="myCarousel" class="carousel slide">
@@ -60,43 +14,84 @@ Dashboard, Personal statistics
 
           <div class="container">
             <div class="carousel-caption">
+<h1>{% trans "Scientific goals" %}</h1>
+What is connectomics?
+<br /><br />
+<table width="100%" border='1'>
+  <tr>
+    <td width="200px">Blubb...
+    </td>
+    <td>
+      <iframe width="525" height="340" src="http://www.youtube.com/embed/HA7GwKXfJB0" frameborder="0" allowfullscreen></iframe>
+    </td>
+
+  </tr>
+</table>
 
               
-              <p class="lead">
-                <h1>{% trans "Get started" %}</h1>
-
-              </p>
               <br />
             
             </div>
           </div>
         </div>
+
         <div class="item">
-          <img src="../assets/img/examples/slide-02.jpg" alt="">
+          <!-- <img src="../assets/img/examples/slide-02.jpg" alt=""> -->
           <div class="container">
             <div class="carousel-caption">
-              <h1>Another example headline.</h1>
-              <p class="lead">Cras justo odio, dapibus ac facilisis in, egestas eget quam. Donec id elit non mi porta gravida at eget metus. Nullam id dolor id nibh ultricies vehicula ut id elit.</p>
-              <a class="btn btn-large btn-primary" href="#">Learn more</a>
+
+<h2>{% trans "The first dataset" %}</h2>
+
+Particulars
+
             </div>
           </div>
         </div>
+
         <div class="item">
-          <img src="../assets/img/examples/slide-03.jpg" alt="">
           <div class="container">
             <div class="carousel-caption">
-              <h1>One more for good measure.</h1>
-              <p class="lead">Cras justo odio, dapibus ac facilisis in, egestas eget quam. Donec id elit non mi porta gravida at eget metus. Nullam id dolor id nibh ultricies vehicula ut id elit.</p>
-              <a class="btn btn-large btn-primary" href="#">Browse gallery</a>
+
+<h2>{% trans "Electron microscopy" %}</h2>
+
+Need for the resolution
+
+Cartoon from animal, to brain, to sections
+
             </div>
           </div>
         </div>
+
+        <div class="item">
+          <div class="container">
+            <div class="carousel-caption">
+
+<h2>{% trans "Contribution and Publication" %}</h2>
+
+Need an account, information of contributors, procedure (who contributed what),
+Dashboard, Personal statistics
+
+            </div>
+          </div>
+        </div>
+
       </div>
       <a class="left carousel-control" href="#myCarousel" data-slide="prev">&lsaquo;</a>
       <a class="right carousel-control" href="#myCarousel" data-slide="next">&rsaquo;</a>
     </div><!-- /.carousel -->
 
+<script type="text/javascript">
+    $(document).on('keyup', function(e) { 
+        if (e.keyCode == 39) { 
+          $('.carousel').carousel('next');
+        } else if (e.keyCode == 37) { 
+          $('.carousel').carousel('prev');
+        }
 
+      });
+
+  
+</script>
 
 {% endblock %}
 

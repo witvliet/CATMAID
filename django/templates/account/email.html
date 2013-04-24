@@ -6,9 +6,10 @@
 {% block head_title %}{% trans "Account" %}{% endblock %}
 
 {% block content %}
-    <h1>{% trans "Change email" %}</h1>
+<h1>{% trans "E-Mail Address" %}</h1>
+<hr>
 {% if user.emailaddress_set.all %}
-<p>{% trans 'Please make sure that you provide a valid email address in order for us to contact you. Currently, the following e-mail addresses are associated with your account:' %}</p>
+<p>{% trans 'Please make sure that you provide a valid email address in order to contact you before publication. Currently, the following e-mail addresses are associated with your account:' %}</p>
     
 <form action="{% url 'account_email' %}" class="email_list" method="post">
 {% csrf_token %}

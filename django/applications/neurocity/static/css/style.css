@@ -3,6 +3,10 @@
 -------------------------------------------------- */
 /* Padding below the footer and lighter body text */
 
+/*.carousel .item {-webkit-transition: opacity 8s; -moz-transition: opacity 3s; -ms-transition: opacity 3s; -o-transition: opacity 3s; transition: opacity 3s;}
+.carousel .active.left {left:0;opacity:0;z-index:2;}
+.carousel .next {left:0;opacity:1;z-index:1;}
+*/
 body {
   padding-bottom: 40px;
   /*color: #5a5a5a;*/
@@ -13,11 +17,23 @@ h1 {
   font-size: 40px;
 }
 
+hr {
+  margin-top: 5px;
+}
+
 .hero-unit {
+  padding-top: 30px;
+  
+  padding-bottom: 40px;
+  padding-right: 60px;
+  padding-left: 60px;
+  margin-top: 0px;
   background-color: #eee;
+  margin-left: 40px;
+  margin-right: 40px;
 }
 .hero-unit h1 {
-  font-size: 40px;
+  font-size: 35px;
 }
 
 /* CUSTOMIZE THE NAVBAR
@@ -30,8 +46,8 @@ h1 {
   left: 0;
   right: 0;
   z-index: 10;
-  margin-top: 20px;
-  margin-bottom: -90px; /* Negative margin to pull up carousel. 90px is roughly margins and height of navbar. */
+  margin-top: 15px;
+  margin-bottom: -100px; /* Negative margin to pull up carousel. 90px is roughly margins and height of navbar. */
 }
 .navbar-wrapper .navbar {
 
@@ -70,7 +86,7 @@ h1 {
 
 /* Carousel base class */
 .carousel {
-  margin-bottom: 60px;
+  margin-bottom: 0px;
 }
 
 .carousel .container {
@@ -92,7 +108,7 @@ h1 {
 }
 
 .carousel .item {
-  height: 500px;
+  height: 400px;
 }
 /*.carousel img {
   position: absolute;
@@ -106,8 +122,10 @@ h1 {
   background-color: transparent;
   position: static;
   max-width: 550px;
-  padding: 0 20px;
-  margin-top: 30px;
+/*  padding: 0 20px;
+  margin-top: 0px;*/
+  padding: 0 0px;
+  margin-top: 0px;
 }
 .carousel-caption h1,
 .carousel-caption .lead {
@@ -217,7 +235,8 @@ h1 {
     margin-right: -20px;
   }
   .carousel .container {
-
+/*    margin-top: -120px;
+    background-color: red;*/
   }
   .carousel .item {
     height: 300px;
@@ -269,7 +288,6 @@ vertical-align: middle;
 .socialaccount_provider.google {
 	background: url(../google.png);
 }
-
 
 .socialaccount_provider.facebook {
 	background: url(../facebook.png);

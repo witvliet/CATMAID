@@ -31,6 +31,7 @@ urlpatterns += i18n_patterns('',
     # NeuroCity home
     url(r'^$', NeurocityHomeView.as_view(), name='nc_home'),
     url(r'^learn$', LearnView.as_view(), name='nc_learn'),
+    url(r'^tutorial$', TutorialView.as_view(), name='nc_tutorial'),
     url(r'^dashboard$', DashboardView.as_view(), name='nc_dashboard'),
     url(r'^contribute$', ContributeView.as_view(), name='nc_contribute'),
     url(r'^userstatistics$', userstatistics_view, name='nc_userstatistics'),

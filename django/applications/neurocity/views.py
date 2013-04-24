@@ -58,6 +58,15 @@ class NeurocityHomeView(NeurocityBaseView):
         context['nc_home_active'] = 'active'
         return context
 
+class TutorialView(NeurocityBaseView):
+
+    template_name = "neurocity/tutorial.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(TutorialView, self).get_context_data(**kwargs)
+        context['nc_tutorial_active'] = 'active'
+        return context
+
 class LearnView(NeurocityBaseView):
 
     template_name = "neurocity/learn.html"
@@ -107,7 +116,7 @@ class ContributeView(NeurocityBaseView):
         context['segmentkey'] = segment.id
         context['cost'] = segment.cost
         if segment.cost != 0.0:
-            context['aiguess'] = 1./segment.cost
+            context['aiguess'] = '%0.2f' % (1./segment.cost)
         else:
             context['aiguess'] = 0.0
             

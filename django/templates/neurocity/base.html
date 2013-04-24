@@ -7,8 +7,8 @@
     <meta charset="utf-8">
     <title>NeuroCity - Mapping brain connectivity</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="author" content="">
+    <meta name="description" content="NeuroCity - Mapping brain connectivity, slice by slice">
+    <meta name="author" content="Stephan Gerhard">
 
     <script src="{{ STATIC_URL }}libs/jquery/jquery.js"></script>
     <script src="{{ STATIC_URL }}neurocity/js/bootstrap.min.js"></script>
@@ -23,7 +23,7 @@
 
       <style type="text/css">
       body {
-        padding-top: 30px;
+        padding-top: 90px;
         /*padding-bottom: 40px;*/
       }
     </style>  
@@ -33,8 +33,8 @@
       <script src="../assets/js/html5shiv.js"></script>
     <![endif]-->
 
-    <!-- Fav and touch icons -->
-    <link rel="shortcut icon" href="../assets/ico/favicon.png">
+    <!-- TODO: Fav and touch icons -->
+    <!-- <link rel="shortcut icon" href="favicon.png"> -->
   </head>
 
   <body>
@@ -60,6 +60,7 @@
                 <!-- TODO active set  class="active" -->
                 <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">Home</a></li>
                 <li class="{{ nc_learn_active }}"><a href="{% url 'nc_learn' %}">Get started</a></li>
+                <li class="{{ nc_tutorial_active }}"><a href="{% url 'nc_tutorial' %}">Tutorial</a></li>
                 <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Dashboard</a>
                   <ul class="dropdown-menu">
                       <li>Unclear segments</li>
@@ -81,7 +82,7 @@
                     <li><a href="{% url 'nc_userstatistics' %}">Statistics</a></li>
                     <li class="divider"></li>
                     <li><a href="{% url 'nc_profile' %}">Profile</a></li>
-                    <li><a href="{% url 'account_email' %}">Email</a></li>
+                    <li><a href="{% url 'account_email' %}">E-Mail</a></li>
                     <li><a href="{% url 'account_change_password' %}">Password</a></li>
                     <li><a href="{% url 'set_language' %}">Language</a></li>
                     <li class="divider"></li>
