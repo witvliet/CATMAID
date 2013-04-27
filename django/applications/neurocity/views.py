@@ -6,7 +6,7 @@ from django.template import RequestContext
 from django.contrib.auth.models import User
 from django.db.models import Count
 
-from neurocity.control.segment import get_random_segment
+from neurocity.control.segment import get_random_segment, get_segment_by_key
 from catmaid.models import SegmentVote
 
 import datetime
@@ -102,6 +102,31 @@ class DashboardView(NeurocityBaseView):
 
         return context
 
+class SegmentOnlyView(NeurocityBaseView):
+
+    template_name = "neurocity/contribute.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(SegmentOnlyView, self).get_context_data(**kwargs)
+
+        context['nc_segmentonly'] = True
+        segmentkey = int( self.request.GET.get('segmentkey', '0') )
+        print 'segmentkey retrieved', segmentkey
+        segment = get_segment_by_key( segmentkey )
+        # segment = get_random_segment() # TODO: get particular segment
+        context['originsection'] = segment.origin_section
+        context['targetsection'] = segment.target_section
+        context['segmentid'] = segment.segmentid
+        context['segmentkey'] = segment.id
+        context['tile_base_url'] = 'http://localhost:8000/static/stack2/raw/'
+        context['cost'] = segment.cost
+        if segment.cost != 0.0:
+            context['aiguess'] = '%0.2f' % (1./segment.cost)
+        else:
+            context['aiguess'] = 0.0
+            
+        return context
+
 class ContributeView(NeurocityBaseView):
 
     template_name = "neurocity/contribute.html"
@@ -114,6 +139,7 @@ class ContributeView(NeurocityBaseView):
         context['targetsection'] = segment.target_section
         context['segmentid'] = segment.segmentid
         context['segmentkey'] = segment.id
+        context['tile_base_url'] = 'http://localhost:8000/static/stack2/raw/'
         context['cost'] = segment.cost
         if segment.cost != 0.0:
             context['aiguess'] = '%0.2f' % (1./segment.cost)
