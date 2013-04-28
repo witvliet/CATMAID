@@ -8,52 +8,38 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding model 'SegmentVote'
-        db.create_table('catmaid_segmentvote', (
+        # Adding model 'Segments'
+        db.create_table('catmaid_segments', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
             ('project', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['catmaid.Project'])),
             ('creation_time', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime.now)),
+            ('edition_time', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime.now)),
             ('stack', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['catmaid.Stack'])),
-            ('segment', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['catmaid.Segments'])),
-            ('vote', self.gf('django.db.models.fields.IntegerField')(db_index=True)),
+            ('node_id', self.gf('django.db.models.fields.CharField')(max_length=255, db_index=True)),
+            ('segmentid', self.gf('django.db.models.fields.IntegerField')(db_index=True)),
+            ('segmenttype', self.gf('django.db.models.fields.IntegerField')(db_index=True)),
+            ('origin_section', self.gf('django.db.models.fields.IntegerField')(db_index=True)),
+            ('origin_slice_id', self.gf('django.db.models.fields.IntegerField')(db_index=True)),
+            ('target_section', self.gf('django.db.models.fields.IntegerField')(null=True, db_index=True)),
+            ('target1_slice_id', self.gf('django.db.models.fields.IntegerField')(null=True, db_index=True)),
+            ('target2_slice_id', self.gf('django.db.models.fields.IntegerField')(null=True, db_index=True)),
+            ('cost', self.gf('django.db.models.fields.FloatField')(db_index=True)),
+            ('randomforest_cost', self.gf('django.db.models.fields.FloatField')()),
+            ('segmentation_cost', self.gf('django.db.models.fields.FloatField')()),
+            ('direction', self.gf('django.db.models.fields.BooleanField')(default=False)),
+            ('center_y', self.gf('django.db.models.fields.FloatField')(db_index=True)),
+            ('center_x', self.gf('django.db.models.fields.FloatField')(db_index=True)),
+            ('assembly', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['catmaid.ClassInstance'], null=True)),
+            ('nr_of_votes', self.gf('django.db.models.fields.IntegerField')(default=0, db_index=True)),
+            ('status', self.gf('django.db.models.fields.IntegerField')(default=1, db_index=True)),
         ))
-        db.send_create_signal('catmaid', ['SegmentVote'])
-
-        # Adding model 'SegmentComment'
-        db.create_table('catmaid_segmentcomment', (
-            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
-            ('project', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['catmaid.Project'])),
-            ('creation_time', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime.now)),
-            ('stack', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['catmaid.Stack'])),
-            ('segmentvote', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['catmaid.SegmentVote'])),
-        ))
-        db.send_create_signal('catmaid', ['SegmentComment'])
-
-        # Adding field 'Segments.node_id'
-        # db.add_column('catmaid_segments', 'node_id',
-        #               self.gf('django.db.models.fields.CharField')(default='0_0', max_length=255, db_index=True),
-        #               keep_default=False)
-
-        # Adding field 'Segments.nr_of_votes'
-        # db.add_column('catmaid_segments', 'nr_of_votes',
-        #               self.gf('django.db.models.fields.IntegerField')(default=0, db_index=True),
-        #               keep_default=False)
+        db.send_create_signal('catmaid', ['Segments'])
 
 
     def backwards(self, orm):
-        # Deleting model 'SegmentVote'
-        db.delete_table('catmaid_segmentvote')
-
-        # Deleting model 'SegmentComment'
-        db.delete_table('catmaid_segmentcomment')
-
-        # Deleting field 'Segments.node_id'
-        # db.delete_column('catmaid_segments', 'node_id')
-
-        # Deleting field 'Segments.nr_of_votes'
-        # db.delete_column('catmaid_segments', 'nr_of_votes')
+        # Deleting model 'Segments'
+        db.delete_table('catmaid_segments')
 
 
     models = {
@@ -332,6 +318,7 @@ class Migration(SchemaMigration):
         },
         'catmaid.segmentcomment': {
             'Meta': {'object_name': 'SegmentComment'},
+            'comment': ('django.db.models.fields.CharField', [], {'max_length': '1024'}),
             'creation_time': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'project': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['catmaid.Project']"}),
@@ -341,61 +328,67 @@ class Migration(SchemaMigration):
         },
         'catmaid.segments': {
             'Meta': {'object_name': 'Segments'},
-            'aligned_average_slice_distance': ('django.db.models.fields.FloatField', [], {}),
-            'aligned_max_slice_distance': ('django.db.models.fields.FloatField', [], {}),
-            'aligned_overlap': ('django.db.models.fields.FloatField', [], {}),
-            'aligned_overlap_ratio': ('django.db.models.fields.FloatField', [], {}),
-            'aligned_set_difference': ('django.db.models.fields.FloatField', [], {}),
-            'aligned_set_difference_ratio': ('django.db.models.fields.FloatField', [], {}),
             'assembly': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['catmaid.ClassInstance']", 'null': 'True'}),
-            'average_slice_distance': ('django.db.models.fields.FloatField', [], {}),
-            'center_distance': ('django.db.models.fields.FloatField', [], {}),
+            'center_x': ('django.db.models.fields.FloatField', [], {'db_index': 'True'}),
+            'center_y': ('django.db.models.fields.FloatField', [], {'db_index': 'True'}),
             'cost': ('django.db.models.fields.FloatField', [], {'db_index': 'True'}),
             'creation_time': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
             'direction': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'edition_time': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
-            'histogram_0': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_1': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_2': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_3': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_4': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_5': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_6': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_7': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_8': ('django.db.models.fields.FloatField', [], {}),
-            'histogram_9': ('django.db.models.fields.FloatField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'max_slice_distance': ('django.db.models.fields.FloatField', [], {}),
             'node_id': ('django.db.models.fields.CharField', [], {'max_length': '255', 'db_index': 'True'}),
-            'normalized_histogram_0': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_1': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_2': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_3': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_4': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_5': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_6': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_7': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_8': ('django.db.models.fields.FloatField', [], {}),
-            'normalized_histogram_9': ('django.db.models.fields.FloatField', [], {}),
             'nr_of_votes': ('django.db.models.fields.IntegerField', [], {'default': '0', 'db_index': 'True'}),
             'origin_section': ('django.db.models.fields.IntegerField', [], {'db_index': 'True'}),
             'origin_slice_id': ('django.db.models.fields.IntegerField', [], {'db_index': 'True'}),
-            'overlap': ('django.db.models.fields.FloatField', [], {}),
-            'overlap_ratio': ('django.db.models.fields.FloatField', [], {}),
             'project': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['catmaid.Project']"}),
             'randomforest_cost': ('django.db.models.fields.FloatField', [], {}),
             'segmentation_cost': ('django.db.models.fields.FloatField', [], {}),
             'segmentid': ('django.db.models.fields.IntegerField', [], {'db_index': 'True'}),
             'segmenttype': ('django.db.models.fields.IntegerField', [], {'db_index': 'True'}),
-            'set_difference': ('django.db.models.fields.FloatField', [], {}),
-            'set_difference_ratio': ('django.db.models.fields.FloatField', [], {}),
-            'size': ('django.db.models.fields.FloatField', [], {}),
             'stack': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['catmaid.Stack']"}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '1', 'db_index': 'True'}),
             'target1_slice_id': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'db_index': 'True'}),
             'target2_slice_id': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'db_index': 'True'}),
             'target_section': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'db_index': 'True'}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"})
+        },
+        'catmaid.segmentsdata': {
+            'Meta': {'object_name': 'SegmentsData'},
+            'aligned_average_slice_distance': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'aligned_max_slice_distance': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'aligned_overlap': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'aligned_overlap_ratio': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'aligned_set_difference': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'aligned_set_difference_ratio': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'average_slice_distance': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'center_distance': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_0': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_1': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_2': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_3': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_4': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_5': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_6': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_7': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_8': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'histogram_9': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'max_slice_distance': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_0': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_1': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_2': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_3': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_4': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_5': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_6': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_7': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_8': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'normalized_histogram_9': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'overlap': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'overlap_ratio': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'segment': ('django.db.models.fields.related.OneToOneField', [], {'to': "orm['catmaid.Segments']", 'unique': 'True', 'primary_key': 'True'}),
+            'set_difference': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'set_difference_ratio': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'size': ('django.db.models.fields.FloatField', [], {'default': '0.0'})
         },
         'catmaid.segmenttoconstraintmap': {
             'Meta': {'object_name': 'SegmentToConstraintMap'},
@@ -411,6 +404,7 @@ class Migration(SchemaMigration):
         'catmaid.segmentvote': {
             'Meta': {'object_name': 'SegmentVote'},
             'creation_time': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
+            'elapsed_time': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'project': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['catmaid.Project']"}),
             'segment': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['catmaid.Segments']"}),
@@ -567,12 +561,12 @@ class Migration(SchemaMigration):
             'country': ('django_countries.fields.CountryField', [], {'default': "'US'", 'max_length': '2'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'inverse_mouse_wheel': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'show_cropping_tool': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
-            'show_ontology_tool': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
-            'show_segmentation_tool': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
+            'show_cropping_tool': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'show_ontology_tool': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'show_segmentation_tool': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'show_tagging_tool': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'show_text_label_tool': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'show_tracing_tool': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
+            'show_tracing_tool': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'user': ('django.db.models.fields.related.OneToOneField', [], {'to': "orm['auth.User']", 'unique': 'True'})
         },
         'contenttypes.contenttype': {
