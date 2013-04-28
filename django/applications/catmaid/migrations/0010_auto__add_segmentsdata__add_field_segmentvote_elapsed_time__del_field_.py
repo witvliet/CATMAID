@@ -8,6 +8,9 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
+
+        db.delete_table('catmaid_segmentsdata')
+        
         # Adding model 'SegmentsData'
         db.create_table('catmaid_segmentsdata', (
             ('segment', self.gf('django.db.models.fields.related.OneToOneField')(to=orm['catmaid.Segments'], unique=True, primary_key=True)),
