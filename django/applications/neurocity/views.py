@@ -6,7 +6,7 @@ from django.template import RequestContext
 from django.contrib.auth.models import User
 from django.db.models import Count
 
-from neurocity.control.segment import get_random_segment, get_segment_by_key
+from catmaid.control.segment import get_random_segment, get_segment_by_key
 from catmaid.models import SegmentVote
 
 import datetime

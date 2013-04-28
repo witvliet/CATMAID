@@ -41,8 +41,8 @@ urlpatterns += i18n_patterns('',
     url(r'^profile$', profile_view, name='nc_profile'),
     url(r'^setlanguage$', language_view, name='set_language'),
 
-    url(r'^segment-vote$', 'neurocity.control.segment.segment_vote'),
-    url(r'^segment-bb$', 'neurocity.control.segment.get_segment_boundingbox'),
+    url(r'^segment-vote$', 'catmaid.control.segment.segment_vote'),
+    url(r'^segment-bb$', 'catmaid.control.segment.get_segment_boundingbox'),
     
 )
 
