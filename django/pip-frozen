@@ -25,3 +25,5 @@ requests>=1.0.3
 requests-oauthlib>=0.3.0
 django-allauth==0.9.0
 django-countries==1.5
+django-uni-form==0.9.0
+django-rosetta==0.7.1
