@@ -118,7 +118,7 @@ class SegmentOnlyView(NeurocityBaseView):
         context['targetsection'] = segment.target_section
         context['segmentid'] = segment.segmentid
         context['segmentkey'] = segment.id
-        context['tile_base_url'] = 'http://localhost:8000/static/stack2/raw/'
+        context['tile_base_url'] = 'http://localhost/datastatic/stack2/raw/'
         context['cost'] = segment.cost
         if segment.cost != 0.0:
             context['aiguess'] = '%0.2f' % (1./segment.cost)

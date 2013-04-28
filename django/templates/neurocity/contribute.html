@@ -17,6 +17,8 @@
     <input type="checkbox" name="reason" value="">Slice shifted<br>
     <input type="checkbox" name="reason" value="">More than one neuron covered<br>
     <input type="checkbox" name="reason" value="">Should be branch<br>
+    <input type="checkbox" name="reason" value="">Slices match, but neuron not completely covered<br>
+    <input type="checkbox" name="reason" value="">Only mitochondria covered<br>
     <input type="checkbox" name="reason" value="">...<br>
     <br />
     Other reason: <input type="text" id="commentfield" maxlength="50" size="50">
@@ -60,7 +62,7 @@
 
   <br />
 
-  <h4>Artificial Intelligence says {{ aiguess }}% correct.</h4>
+  <h4>Artificial Intelligence says {{ aiguess }}% correct (cost: {{ cost }}).</h4>
 <!-- TODO: Contributors say ;..... -->
 
   <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.js"></script>
@@ -70,7 +72,7 @@ var canvas2 = new fabric.Canvas('c2'),
     canvas3 = new fabric.Canvas('c3'),
     border = 80, show_slices = true,
     radius = 300, origin_slices = [], target_slices = [],
-    start = new Date().getTime();
+    start;
 
       $.ajax({
         "dataType": 'json',
@@ -206,7 +208,7 @@ var canvas2 = new fabric.Canvas('c2'),
       if (comment !== undefined) {
         data['comment'] = comment;
       }
-      
+
       data['elapsed_time'] = new Date().getTime() - start;
 
       $.ajax({
@@ -300,6 +302,10 @@ var canvas2 = new fabric.Canvas('c2'),
     });
 
     register_keyevents();
+
+    $(document).ready(function() {
+      start = new Date().getTime();
+    });
 
   </script>
 

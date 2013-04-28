@@ -45,7 +45,7 @@
       <!-- Wrap the .navbar in .container to center it within the absolutely positioned parent. -->
       <div class="container">
 
-        <div class="navbar navbar-inverse">
+        <div class="navbar navbar-inverse navbar-fixed-top">
           <div class="navbar-inner">
             <!-- Responsive Navbar Part 1: Button for triggering responsive navbar (not covered in tutorial). Include responsive CSS to utilize. -->
             <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
@@ -53,28 +53,32 @@
               <span class="icon-bar"></span>
               <span class="icon-bar"></span>
             </button>
-            <a class="brand" href="#">NeuroCity</a>
+            <div class="span5" id="">
+              <ul class="nav">
+                <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">NeuroCity</a></li>
+
+              </ul>
+            </div>
+
+            <!-- <a class="brand" href="#">NeuroCity</a> -->
             <!-- Responsive Navbar Part 2: Place all navbar contents you want collapsed withing .navbar-collapse.collapse. -->
             <div class="nav-collapse collapse">
+
+              <div id="header_menu" class="span8"> <!--  pull-right -->
               <ul class="nav">
                 <!-- TODO active set  class="active" -->
-                <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">Home</a></li>
+                <!-- <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">Home</a></li> -->
                 <li class="{{ nc_learn_active }}"><a href="{% url 'nc_learn' %}">Get started</a></li>
                 <li class="{{ nc_tutorial_active }}"><a href="{% url 'nc_tutorial' %}">Tutorial</a></li>
-                <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Dashboard</a>
-                  <ul class="dropdown-menu">
-                      <li>Unclear segments</li>
-                      <li>Statistics</li>
-                  </ul>
-                </li>
+                <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Leaderboard</a>
                 <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Contribute!</a></li>
               </ul>
-
+              <!-- </div> -->
             {% if user.is_authenticated %}
 
-            <div class="navbar-form pull-right">
-              <ul class="nav">
-                <li class="dropdown ">
+            <!-- <div class="navbar-form pull-right"> -->
+              <ul class="nav pull-right">
+                <li class="dropdown">
                   <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                     {% trans "Logged in as " %} {{ user.username }}&nbsp;&nbsp;<img src="{{ STATIC_URL }}neurocity/flags/{{ flag }}.gif"></a>
                     
@@ -93,12 +97,11 @@
             </div>
               
             {% else %}
-              
-              <div class="navbar-form pull-right">
-                <a href="/accounts/signup" role="button" class="btn btn-small btn-inverse" data-toggle="modal">Sign up</a>
-                  <a href="/accounts/login" 
-                    role="button" class="btn btn-small btn-inverse" data-toggle="modal">Sign in</a>
-                  
+                <ul class="nav pull-right">
+                <!-- <div class="navbar-form pull-right"> -->
+                <li><a href="/accounts/signup">Sign up</a></li>
+                <li><a href="/accounts/login">Sign in</a></li>
+                </ul>
               </div>
             {% endif %}
 

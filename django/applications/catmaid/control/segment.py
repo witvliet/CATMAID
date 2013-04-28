@@ -27,6 +27,7 @@ def segment_vote(request):
     segmentkey = int(request.POST.get('segmentkey', -1))
     vote = int(request.POST.get('vote', -1))
     comment = request.POST.get('comment', None)
+    elapsed_time = int(request.POST.get('elapsed_time', 0))
 
     if segmentkey == -1:
         return HttpResponse(json.dumps({'error':'Invalid segmentkey'}), mimetype='text/json')
@@ -45,6 +46,7 @@ def segment_vote(request):
     sv.stack = stack
     sv.vote = vote
     sv.segment = segment
+    sv.elapsed_time = elapsed_time
     sv.save()
 
     if not comment is None and len(comment) > 0:
@@ -95,7 +97,7 @@ def get_random_segment():
     segments = Segments.objects.filter(
             stack = stack,
             project = project,
-            cost__lt = 5.0).all()[:70]
+            cost__lt = 2.0).all()
 
     # TODO: intelligent sampling of the segments
     segment = random.choice( segments ) # random.choice( segments ) #segments[0]
