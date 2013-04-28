@@ -707,7 +707,7 @@ class Segments(UserFocusedModel):
 
 class SegmentsData(models.Model):
 
-    segment = models.ForeignKey(Segments)
+    segment = models.OneToOneField(Segments, primary_key = True)
 
     center_distance = models.FloatField(default=0.0)
     set_difference = models.FloatField(default=0.0)
@@ -755,7 +755,7 @@ class SegmentVote(UserFocusedModel):
     vote = models.IntegerField(db_index=True,null=False)
 
     # interval from loading the vote page to sending the vote ajax
-    elapsed_time = models.IntegerField(null=False)
+    elapsed_time = models.IntegerField(null=False,default=0)
 
 class SegmentComment(UserFocusedModel):
 

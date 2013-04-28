@@ -256,17 +256,23 @@ def segments_for_slice_right(request, project_id=None, stack_id=None):
         direction = True,
         cost__lt = 100,
         status__gt = 0
-    ).all().values('segmentid','segmenttype','origin_section','origin_slice_id','target_section',
-    'target1_slice_id','target2_slice_id','direction',
-    'center_distance','set_difference','cost','set_difference','set_difference_ratio',
-    'aligned_set_difference','aligned_set_difference_ratio',
-    'size','overlap','overlap_ratio','aligned_overlap','aligned_overlap_ratio',
-    'average_slice_distance', 'max_slice_distance',
-    'aligned_average_slice_distance', 'aligned_max_slice_distance',
-    'histogram_0', 'histogram_1', 'histogram_2', 'histogram_3', 'histogram_4', 'histogram_5',
-    'histogram_6', 'histogram_7', 'histogram_8', 'histogram_9', 'normalized_histogram_0',
-    'normalized_histogram_1', 'normalized_histogram_2', 'normalized_histogram_3', 'normalized_histogram_4', 'normalized_histogram_5',
-    'normalized_histogram_6', 'normalized_histogram_7', 'normalized_histogram_8', 'normalized_histogram_9').order_by('cost')
+    ).all().values( 
+        'segmentid',
+        'segmenttype',
+        'origin_section','origin_slice_id',
+        'target_section','target1_slice_id','target2_slice_id',
+        'direction',
+        'cost',
+        'segmentsdata__center_distance',
+        'segmentsdata__set_difference',
+        'segmentsdata__set_difference_ratio',
+        'segmentsdata__aligned_set_difference',
+        'segmentsdata__aligned_set_difference_ratio',
+        'segmentsdata__size',
+        'segmentsdata__overlap',
+        'segmentsdata__overlap_ratio',
+        'segmentsdata__aligned_overlap',
+        'segmentsdata__aligned_overlap_ratio').order_by('cost')
 
     return HttpResponse(JSONEncoder().encode(list(segments_right)), mimetype="text/json")
 
@@ -288,17 +294,22 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
         direction = True,
         cost__lt = 100,
         status__gt = 0
-    ).all().values('segmentid','segmenttype','origin_section','origin_slice_id','target_section',
-    'target1_slice_id','target2_slice_id','direction',
-    'center_distance','set_difference','cost','set_difference','set_difference_ratio',
-    'aligned_set_difference','aligned_set_difference_ratio',
-    'size','overlap','overlap_ratio','aligned_overlap','aligned_overlap_ratio',
-    'average_slice_distance', 'max_slice_distance',
-    'aligned_average_slice_distance', 'aligned_max_slice_distance',
-    'histogram_0', 'histogram_1', 'histogram_2', 'histogram_3', 'histogram_4', 'histogram_5',
-    'histogram_6', 'histogram_7', 'histogram_8', 'histogram_9', 'normalized_histogram_0',
-    'normalized_histogram_1', 'normalized_histogram_2', 'normalized_histogram_3', 'normalized_histogram_4', 'normalized_histogram_5',
-    'normalized_histogram_6', 'normalized_histogram_7', 'normalized_histogram_8', 'normalized_histogram_9').order_by('cost')
+    ).all().values('segmentid',
+        'segmenttype',
+        'origin_section','origin_slice_id',
+        'target_section','target1_slice_id','target2_slice_id',
+        'direction',
+        'cost',
+        'segmentsdata__center_distance',
+        'segmentsdata__set_difference',
+        'segmentsdata__set_difference_ratio',
+        'segmentsdata__aligned_set_difference',
+        'segmentsdata__aligned_set_difference_ratio',
+        'segmentsdata__size',
+        'segmentsdata__overlap',
+        'segmentsdata__overlap_ratio',
+        'segmentsdata__aligned_overlap',
+        'segmentsdata__aligned_overlap_ratio').order_by('cost')
 
     segments_left_branch = Segments.objects.filter(
         stack = stack,
@@ -309,17 +320,22 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
         direction = False,
         cost__lt = 100,
         status__gt = 0
-    ).all().values('segmentid','segmenttype','origin_section','origin_slice_id','target_section',
-    'target1_slice_id','target2_slice_id','direction',
-    'center_distance','set_difference','cost','set_difference','set_difference_ratio',
-    'aligned_set_difference','aligned_set_difference_ratio',
-    'size','overlap','overlap_ratio','aligned_overlap','aligned_overlap_ratio',
-    'average_slice_distance', 'max_slice_distance',
-    'aligned_average_slice_distance', 'aligned_max_slice_distance',
-    'histogram_0', 'histogram_1', 'histogram_2', 'histogram_3', 'histogram_4', 'histogram_5',
-    'histogram_6', 'histogram_7', 'histogram_8', 'histogram_9', 'normalized_histogram_0',
-    'normalized_histogram_1', 'normalized_histogram_2', 'normalized_histogram_3', 'normalized_histogram_4', 'normalized_histogram_5',
-    'normalized_histogram_6', 'normalized_histogram_7', 'normalized_histogram_8', 'normalized_histogram_9').order_by('cost')
+    ).all().values('segmentid',
+        'segmenttype',
+        'origin_section','origin_slice_id',
+        'target_section','target1_slice_id','target2_slice_id',
+        'direction',
+        'cost',
+        'segmentsdata__center_distance',
+        'segmentsdata__set_difference',
+        'segmentsdata__set_difference_ratio',
+        'segmentsdata__aligned_set_difference',
+        'segmentsdata__aligned_set_difference_ratio',
+        'segmentsdata__size',
+        'segmentsdata__overlap',
+        'segmentsdata__overlap_ratio',
+        'segmentsdata__aligned_overlap',
+        'segmentsdata__aligned_overlap_ratio').order_by('cost')
 
     return HttpResponse(JSONEncoder().encode(list(segments_left)+list(segments_left_branch)), mimetype="text/json")
 

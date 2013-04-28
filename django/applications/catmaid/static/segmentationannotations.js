@@ -869,30 +869,30 @@ var SegmentationAnnotations = new function()
             '<td>overlap_ratio</td>' +
             '<td>aligned_overlap</td>' +
             '<td>aligned_overlap_ratio</td>' +
-            '<td>average_slice_distance</td>' +
-            '<td>max_slice_distance</td>' +
-            '<td>aligned_average_slice_distance</td>' +
-            '<td>aligned_max_slice_distance</td>' +
-            '<td>histogram_0</td>' +
-            '<td>histogram_1</td>' +
-            '<td>histogram_2</td>' +
-            '<td>histogram_3</td>' +
-            '<td>histogram_4</td>' +
-            '<td>histogram_5</td>' +
-            '<td>histogram_6</td>' +
-            '<td>histogram_7</td>' +
-            '<td>histogram_8</td>' +
-            '<td>histogram_9</td>' +
-            '<td>normalized_histogram_0</td>' +
-            '<td>normalized_histogram_1</td>' +
-            '<td>normalized_histogram_2</td>' +
-            '<td>normalized_histogram_3</td>' +
-            '<td>normalized_histogram_4</td>' +
-            '<td>normalized_histogram_5</td>' +
-            '<td>normalized_histogram_6</td>' +
-            '<td>normalized_histogram_7</td>' +
-            '<td>normalized_histogram_8</td>' +
-            '<td>normalized_histogram_9</td>' +
+            // '<td>average_slice_distance</td>' +
+            // '<td>max_slice_distance</td>' +
+            // '<td>aligned_average_slice_distance</td>' +
+            // '<td>aligned_max_slice_distance</td>' +
+            // '<td>histogram_0</td>' +
+            // '<td>histogram_1</td>' +
+            // '<td>histogram_2</td>' +
+            // '<td>histogram_3</td>' +
+            // '<td>histogram_4</td>' +
+            // '<td>histogram_5</td>' +
+            // '<td>histogram_6</td>' +
+            // '<td>histogram_7</td>' +
+            // '<td>histogram_8</td>' +
+            // '<td>histogram_9</td>' +
+            // '<td>normalized_histogram_0</td>' +
+            // '<td>normalized_histogram_1</td>' +
+            // '<td>normalized_histogram_2</td>' +
+            // '<td>normalized_histogram_3</td>' +
+            // '<td>normalized_histogram_4</td>' +
+            // '<td>normalized_histogram_5</td>' +
+            // '<td>normalized_histogram_6</td>' +
+            // '<td>normalized_histogram_7</td>' +
+            // '<td>normalized_histogram_8</td>' +
+            // '<td>normalized_histogram_9</td>' +
             '</tr>');
 
         for(var i=0; i<right_segments.length; i++ ) {
@@ -914,6 +914,7 @@ var SegmentationAnnotations = new function()
             var star = "";
             if( i == allslices[ node_id ].selected_segment_right )
                 star = "(*)";
+
             $('#segmentstable').append('<tr>'+
                 //'<td>'+segment.segmentid+'</td>' +
                 '<td style="background-color:#000000">'+sliceimage+'</td>' +
@@ -933,30 +934,30 @@ var SegmentationAnnotations = new function()
                 '<td>'+segment.overlap_ratio+'</td>' +
                 '<td>'+segment.aligned_overlap+'</td>' +
                 '<td>'+segment.aligned_overlap_ratio+'</td>' +
-                '<td>'+segment.average_slice_distance+'</td>' +
-                '<td>'+segment.max_slice_distance+'</td>' +
-                '<td>'+segment.aligned_average_slice_distance+'</td>' +
-                '<td>'+segment.aligned_max_slice_distance+'</td>' +
-                '<td>'+segment.histogram_0+'</td>' +
-                '<td>'+segment.histogram_1+'</td>' +
-                '<td>'+segment.histogram_2+'</td>' +
-                '<td>'+segment.histogram_3+'</td>' +
-                '<td>'+segment.histogram_4+'</td>' +
-                '<td>'+segment.histogram_5+'</td>' +
-                '<td>'+segment.histogram_6+'</td>' +
-                '<td>'+segment.histogram_7+'</td>' +
-                '<td>'+segment.histogram_8+'</td>' +
-                '<td>'+segment.histogram_9+'</td>' +
-                '<td>'+segment.normalized_histogram_0+'</td>' +
-                '<td>'+segment.normalized_histogram_1+'</td>' +
-                '<td>'+segment.normalized_histogram_2+'</td>' +
-                '<td>'+segment.normalized_histogram_3+'</td>' +
-                '<td>'+segment.normalized_histogram_4+'</td>' +
-                '<td>'+segment.normalized_histogram_5+'</td>' +
-                '<td>'+segment.normalized_histogram_6+'</td>' +
-                '<td>'+segment.normalized_histogram_7+'</td>' +
-                '<td>'+segment.normalized_histogram_8+'</td>' +
-                '<td>'+segment.normalized_histogram_9+'</td>' +
+                // '<td>'+segment.average_slice_distance+'</td>' +
+                // '<td>'+segment.max_slice_distance+'</td>' +
+                // '<td>'+segment.aligned_average_slice_distance+'</td>' +
+                // '<td>'+segment.aligned_max_slice_distance+'</td>' +
+                // '<td>'+segment.histogram_0+'</td>' +
+                // '<td>'+segment.histogram_1+'</td>' +
+                // '<td>'+segment.histogram_2+'</td>' +
+                // '<td>'+segment.histogram_3+'</td>' +
+                // '<td>'+segment.histogram_4+'</td>' +
+                // '<td>'+segment.histogram_5+'</td>' +
+                // '<td>'+segment.histogram_6+'</td>' +
+                // '<td>'+segment.histogram_7+'</td>' +
+                // '<td>'+segment.histogram_8+'</td>' +
+                // '<td>'+segment.histogram_9+'</td>' +
+                // '<td>'+segment.normalized_histogram_0+'</td>' +
+                // '<td>'+segment.normalized_histogram_1+'</td>' +
+                // '<td>'+segment.normalized_histogram_2+'</td>' +
+                // '<td>'+segment.normalized_histogram_3+'</td>' +
+                // '<td>'+segment.normalized_histogram_4+'</td>' +
+                // '<td>'+segment.normalized_histogram_5+'</td>' +
+                // '<td>'+segment.normalized_histogram_6+'</td>' +
+                // '<td>'+segment.normalized_histogram_7+'</td>' +
+                // '<td>'+segment.normalized_histogram_8+'</td>' +
+                // '<td>'+segment.normalized_histogram_9+'</td>' +
                 '</tr>');
         }
 
@@ -979,30 +980,30 @@ var SegmentationAnnotations = new function()
             '<td>overlap_ratio</td>' +
             '<td>aligned_overlap</td>' +
             '<td>aligned_overlap_ratio</td>' +
-            '<td>average_slice_distance</td>' +
-            '<td>max_slice_distance</td>' +
-            '<td>aligned_average_slice_distance</td>' +
-            '<td>aligned_max_slice_distance</td>' +
-            '<td>histogram_0</td>' +
-            '<td>histogram_1</td>' +
-            '<td>histogram_2</td>' +
-            '<td>histogram_3</td>' +
-            '<td>histogram_4</td>' +
-            '<td>histogram_5</td>' +
-            '<td>histogram_6</td>' +
-            '<td>histogram_7</td>' +
-            '<td>histogram_8</td>' +
-            '<td>histogram_9</td>' +
-            '<td>normalized_histogram_0</td>' +
-            '<td>normalized_histogram_1</td>' +
-            '<td>normalized_histogram_2</td>' +
-            '<td>normalized_histogram_3</td>' +
-            '<td>normalized_histogram_4</td>' +
-            '<td>normalized_histogram_5</td>' +
-            '<td>normalized_histogram_6</td>' +
-            '<td>normalized_histogram_7</td>' +
-            '<td>normalized_histogram_8</td>' +
-            '<td>normalized_histogram_9</td>' +
+            // '<td>average_slice_distance</td>' +
+            // '<td>max_slice_distance</td>' +
+            // '<td>aligned_average_slice_distance</td>' +
+            // '<td>aligned_max_slice_distance</td>' +
+            // '<td>histogram_0</td>' +
+            // '<td>histogram_1</td>' +
+            // '<td>histogram_2</td>' +
+            // '<td>histogram_3</td>' +
+            // '<td>histogram_4</td>' +
+            // '<td>histogram_5</td>' +
+            // '<td>histogram_6</td>' +
+            // '<td>histogram_7</td>' +
+            // '<td>histogram_8</td>' +
+            // '<td>histogram_9</td>' +
+            // '<td>normalized_histogram_0</td>' +
+            // '<td>normalized_histogram_1</td>' +
+            // '<td>normalized_histogram_2</td>' +
+            // '<td>normalized_histogram_3</td>' +
+            // '<td>normalized_histogram_4</td>' +
+            // '<td>normalized_histogram_5</td>' +
+            // '<td>normalized_histogram_6</td>' +
+            // '<td>normalized_histogram_7</td>' +
+            // '<td>normalized_histogram_8</td>' +
+            // '<td>normalized_histogram_9</td>' +
             '</tr>');
         for(var i=0; i<left_segments.length; i++ ) {
             // only for continuations
@@ -1043,30 +1044,30 @@ var SegmentationAnnotations = new function()
                 '<td>'+segment.overlap_ratio+'</td>' +
                 '<td>'+segment.aligned_overlap+'</td>' +
                 '<td>'+segment.aligned_overlap_ratio+'</td>' +
-                '<td>'+segment.average_slice_distance+'</td>' +
-                '<td>'+segment.max_slice_distance+'</td>' +
-                '<td>'+segment.aligned_average_slice_distance+'</td>' +
-                '<td>'+segment.aligned_max_slice_distance+'</td>' +
-                '<td>'+segment.histogram_0+'</td>' +
-                '<td>'+segment.histogram_1+'</td>' +
-                '<td>'+segment.histogram_2+'</td>' +
-                '<td>'+segment.histogram_3+'</td>' +
-                '<td>'+segment.histogram_4+'</td>' +
-                '<td>'+segment.histogram_5+'</td>' +
-                '<td>'+segment.histogram_6+'</td>' +
-                '<td>'+segment.histogram_7+'</td>' +
-                '<td>'+segment.histogram_8+'</td>' +
-                '<td>'+segment.histogram_9+'</td>' +
-                '<td>'+segment.normalized_histogram_0+'</td>' +
-                '<td>'+segment.normalized_histogram_1+'</td>' +
-                '<td>'+segment.normalized_histogram_2+'</td>' +
-                '<td>'+segment.normalized_histogram_3+'</td>' +
-                '<td>'+segment.normalized_histogram_4+'</td>' +
-                '<td>'+segment.normalized_histogram_5+'</td>' +
-                '<td>'+segment.normalized_histogram_6+'</td>' +
-                '<td>'+segment.normalized_histogram_7+'</td>' +
-                '<td>'+segment.normalized_histogram_8+'</td>' +
-                '<td>'+segment.normalized_histogram_9+'</td>' +
+                // '<td>'+segment.average_slice_distance+'</td>' +
+                // '<td>'+segment.max_slice_distance+'</td>' +
+                // '<td>'+segment.aligned_average_slice_distance+'</td>' +
+                // '<td>'+segment.aligned_max_slice_distance+'</td>' +
+                // '<td>'+segment.histogram_0+'</td>' +
+                // '<td>'+segment.histogram_1+'</td>' +
+                // '<td>'+segment.histogram_2+'</td>' +
+                // '<td>'+segment.histogram_3+'</td>' +
+                // '<td>'+segment.histogram_4+'</td>' +
+                // '<td>'+segment.histogram_5+'</td>' +
+                // '<td>'+segment.histogram_6+'</td>' +
+                // '<td>'+segment.histogram_7+'</td>' +
+                // '<td>'+segment.histogram_8+'</td>' +
+                // '<td>'+segment.histogram_9+'</td>' +
+                // '<td>'+segment.normalized_histogram_0+'</td>' +
+                // '<td>'+segment.normalized_histogram_1+'</td>' +
+                // '<td>'+segment.normalized_histogram_2+'</td>' +
+                // '<td>'+segment.normalized_histogram_3+'</td>' +
+                // '<td>'+segment.normalized_histogram_4+'</td>' +
+                // '<td>'+segment.normalized_histogram_5+'</td>' +
+                // '<td>'+segment.normalized_histogram_6+'</td>' +
+                // '<td>'+segment.normalized_histogram_7+'</td>' +
+                // '<td>'+segment.normalized_histogram_8+'</td>' +
+                // '<td>'+segment.normalized_histogram_9+'</td>' +
                 '</tr>');
         }
 
@@ -1420,43 +1421,42 @@ var SegmentationAnnotations = new function()
         this.target1_slice_id = segment.target1_slice_id;
         this.target2_slice_id = segment.target2_slice_id;
         this.direction = segment.direction;
-
-        // TODO: simplify with a for loop
         this.cost= segment.cost;
-        this.center_distance= segment.center_distance;
-        this.set_difference= segment.set_difference;
-        this.set_difference_ratio= segment.set_difference_ratio;
-        this.aligned_set_difference= segment.aligned_set_difference;
-        this.aligned_set_difference_ratio= segment.aligned_set_difference_ratio;
-        this.size= segment.size;
-        this.overlap= segment.overlap;
-        this.overlap_ratio= segment.overlap_ratio;
-        this.aligned_overlap= segment.aligned_overlap;
-        this.aligned_overlap_ratio= segment.aligned_overlap_ratio;
-        this.average_slice_distance= segment.average_slice_distance;
-        this.max_slice_distance= segment.max_slice_distance;
-        this.aligned_average_slice_distance= segment.aligned_average_slice_distance;
-        this.aligned_max_slice_distance= segment.aligned_max_slice_distance;
-        this.histogram_0= segment.histogram_0;
-        this.histogram_1= segment.histogram_1;
-        this.histogram_2= segment.histogram_2;
-        this.histogram_3= segment.histogram_3;
-        this.histogram_4= segment.histogram_4;
-        this.histogram_5= segment.histogram_5;
-        this.histogram_6= segment.histogram_6;
-        this.histogram_7= segment.histogram_7;
-        this.histogram_8= segment.histogram_8;
-        this.histogram_9= segment.histogram_9;
-        this.normalized_histogram_0= segment.normalized_histogram_0;
-        this.normalized_histogram_1= segment.normalized_histogram_1;
-        this.normalized_histogram_2= segment.normalized_histogram_2;
-        this.normalized_histogram_3= segment.normalized_histogram_3;
-        this.normalized_histogram_4= segment.normalized_histogram_4;
-        this.normalized_histogram_5= segment.normalized_histogram_5;
-        this.normalized_histogram_6= segment.normalized_histogram_5;
-        this.normalized_histogram_7= segment.normalized_histogram_6;
-        this.normalized_histogram_8= segment.normalized_histogram_7;
-        this.normalized_histogram_9= segment.normalized_histogram_8;
+
+        this.center_distance= segment.segmentsdata__center_distance;
+        this.set_difference= segment.segmentsdata__set_difference;
+        this.set_difference_ratio= segment.segmentsdata__set_difference_ratio;
+        this.aligned_set_difference= segment.segmentsdata__aligned_set_difference;
+        this.aligned_set_difference_ratio= segment.segmentsdata__aligned_set_difference_ratio;
+        this.size= segment.segmentsdata__size;
+        this.overlap= segment.segmentsdata__overlap;
+        this.overlap_ratio= segment.segmentsdata__overlap_ratio;
+        this.aligned_overlap= segment.segmentsdata__aligned_overlap;
+        this.aligned_overlap_ratio= segment.segmentsdata__aligned_overlap_ratio;
+        // this.average_slice_distance= segment.average_slice_distance;
+        // this.max_slice_distance= segment.max_slice_distance;
+        // this.aligned_average_slice_distance= segment.aligned_average_slice_distance;
+        // this.aligned_max_slice_distance= segment.aligned_max_slice_distance;
+        // this.histogram_0= segment.histogram_0;
+        // this.histogram_1= segment.histogram_1;
+        // this.histogram_2= segment.histogram_2;
+        // this.histogram_3= segment.histogram_3;
+        // this.histogram_4= segment.histogram_4;
+        // this.histogram_5= segment.histogram_5;
+        // this.histogram_6= segment.histogram_6;
+        // this.histogram_7= segment.histogram_7;
+        // this.histogram_8= segment.histogram_8;
+        // this.histogram_9= segment.histogram_9;
+        // this.normalized_histogram_0= segment.normalized_histogram_0;
+        // this.normalized_histogram_1= segment.normalized_histogram_1;
+        // this.normalized_histogram_2= segment.normalized_histogram_2;
+        // this.normalized_histogram_3= segment.normalized_histogram_3;
+        // this.normalized_histogram_4= segment.normalized_histogram_4;
+        // this.normalized_histogram_5= segment.normalized_histogram_5;
+        // this.normalized_histogram_6= segment.normalized_histogram_5;
+        // this.normalized_histogram_7= segment.normalized_histogram_6;
+        // this.normalized_histogram_8= segment.normalized_histogram_7;
+        // this.normalized_histogram_9= segment.normalized_histogram_8;
 
         this.get_origin_sliceid = function() {
             return self.origin_section + '_' + self.origin_slice_id;
