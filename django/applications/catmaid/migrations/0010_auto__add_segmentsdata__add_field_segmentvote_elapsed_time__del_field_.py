@@ -9,7 +9,7 @@ class Migration(SchemaMigration):
 
     def forwards(self, orm):
 
-        db.delete_table('catmaid_segmentsdata')
+        # db.delete_table('catmaid_segmentsdata')
         
         # Adding model 'SegmentsData'
         db.create_table('catmaid_segmentsdata', (
