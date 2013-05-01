@@ -744,7 +744,11 @@ class SegmentsData(models.Model):
     normalized_histogram_8 = models.FloatField(default=0.0)
     normalized_histogram_9 = models.FloatField(default=0.0)
 
-class SegmentVote(UserFocusedModel):
+class SegmentVote(models.Model):
+
+    user = models.ForeignKey(User)
+    project = models.ForeignKey(Project)
+    creation_time = models.DateTimeField(default=datetime.now)
 
     stack = models.ForeignKey(Stack)
 
@@ -757,7 +761,11 @@ class SegmentVote(UserFocusedModel):
     # interval from loading the vote page to sending the vote ajax
     elapsed_time = models.IntegerField(null=False,default=0)
 
-class SegmentComment(UserFocusedModel):
+class SegmentComment(models.Model):
+
+    user = models.ForeignKey(User)
+    project = models.ForeignKey(Project)
+    creation_time = models.DateTimeField(default=datetime.now)
 
     stack = models.ForeignKey(Stack)
 

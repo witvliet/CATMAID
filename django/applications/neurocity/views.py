@@ -12,40 +12,47 @@ from catmaid.models import SegmentVote
 import datetime
 
 def userstatistics_view(request):
-    return render_to_response('neurocity/statistics.html', {
-        'flag': request.user.userprofile.country.code.lower()
-        }, context_instance=RequestContext(request))
+    return render_to_response('neurocity/statistics.html', {},
+     context_instance=RequestContext(request))
 
 def profile_view(request):
+
+    if request.method == "POST":
+        
+        # uform = UserForm(data = request.POST)
+        pform = UserProfileForm(data = request.POST)
+        print 'it is post request', pform
+        # if uform.is_valid() and pform.is_valid():
+        #     user = uform.save()
+        #     profile = pform.save(commit = False)
+        #     profile.user = user
+        #     profile.save()
+
     return render_to_response('neurocity/profile.html', {
         'flag': request.user.userprofile.country.code.lower()
         }, context_instance=RequestContext(request))
 
 def language_view(request):
     return render_to_response('neurocity/setlanguage.html', {
-        'flag': request.user.userprofile.country.code.lower()
         }, context_instance=RequestContext(request))
 
 def about_view(request):
     return render_to_response('neurocity/about.html', {
-        'flag': request.user.userprofile.country.code.lower()
         }, context_instance=RequestContext(request))
 
 def terms_view(request):
     return render_to_response('neurocity/terms.html', {
-        'flag': request.user.userprofile.country.code.lower()
         }, context_instance=RequestContext(request))
 
-def contact_view(request):
-    return render_to_response('neurocity/contact.html', {
-        'flag': request.user.userprofile.country.code.lower()
-        }, context_instance=RequestContext(request))
+# def contact_view(request):
+#     return render_to_response('neurocity/contact.html', {
+#         }, context_instance=RequestContext(request))
 
 class NeurocityBaseView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(NeurocityBaseView, self).get_context_data(**kwargs)
-        context['flag'] = self.request.user.userprofile.country.code.lower()
+        # context['flag'] = self.request.user.userprofile.country.code.lower()
         return context
 
 class NeurocityHomeView(NeurocityBaseView):
@@ -54,7 +61,7 @@ class NeurocityHomeView(NeurocityBaseView):
 
     def get_context_data(self, **kwargs):
         context = super(NeurocityHomeView, self).get_context_data(**kwargs)
-        context['flag'] = self.request.user.userprofile.country.code.lower()
+        # context['flag'] = self.request.user.userprofile.country.code.lower()
         context['nc_home_active'] = 'active'
         return context
 
@@ -83,11 +90,12 @@ class DashboardView(NeurocityBaseView):
     def get_context_data(self, **kwargs):
         context = super(DashboardView, self).get_context_data(**kwargs)
         context['nc_dashboard_active'] = 'active'
-
-        context['sv_count'] = SegmentVote.objects.filter(
-            creation_time__gte=datetime.date.today(),
-            creation_time__lt=datetime.date.today()+datetime.timedelta(days=1)
-        ).count()
+        context['flag'] = self.request.user.userprofile.country.code.lower()
+        
+        # context['sv_count'] = SegmentVote.objects.filter(
+        #     creation_time__gte=datetime.date.today(),
+        #     creation_time__lt=datetime.date.today()+datetime.timedelta(days=1)
+        # ).count()
 
         daily_vote_count = SegmentVote.objects.filter(
             creation_time__gte=datetime.date.today(),
@@ -98,7 +106,7 @@ class DashboardView(NeurocityBaseView):
             result_score.append((i+1, q['user__username'], q['user__userprofile__country'].lower(), q['uc']) )
         context['result_score'] = result_score
 
-        context['nc_users'] = User.objects.all().count()
+        # context['nc_users'] = User.objects.all().count()
 
         return context
 
@@ -147,3 +155,35 @@ class ContributeView(NeurocityBaseView):
             context['aiguess'] = 0.0
             
         return context
+
+
+
+from django.http import HttpResponse
+from django.http import HttpResponseRedirect
+from django.shortcuts import render_to_response
+from neurocity.forms import ContactForm
+from django.template import RequestContext, Context
+from django import forms
+from django.core.mail import send_mail, BadHeaderError
+
+def contact_view(request):
+        subject = request.POST.get('topic', '')
+        message = request.POST.get('message', '')
+        from_email = request.POST.get('email', '')
+
+        if subject and message and from_email:
+                try:
+                    send_mail(subject, message, from_email, ['change@this.com'])
+                except BadHeaderError:
+                        return HttpResponse('Invalid header found.')
+                return HttpResponseRedirect('/contact/thankyou/')
+        else:
+            return render_to_response('neurocity/contacts.html', {'form': ContactForm()})
+    
+        return render_to_response('neurocity/contacts.html', {'form': ContactForm()},
+            RequestContext(request))
+
+def thankyou(request):
+        return render_to_response('neurocity/thankyou.html')
+
+        

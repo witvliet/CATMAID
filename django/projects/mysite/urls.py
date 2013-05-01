@@ -37,9 +37,12 @@ urlpatterns += i18n_patterns('',
     url(r'^userstatistics$', userstatistics_view, name='nc_userstatistics'),
     url(r'^about$', about_view, name='nc_about'),
     url(r'^terms$', terms_view, name='nc_terms'),
-    url(r'^contact$', contact_view, name='nc_contact'),
     url(r'^profile$', profile_view, name='nc_profile'),
     url(r'^setlanguage$', language_view, name='set_language'),
+
+    url(r'^contact$', contact_view, name='nc_contact'),
+    # (r'^contact/thankyou/', 'neurocity.views.thankyou'),
+    # (r'^contact/', 'neurocity.views.contactview'),
 
     url(r'^segment-vote$', 'catmaid.control.segment.segment_vote'),
     url(r'^segment-bb$', 'catmaid.control.segment.get_segment_boundingbox'),

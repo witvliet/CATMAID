@@ -7,19 +7,76 @@
 .carousel .active.left {left:0;opacity:0;z-index:2;}
 .carousel .next {left:0;opacity:1;z-index:1;}
 */
+
+
+      /* Sticky footer styles
+      -------------------------------------------------- */
+
+html,
 body {
-  padding-bottom: 40px;
-  /*color: #5a5a5a;*/
-  background-color: #000000;
+  height: 100%;
+  background-color: #eee;
+  /* The html and body elements cannot have any padding or margin. */
 }
 
+/* Wrapper for page content to push down footer */
+#wrap {
+  min-height: 100%;
+  height: auto !important;
+  height: 100%;
+  /* Negative indent footer by it's height */
+  margin: 0 auto -60px;
+}
+
+/* Set the fixed height of the footer here */
+#push,
+#footer {
+  height: 60px;
+}
+#footer {
+  background-color: #f5f5f5;
+}
+
+/* Lastly, apply responsive CSS fixes as necessary */
+@media (max-width: 767px) {
+  #footer {
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+/* Custom page CSS
+-------------------------------------------------- */
+/* Not required for template or sticky footer method. */
+
+#wrap > .container {
+  padding-top: 90px;
+}
+.container .footerlinks {
+  margin: 20px 0;
+}
+
+code {
+  font-size: 80%;
+}
+
+/*body {
+  padding-top: 30px; /* 60px to make the container go all the way to the bottom of the topbar */
+  /*padding-bottom: 40px;*/
+  /*color: #5a5a5a;*/
+  /*background-color: #000000;*/
+  /*background-color: #eee;*/
+/*}*/
+/*
 h1 {
   font-size: 40px;
 }
 
 hr {
   margin-top: 5px;
-}
+}*/
 
 .hero-unit {
   padding-top: 30px;

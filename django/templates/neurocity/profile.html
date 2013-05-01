@@ -1,7 +1,12 @@
 {% extends "neurocity/base.html" %}
 
 {% block content %}
-<h1>User Profile</h1>
+    <h1>User Profile</h1>
 <hr>
+<img src="{{ STATIC_URL }}neurocity/flags/{{ flag }}.gif">
+<form method="post">
+    {{ uform.as_p }}
+    <input type="submit">
+</form>
 {% endblock %}
 

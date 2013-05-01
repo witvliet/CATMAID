@@ -21,12 +21,6 @@
     <link href="{{ STATIC_URL }}neurocity/css/bootstrap-responsive.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}neurocity/css/style.css" title="home">
 
-      <style type="text/css">
-      body {
-        padding-top: 90px;
-        /*padding-bottom: 40px;*/
-      }
-    </style>  
 
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
@@ -39,11 +33,7 @@
 
   <body>
 
-    <!-- NAVBAR
-    ================================================== -->
-    <div class="navbar-wrapper">
-      <!-- Wrap the .navbar in .container to center it within the absolutely positioned parent. -->
-      <div class="container">
+  <div id="wrap">
 
         <div class="navbar navbar-inverse navbar-fixed-top">
           <div class="navbar-inner">
@@ -71,7 +61,7 @@
                 <li class="{{ nc_learn_active }}"><a href="{% url 'nc_learn' %}">Get started</a></li>
                 <li class="{{ nc_tutorial_active }}"><a href="{% url 'nc_tutorial' %}">Tutorial</a></li>
                 <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Leaderboard</a>
-                <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Contribute!</a></li>
+                <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Contribute</a></li>
               </ul>
               <!-- </div> -->
             {% if user.is_authenticated %}
@@ -80,7 +70,7 @@
               <ul class="nav pull-right">
                 <li class="dropdown">
                   <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                    {% trans "Logged in as " %} {{ user.username }}&nbsp;&nbsp;<img src="{{ STATIC_URL }}neurocity/flags/{{ flag }}.gif"></a>
+                    {% trans "Logged in as " %} {{ user.username }}</a>
                     
                   <ul class="dropdown-menu">
                     <li><a href="{% url 'nc_userstatistics' %}">Statistics</a></li>
@@ -88,7 +78,6 @@
                     <li><a href="{% url 'nc_profile' %}">Profile</a></li>
                     <li><a href="{% url 'account_email' %}">E-Mail</a></li>
                     <li><a href="{% url 'account_change_password' %}">Password</a></li>
-                    <li><a href="{% url 'set_language' %}">Language</a></li>
                     <li class="divider"></li>
                     <li><a href="{% url 'account_logout' %}">Sign Out</a></li>
                   </ul>
@@ -109,32 +98,28 @@
           </div><!-- /.navbar-inner -->
         </div><!-- /.navbar -->
 
-      </div> <!-- /.container -->
-    </div><!-- /.navbar-wrapper -->
+    <div class="container">
+
+        {% block content %}
+        {% endblock %}
+
+    </div>
 
 
+      <div id="push"></div>
+    </div>
 
-<div class="container-fluid">
 
-  <!-- Main hero unit for a primary marketing message or call to action -->
-  <div class="hero-unit">
-
-    {% block content %}
-    {% endblock %}
-  </div>
-
-  <!-- <hr> -->
-
-  <div class="footer" align="center">
-    <p>
-      <a href="{% url 'nc_about' %}">About</a> |
-      <a href="{% url 'nc_terms' %}">Terms</a> |
-      <a href="{% url 'nc_contact' %}">Contact</a>
-    </p>
-  </div>
-
-</div>
-
+    <div id="footer" align="center">
+      <div class="container">
+        <p class="footerlinks">
+          <a href="{% url 'nc_about' %}">Credits</a> |
+          <a href="{% url 'nc_terms' %}">Terms</a> |
+          <a href="{% url 'nc_contact' %}">Contact</a> |
+          <a href="{% url 'set_language' %}">Language</a>
+        </p>
+      </div>
+    </div>
 
   </body>
 </html>

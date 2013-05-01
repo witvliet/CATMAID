@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
 
 import numpy as np
 import os, os.path
@@ -16,6 +17,7 @@ from catmaid.control.common import *
 
 # change roles; prevent random vote requests (how?)
 # @requires_user_role([UserRole.Annotate, UserRole.Browse])
+@login_required
 def segment_vote(request):
 
     project_id = 11
@@ -59,7 +61,6 @@ def segment_vote(request):
         sc.save()
 
     return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
-
 
 def get_segment_sequence():
     """ Sampling from the data volume """
@@ -145,6 +146,7 @@ def slice_path2( node_id, sliceinfo ):
         fname )
     return slice_path_url
 
+@login_required
 def get_segment_boundingbox(request):
 
     project_id = 11
