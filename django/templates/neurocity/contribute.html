@@ -7,32 +7,39 @@
 <div id="myModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3 id="myModalLabel">Add a comment</h3>
+    <h3 id="myModalLabel">Why is this a bad match?</h3>
   </div>
   <div class="modal-body">
-    Tell us why you think the segment is unclear?<br />
     <!-- TODO: select a category of unclear -->
-    <input type="checkbox" name="reason" value="not-fit-boundary">Does not fit boundary<br>
-    <input type="checkbox" name="reason" value="">Slice shifted<br>
-    <input type="checkbox" name="reason" value="">More than one neuron covered<br>
-    <input type="checkbox" name="reason" value="">Should be branch<br>
-    <input type="checkbox" name="reason" value="">Slices match, but neuron not completely covered<br>
-    <input type="checkbox" name="reason" value="">Only mitochondria covered<br>
-    <input type="checkbox" name="reason" value="">...<br>
+    <label>
+      <input type="checkbox" name="reason" id="more-than-one-candidate" value="more-than-one-candidate"> More than one neuron candidate</label>
+    <label>
+      <input type="checkbox" name="reason" value="not-fit-boundary"> Bad fit to membrane</label>
+    <label>
+      <input type="checkbox" name="reason" value="candidate-shifted"> Neuron candidate is shifted</label>
+    <label>
+      <input type="checkbox" name="reason" value="should-be-branch"> Should be branch</label>
+    <label>
+      <input type="checkbox" name="reason" value="not-completely-covered"> Neuron candidate match, but not covered completely</label>
+    <label>
+      <input type="checkbox" name="reason" value="only-mitochondria"> Only mitochondria is covered</label>
+    <label>
+      <input type="checkbox" name="reason" value="good-match-but-small-dent"> Almost good match, but small dent</label>
+    <input type="checkbox" name="reason" value=""> ...</label>
     <br />
     Other reason: <input type="text" id="commentfield" maxlength="50" size="50">
   </div>
   <div class="modal-footer">
     <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
-    <button class="btn btn-primary" id="submitvote">Submit comment</button>
+    <button class="btn btn-primary" id="submitvote">Submit</button>
   </div>
 </div>
 
 <div align="center">
   {% if not nc_segmentonly %}
     <a class="btn btn-large btn-primary btn-success" href="#" id='buttongood'>Good (A)</a>
-    <a class="btn btn-large btn-primary btn-warning" href="#" id='buttonunclear'>Unclear (S)</a>
-    <a class="btn btn-large btn-primary btn-danger" href="#" id='buttonbad'>Bad (D)</a>
+    <a class="btn btn-large btn-primary btn-danger" href="#" id='buttonbad'>Bad (S)</a>
+    <a class="btn btn-large btn-primary btn-warning" href="#" id='buttonunclear'>Bad & Comment (D)</a>
     <br /><br />
   {% endif %}
   <div id="help" style="position:absolute; right:80px; top:100px">
@@ -61,7 +68,7 @@
 
   <br />
 
-  <h4>Artificial Intelligence says {{ aiguess }}% correct (cost: {{ cost }}).</h4>
+  <h4>Artificial Intelligence estimates a cost of {{ cost }}.</h4>
 <!-- TODO: Contributors say ;..... -->
 
   <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.js"></script>
@@ -136,39 +143,48 @@ var canvas2 = new fabric.Canvas('c2'),
             }
            }
 
+           var slice_callback2 = function (slice2_left_offset, slice2_top_offset) {
+                return function(img) {
+                    img.set({
+                      left: slice2_left_offset,
+                      top: slice2_top_offset,
+                    });
+                    img.hasControls = img.hasBorders = false;
+                    img.lockMovementX = img.lockMovementY = true;
+                    img.opacity = 0.8;
+                    canvas2.add(img).bringToFront(img);
+                    origin_slices.push( img );
+                };
+              };
+
            // add slices to canvas, need to be in the foreground
            for(var sliceidx = 0; sliceidx < data['originsection'].length; sliceidx++) {
               var slice_left_offset = data['originsection'][sliceidx]['min_x'] - data['totalbb']['min_x'] + border + data['originsection'][sliceidx]['width'] / 2. ,
                 slice_top_offset = data['originsection'][sliceidx]['min_y'] - data['totalbb']['min_y'] + border  + data['originsection'][sliceidx]['height'] / 2.;
-              fabric.Image.fromURL(data['originsection'][sliceidx]['slicepath'], function(img) {
-                img.set({
-                  left: slice_left_offset,
-                  top: slice_top_offset,
-                });
-                img.hasControls = img.hasBorders = false;
-                img.lockMovementX = img.lockMovementY = true;
-                img.opacity = 0.8;
-                canvas2.add(img).bringToFront(img);
-                origin_slices.push( img );
-              });
+              fabric.Image.fromURL(data['originsection'][sliceidx]['slicepath'], 
+                slice_callback2( slice_left_offset, slice_top_offset ) );
            }
+
+           var slice_callback3 = function (slice2_left_offset, slice2_top_offset) {
+                return function(img) {
+                    img.set({
+                      left: slice2_left_offset,
+                      top: slice2_top_offset,
+                    });
+                    img.hasControls = img.hasBorders = false;
+                    img.lockMovementX = img.lockMovementY = true;
+                    img.opacity = 0.8;
+                    canvas3.add(img).bringToFront(img);
+                    target_slices.push( img );
+                };
+              };
 
            for(var sliceidx = 0; sliceidx < data['targetsection'].length; sliceidx++) {
               var slice2_left_offset = data['targetsection'][sliceidx]['min_x'] - data['totalbb']['min_x'] + border + data['targetsection'][sliceidx]['width'] / 2. ,
                 slice2_top_offset = data['targetsection'][sliceidx]['min_y'] - data['totalbb']['min_y'] + border  + data['targetsection'][sliceidx]['height'] / 2.;
-              fabric.Image.fromURL(data['targetsection'][sliceidx]['slicepath'], function(img) {
-                img.set({
-                  left: slice2_left_offset,
-                  top: slice2_top_offset,
-                });
-                img.hasControls = img.hasBorders = false;
-                img.lockMovementX = img.lockMovementY = true;
-                img.opacity = 0.8;
-                canvas3.add(img).bringToFront(img);
-                target_slices.push( img );
-              });
+              fabric.Image.fromURL(data['targetsection'][sliceidx]['slicepath'], 
+                slice_callback3( slice2_left_offset, slice2_top_offset ));
            }
-
 
         }
       });
@@ -224,10 +240,32 @@ var canvas2 = new fabric.Canvas('c2'),
     }
 
     var show_unclear_modal = function() {
-      $(document).off('keyup');
+      $(document).off('keyup'); // disable all key events
       $('#commentfield').val('');
-      $('#myModal').on('shown', function() {$('#commentfield').focus();});
+      $('#myModal').on('shown', function() { 
+        $('#commentfield').focus();
+        $(document).on('keyup', function(e) { 
+          if (e.keyCode == 13) { 
+            hide_and_submit_modal();
+          }
+        });
+      });
+      $('#myModal').on('hidden', function() {
+        register_keyevents();
+      });
       $('#myModal').modal('show');
+    }
+
+    var hide_and_submit_modal = function() {
+      $('#myModal').modal('hide');
+      var commentvalue = '';
+      if( $("#more-than-one-candidate").is(':checked') )
+        commentvalue += $("#more-than-one-candidate").val() + ',';
+
+      if( $('#commentfield').val() !== '' )
+        commentvalue += $('#commentfield').val();
+
+      vote( segmentkey, 2, commentvalue );
     }
 
     var skip_segment = function() {
@@ -252,10 +290,10 @@ var canvas2 = new fabric.Canvas('c2'),
             vote( segmentkey, 1 );
           }
           if (e.keyCode == 83) {
-            show_unclear_modal();
+            vote( segmentkey, 3 );
           }
           if (e.keyCode == 68) {
-            vote( segmentkey, 3 );
+            show_unclear_modal();
           }
           if (e.keyCode == 88) {
             skip_segment();
@@ -292,12 +330,7 @@ var canvas2 = new fabric.Canvas('c2'),
     });
 
     $('#submitvote').on('click', function() {
-      $('#myModal').modal('hide');
-      vote( segmentkey, 2, $('#commentfield').val() );
-    });
-
-    $('#myModal').on('hidden', function() {
-      register_keyevents();
+      hide_and_submit_modal();
     });
 
     register_keyevents();

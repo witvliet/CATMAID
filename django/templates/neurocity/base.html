@@ -45,8 +45,7 @@
             </button>
             <div class="span5" id="">
               <ul class="nav">
-                <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">NeuroCity</a></li>
-
+                <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">NeuroCity BETA</a></li>
               </ul>
             </div>
 
@@ -61,7 +60,7 @@
                 <li class="{{ nc_learn_active }}"><a href="{% url 'nc_learn' %}">Get started</a></li>
                 <li class="{{ nc_tutorial_active }}"><a href="{% url 'nc_tutorial' %}">Tutorial</a></li>
                 <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Leaderboard</a>
-                <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Contribute</a></li>
+                <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Match!</a></li>
               </ul>
               <!-- </div> -->
             {% if user.is_authenticated %}
@@ -116,10 +115,25 @@
           <a href="{% url 'nc_about' %}">Credits</a> |
           <a href="{% url 'nc_terms' %}">Terms</a> |
           <a href="{% url 'nc_contact' %}">Contact</a> |
-          <a href="{% url 'set_language' %}">Language</a>
+          <a href="{% url 'set_language' %}">Language</a> |
+          <a href="{% url 'catmaid' %}">Catmaid</a>
         </p>
       </div>
     </div>
+
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', '{{ GOOGLE_TRACKING_ID }}' ]);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
 
   </body>
 </html>

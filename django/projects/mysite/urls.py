@@ -20,7 +20,7 @@ intlist = r'[0-9]+(,[0-9]+)*'
 
 # Add the main index.html page at the root:
 urlpatterns = patterns('',
-    (r'^cm/$', HomepageView.as_view()),
+    url(r'^cm/$', HomepageView.as_view(), name='catmaid'),
     (r'^accounts/', include('allauth.urls')),
     (r'^i18n/', include('django.conf.urls.i18n')),
     url(r'^rosetta/', include('rosetta.urls')),

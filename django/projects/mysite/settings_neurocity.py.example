@@ -193,6 +193,9 @@ DEFAULT_FROM_EMAIL = ''
 # http://stackoverflow.com/questions/13782979/django-social-auth-redirect-uri-invalid
 #USE_X_FORWARDED_HOST = True
 
+# Google Analytics Tracing id
+GOOGLE_TRACKING_ID = ''
+
 LOGIN_URL = '/accounts/login/'
 LOGOUT_URL = '/'
 LOGIN_REDIRECT_URL = '/'

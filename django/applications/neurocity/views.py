@@ -1,6 +1,7 @@
 from django.views.generic import TemplateView
 from django.utils.translation import ugettext as _
 
+from django.conf import settings
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.contrib.auth.models import User
@@ -53,6 +54,7 @@ class NeurocityBaseView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(NeurocityBaseView, self).get_context_data(**kwargs)
         # context['flag'] = self.request.user.userprofile.country.code.lower()
+        context['GOOGLE_TRACKING_ID'] = settings.GOOGLE_TRACKING_ID
         return context
 
 class NeurocityHomeView(NeurocityBaseView):
