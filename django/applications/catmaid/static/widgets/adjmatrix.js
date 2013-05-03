@@ -3,12 +3,7 @@
 
 var AdjacencyMatrix = new function()
 {
-    var projectID;
     var self = this;
-
-    this.init = function() {
-        projectID = project.id;
-    }
 
     this.fetchMatrixForSkeletons = function() {
         // Retrieve a list of skeleton ids and call the backend to return the JSON graph
@@ -17,7 +12,7 @@ var AdjacencyMatrix = new function()
             url: django_url + project.id + "/skeletongroup/adjacency_matrix",
             type: "POST",
             dataType: "json",
-            data: { skeleton_list: WebGLApp.getListOfSkeletonIDs() },
+            data: { skeleton_list: NeuronStagingArea.get_selected_skeletons() },
             success: function (data) {
                 self.createAdjacencyMatrix( data )
             }
@@ -27,7 +22,7 @@ var AdjacencyMatrix = new function()
 
     this.createAdjacencyMatrix = function( data ) {
 
-        var margin = {top: 200, right: 0, bottom: 10, left: 200},
+        var margin = {top: 100, right: 0, bottom: 10, left: 150},
             width = 520,
             height = 520;
 
@@ -36,9 +31,14 @@ var AdjacencyMatrix = new function()
             c = d3.scale.category10().domain(d3.range(10));
 
         // remove children
-        $('#adjacencymatrix_widget').empty();
+        $('#adjacencymatrix').empty();
 
-        var svg = d3.select("#adjacencymatrix_widget").append("svg")
+        var svg = d3.select("#adjacencymatrix").append("svg")
+            // .attr("width", "100%")
+            // .attr("height", "100%")
+            // .style("margin-left", margin.left + "px")
+            // .append("g")
+            // .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .style("margin-left", margin.left + "px")

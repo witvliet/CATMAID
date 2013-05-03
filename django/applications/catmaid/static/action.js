@@ -418,7 +418,7 @@ var tracingWindowActions = [
     }),
 
 
-/*    new Action({
+    new Action({
         helpText: "Adjacency Matrix widget",
         buttonID: "data_button_connectivity",
         buttonName: 'adj_matrix',
@@ -428,7 +428,7 @@ var tracingWindowActions = [
         }
     }),
 
-  new Action({
+/*  new Action({
       helpText: "Export widget",
       buttonID: "data_button_export_widget",
       buttonName: 'export_widget',

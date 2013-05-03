@@ -37,3 +37,11 @@ class ProjectStatisticsWidgetView(TemplateView):
         context = super(ProjectStatisticsWidgetView, self).get_context_data(**kwargs)
         context['catmaid_url'] = settings.CATMAID_URL
         return context
+
+class AdjacencyMatrixWidgetView(TemplateView):
+    template_name = "catmaid/adjmatrix.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(AdjacencyMatrixWidgetView, self).get_context_data(**kwargs)
+        context['catmaid_url'] = settings.CATMAID_URL
+        return context

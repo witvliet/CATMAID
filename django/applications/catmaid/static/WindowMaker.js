@@ -1176,18 +1176,6 @@ var WindowMaker = new function()
         var content = win.getFrame();
         content.style.backgroundColor = "#ffffff";
 
-        var contentbutton = document.createElement('div');
-        contentbutton.setAttribute("id", 'skeleton_adjmatrix_buttons');
-
-        var add = document.createElement('input');
-        add.setAttribute("type", "button");
-        add.setAttribute("id", "retrieve_adjmatrix");
-        add.setAttribute("value", "Get matrix");
-        add.onclick = AdjacencyMatrix.fetchMatrixForSkeletons;
-        contentbutton.appendChild(add);
-
-        content.appendChild( contentbutton );
-
         var container = createContainer( "adjacencymatrix_widget" );
         content.appendChild( container );
 
@@ -1195,7 +1183,7 @@ var WindowMaker = new function()
 
         addLogic(win);
 
-        AdjacencyMatrix.init();
+        $('#adjacencymatrix_widget').load( django_url + project.id + '/adjacency-matrix-widget' )
 
         return win;
     };
