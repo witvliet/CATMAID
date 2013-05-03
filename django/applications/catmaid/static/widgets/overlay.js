@@ -25,6 +25,7 @@ var SkeletonAnnotations = new function()
           return;
         } else {
           // Should never happen
+          console.log('Call to activate a node with a skeletonID which is not active should never happen.')
           s.activateNode(null); // deselect: there's a mismatch between node and skeleton
         }
       }
@@ -308,16 +309,10 @@ var SkeletonAnnotations = new function()
                 alert("Getting the ancestry of the skeleton "+node.skeleton_id+" failed with HTTP status code "+status);
               }
             });
-            // 3. Refresh the nodes with info from the database
-            self.updateNodes(); // recolors nodes when recreating them
           }
 
           atn.set(node);
-
-          if (!changing_skeletons) {
-            // Nodes didn't change, but the active state has
-            self.recolorAllNodes();
-          }
+          self.recolorAllNodes();
 
           // refresh all widgets except for the object tree
           // the reason is that calling a refresh just after a request to open tree path
