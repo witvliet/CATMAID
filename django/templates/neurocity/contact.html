@@ -1,11 +1,18 @@
 {% extends "neurocity/base.html" %}
 {% load i18n %}
+{% load url from future %}
+{% load uni_form_tags %}
 
 {% block content %}
 
 <h2>Contact</h2>
+<hr>
+<form action="{% url 'nc_contact' %}" method="post"
+ class="uniForm" id="contact_form" >{% csrf_token %}
 
-Form: Name, E-Mail, Comment
+{{ form|as_uni_form }}
+<br />
+<p><input type="submit" value="Send message" /></p>
+</form>
 
 {% endblock %}
-

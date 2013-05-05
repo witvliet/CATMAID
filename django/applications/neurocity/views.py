@@ -6,32 +6,40 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.contrib.auth.models import User
 from django.db.models import Count
+from django.shortcuts import render
+from django.http import HttpResponseRedirect
+from django.core.mail import send_mail, BadHeaderError
+from django.core.urlresolvers import reverse
 
-from catmaid.control.segment import get_random_segment, get_segment_by_key
+from catmaid.control.segment import *
 from catmaid.models import SegmentVote
+from neurocity.forms import *
 
 import datetime
+import json
 
 def userstatistics_view(request):
     return render_to_response('neurocity/statistics.html', {},
      context_instance=RequestContext(request))
 
 def profile_view(request):
+    if request.method == 'POST':
+        form = UserForm(instance=request.user, data=request.POST)
+        profileform = UserProfileForm(instance=request.user.userprofile, data=request.POST)
+        if form.is_valid() and profileform.is_valid():
+            form.save()
+            profileform.save()
+            return HttpResponseRedirect('/')    
+    else:
+        form = UserForm(instance=request.user)
+        profileform = UserProfileForm(instance=request.user.userprofile)
 
-    if request.method == "POST":
-        
-        # uform = UserForm(data = request.POST)
-        pform = UserProfileForm(data = request.POST)
-        print 'it is post request', pform
-        # if uform.is_valid() and pform.is_valid():
-        #     user = uform.save()
-        #     profile = pform.save(commit = False)
-        #     profile.user = user
-        #     profile.save()
-
-    return render_to_response('neurocity/profile.html', {
+    return render(request, 'neurocity/profile.html', {
+        'form': form,
+        'profileform': profileform,
         'flag': request.user.userprofile.country.code.lower()
-        }, context_instance=RequestContext(request))
+    })
+
 
 def language_view(request):
     return render_to_response('neurocity/setlanguage.html', {
@@ -45,9 +53,9 @@ def terms_view(request):
     return render_to_response('neurocity/terms.html', {
         }, context_instance=RequestContext(request))
 
-# def contact_view(request):
-#     return render_to_response('neurocity/contact.html', {
-#         }, context_instance=RequestContext(request))
+ # def contact_view(request):
+ #     return render_to_response('neurocity/contact.html', {
+ #         }, context_instance=RequestContext(request))
 
 class NeurocityBaseView(TemplateView):
 
@@ -144,48 +152,36 @@ class ContributeView(NeurocityBaseView):
     def get_context_data(self, **kwargs):
         context = super(ContributeView, self).get_context_data(**kwargs)
         context['nc_contribute_active'] = 'active'
-        segment = get_random_segment()
-        context['originsection'] = segment.origin_section
-        context['targetsection'] = segment.target_section
-        context['segmentid'] = segment.segmentid
-        context['segmentkey'] = segment.id
+        context['testlist'] = json.dumps( [{1:{'test': 12}}] )
+        segmentsequence = get_segment_sequence()
+        context['originsection'] = segmentsequence[0]['origin_section']
+        context['targetsection'] = segmentsequence[0]['target_section']
+        context['segmentid'] = segmentsequence[0]['segmentid']
+        context['segmentkey'] = segmentsequence[0]['id']
+        context['cost'] = segmentsequence[0]['cost']
+
         context['tile_base_url'] = 'http://localhost:8000/static/stack2/raw/'
-        context['cost'] = segment.cost
-        if segment.cost != 0.0:
-            context['aiguess'] = '%0.2f' % (1./segment.cost)
+        
+        if segmentsequence[0]['cost'] != 0.0:
+            context['aiguess'] = '%0.2f' % (1./segmentsequence[0]['cost'])
         else:
             context['aiguess'] = 0.0
             
         return context
 
-
-
-from django.http import HttpResponse
-from django.http import HttpResponseRedirect
-from django.shortcuts import render_to_response
-from neurocity.forms import ContactForm
-from django.template import RequestContext, Context
-from django import forms
-from django.core.mail import send_mail, BadHeaderError
-
 def contact_view(request):
-        subject = request.POST.get('topic', '')
-        message = request.POST.get('message', '')
-        from_email = request.POST.get('email', '')
 
-        if subject and message and from_email:
-                try:
-                    send_mail(subject, message, from_email, ['change@this.com'])
-                except BadHeaderError:
-                        return HttpResponse('Invalid header found.')
-                return HttpResponseRedirect('/contact/thankyou/')
-        else:
-            return render_to_response('neurocity/contacts.html', {'form': ContactForm()})
-    
-        return render_to_response('neurocity/contacts.html', {'form': ContactForm()},
-            RequestContext(request))
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            # TODO: send email if valid
+            return HttpResponseRedirect('/')
+    else:
+        form = ContactForm()
 
-def thankyou(request):
-        return render_to_response('neurocity/thankyou.html')
+    return render(request, 'neurocity/contact.html', {
+        'form': form,
+    })
+
 
         

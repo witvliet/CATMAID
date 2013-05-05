@@ -70,6 +70,7 @@ INSTALLED_APPS = (
     # 'registration',
     'uni_form',
     'rosetta',
+    'captcha'
 )
 
 # Use the default template context processors. If custom ones should be

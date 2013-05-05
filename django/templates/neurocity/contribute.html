@@ -80,17 +80,10 @@ var canvas2 = new fabric.Canvas('c2'),
     radius = 300, origin_slices = [], target_slices = [],
     start;
 
-      $.ajax({
-        "dataType": 'json',
-        "type": "GET",
-        "cache": false,
-        "url": 'segment-bb',
-        "data": {
-          'originsection': {{ originsection }},
-          'targetsection': {{ targetsection }},
-          'segmentid': {{ segmentid }},
-        },
-        "success": function(data) {
+    // var testlist = "{{ testlist|safe|escapejs }}";
+    // console.log('testlist', testlist, eval(testlist))
+
+    var update_data = function( data ) {
 
            canvas2.setWidth(data['totalbb']['width']+2*border);
            canvas2.setHeight(data['totalbb']['height']+2*border);
@@ -185,9 +178,22 @@ var canvas2 = new fabric.Canvas('c2'),
               fabric.Image.fromURL(data['targetsection'][sliceidx]['slicepath'], 
                 slice_callback3( slice2_left_offset, slice2_top_offset ));
            }
+    }
 
-        }
-      });
+    $.ajax({
+      "dataType": 'json',
+      "type": "GET",
+      "cache": false,
+      "url": 'segment-bb',
+      "data": {
+        'originsection': {{ originsection }},
+        'targetsection': {{ targetsection }},
+        'segmentid': {{ segmentid }},
+      },
+      "success": function(data) {
+        update_data( data );
+      }
+    });
 
     var segmentkey = {{ segmentkey }};
 

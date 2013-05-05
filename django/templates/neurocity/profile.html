@@ -1,12 +1,14 @@
 {% extends "neurocity/base.html" %}
+{% load url from future %}
 
 {% block content %}
-    <h1>User Profile</h1>
-<hr>
-<img src="{{ STATIC_URL }}neurocity/flags/{{ flag }}.gif">
-<form method="post">
-    {{ uform.as_p }}
-    <input type="submit">
+<h1>User Profile</h1>
+
+<form action="{% url 'nc_profile' %}" method="post">{% csrf_token %}
+{{ form.as_p }}
+{{ profileform.as_p }}
+<input type="submit" value="Submit" />
 </form>
+
 {% endblock %}
 

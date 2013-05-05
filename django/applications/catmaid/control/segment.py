@@ -14,7 +14,6 @@ from catmaid.objects import *
 from catmaid.control.authentication import *
 from catmaid.control.common import *
 
-
 # change roles; prevent random vote requests (how?)
 # @requires_user_role([UserRole.Annotate, UserRole.Browse])
 @login_required
@@ -63,21 +62,6 @@ def segment_vote(request):
     return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
 
 def get_segment_sequence():
-    """ Sampling from the data volume """
-
-    segments = Segments.objects.filter(
-            stack = stack,
-            project = p,
-            randomforest_cost__lt = 0.5).all()[:100]
-
-    # TODO: intelligent sampling of the segments
-    segment = random.choice( segments ) #segments[0]
-    print 'segment selected', segment.segmentid, segment.id
-
-    return segment
-
-def get_random_segment():
-
     project_id = 11
     stack_id = 15
     # assumes the primary keys of the segments table
@@ -98,13 +82,13 @@ def get_random_segment():
     segments = Segments.objects.filter(
             stack = stack,
             project = project,
-            cost__lt = 2.0).all()
+            cost__lt = 2.0).all().values('segmentid', 'origin_section', 'target_section', 'id', 'cost')
 
-    # TODO: intelligent sampling of the segments
-    segment = random.choice( segments ) # random.choice( segments ) #segments[0]
-    print 'retrieve a segment', segment
-    # print 'segment selected', segment.origin_section, segment.target_section, segment.segmentid
-    return segment
+    result = []
+    for i in range(3):
+        result.append( random.choice( segments ) )
+    print 'rresult', result
+    return result
 
 def get_segment( project, stack, origin_section, target_section, segment_id ):
     """ TODO: add segment node_id column to database """
