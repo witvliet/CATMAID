@@ -68,7 +68,7 @@
 
   <br />
 
-  <h4>Artificial Intelligence estimates a cost of {{ cost }}.</h4>
+  <h4>Artificial Intelligence estimates a cost of <p id='segmentcost' />.</h4>
 <!-- TODO: Contributors say ;..... -->
 
   <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.js"></script>
@@ -79,11 +79,35 @@ var canvas2 = new fabric.Canvas('c2'),
     border = 80, show_slices = true,
     radius = 300, origin_slices = [], target_slices = [],
     start;
+    
+    var segmentsequence = eval("{{ segmentsequence|safe|escapejs }}");
 
-    // var testlist = "{{ testlist|safe|escapejs }}";
-    // console.log('testlist', testlist, eval(testlist))
+    var current_segment_index = 0;
+
+    var current_segment = segmentsequence[ current_segment_index ];
+
+    var next_segment = function() {
+      if( current_segment_index + 1 === segmentsequence.length ) {
+        location.reload();
+        return;
+      }
+      current_segment_index++;
+      current_segment = segmentsequence[ current_segment_index ];
+
+      clear_canvas();
+      update_data( current_segment['data'] );
+    }
+
+    var clear_canvas = function() {
+      canvas2.clear();
+      canvas3.clear();
+    }
 
     var update_data = function( data ) {
+           origin_slices = [];
+           target_slices = [];
+           
+           $('#segmentcost').text( current_segment['cost'] );
 
            canvas2.setWidth(data['totalbb']['width']+2*border);
            canvas2.setHeight(data['totalbb']['height']+2*border);
@@ -129,9 +153,9 @@ var canvas2 = new fabric.Canvas('c2'),
            for(var xi = tile_col_min; xi < tile_col_max; xi++) {
             for(var yi = tile_row_min; yi < tile_row_max; yi++) {
 
-              fabric.Image.fromURL('{{ tile_base_url }}{{ originsection }}/'+yi+'_'+xi+'_0.jpg', build_callback2(xi, yi));
+              fabric.Image.fromURL('{{ tile_base_url }}'+current_segment['origin_section']+'/'+yi+'_'+xi+'_0.jpg', build_callback2(xi, yi));
 
-              fabric.Image.fromURL('{{ tile_base_url }}{{ targetsection }}/'+yi+'_'+xi+'_0.jpg', build_callback3(xi, yi));
+              fabric.Image.fromURL('{{ tile_base_url }}'+current_segment['target_section']+'/'+yi+'_'+xi+'_0.jpg', build_callback3(xi, yi));
 
             }
            }
@@ -180,22 +204,43 @@ var canvas2 = new fabric.Canvas('c2'),
            }
     }
 
+    var LoadData = function( index ) {
+      if( index == segmentsequence.length ) {
+        return;
+      }
+      $.ajax({
+        "dataType": 'json',
+        "type": "GET",
+        "cache": false,
+        "url": 'segment-bb',
+        "data": {
+          'originsection': segmentsequence[ index ]['origin_section'],
+          'targetsection': segmentsequence[ index ]['target_section'],
+          'segmentid': segmentsequence[ index ]['id'],
+        },
+        "success": function(data) {
+          segmentsequence[ index ]['data'] = data;
+          index++;
+          LoadData( index );
+        }
+      });
+    }
+
     $.ajax({
       "dataType": 'json',
       "type": "GET",
       "cache": false,
       "url": 'segment-bb',
       "data": {
-        'originsection': {{ originsection }},
-        'targetsection': {{ targetsection }},
-        'segmentid': {{ segmentid }},
+        'originsection': current_segment['origin_section'],
+        'targetsection': current_segment['target_section'],
+        'segmentid': current_segment['id'],
       },
       "success": function(data) {
         update_data( data );
+        LoadData( 1 );
       }
     });
-
-    var segmentkey = {{ segmentkey }};
 
     var hide_slices_image = function() {
       for(var idx = 0; idx < origin_slices.length; idx++) {
@@ -239,7 +284,8 @@ var canvas2 = new fabric.Canvas('c2'),
         "url": 'segment-vote',
         "data": data,
         "success": function(data) {
-           location.reload();
+           // location.reload();
+           next_segment();
         }
       });
 
@@ -271,7 +317,7 @@ var canvas2 = new fabric.Canvas('c2'),
       if( $('#commentfield').val() !== '' )
         commentvalue += $('#commentfield').val();
 
-      vote( segmentkey, 2, commentvalue );
+      vote( current_segment['id'], 2, commentvalue );
     }
 
     var skip_segment = function() {
@@ -293,10 +339,10 @@ var canvas2 = new fabric.Canvas('c2'),
 
         {% if not nc_segmentonly %}
           if (e.keyCode == 65) { 
-            vote( segmentkey, 1 );
+            vote( current_segment['id'], 1 );
           }
           if (e.keyCode == 83) {
-            vote( segmentkey, 3 );
+            vote( current_segment['id'], 3 );
           }
           if (e.keyCode == 68) {
             show_unclear_modal();
@@ -316,7 +362,7 @@ var canvas2 = new fabric.Canvas('c2'),
     });
 
     $('#buttongeturl').on('click', function() {
-      window.open( 'segmentonly?segmentkey={{ segmentkey }}' )
+      window.open( 'segmentonly?segmentkey=' + current_segment['id'] )
     });
 
     $('#buttontoggle').on('click', function() {
@@ -324,7 +370,7 @@ var canvas2 = new fabric.Canvas('c2'),
     });
 
     $('#buttongood').on('click', function() {
-      vote( segmentkey, 1 );
+      vote( current_segment['id'], 1 );
     });
 
     $('#buttonunclear').on('click', function() {
@@ -332,7 +378,7 @@ var canvas2 = new fabric.Canvas('c2'),
     });
 
     $('#buttonbad').on('click', function() {
-      vote( segmentkey, 3 );
+      vote( current_segment['id'], 3 );
     });
 
     $('#submitvote').on('click', function() {

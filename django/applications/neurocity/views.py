@@ -152,21 +152,10 @@ class ContributeView(NeurocityBaseView):
     def get_context_data(self, **kwargs):
         context = super(ContributeView, self).get_context_data(**kwargs)
         context['nc_contribute_active'] = 'active'
-        context['testlist'] = json.dumps( [{1:{'test': 12}}] )
         segmentsequence = get_segment_sequence()
-        context['originsection'] = segmentsequence[0]['origin_section']
-        context['targetsection'] = segmentsequence[0]['target_section']
-        context['segmentid'] = segmentsequence[0]['segmentid']
-        context['segmentkey'] = segmentsequence[0]['id']
-        context['cost'] = segmentsequence[0]['cost']
-
+        context['segmentsequence'] = json.dumps( segmentsequence )
         context['tile_base_url'] = 'http://localhost:8000/static/stack2/raw/'
-        
-        if segmentsequence[0]['cost'] != 0.0:
-            context['aiguess'] = '%0.2f' % (1./segmentsequence[0]['cost'])
-        else:
-            context['aiguess'] = 0.0
-            
+                    
         return context
 
 def contact_view(request):

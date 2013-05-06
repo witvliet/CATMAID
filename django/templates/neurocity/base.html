@@ -33,8 +33,6 @@
 
   <body>
 
-  <div id="wrap">
-
         <div class="navbar navbar-inverse navbar-fixed-top">
           <div class="navbar-inner">
             <!-- Responsive Navbar Part 1: Button for triggering responsive navbar (not covered in tutorial). Include responsive CSS to utilize. -->
@@ -53,7 +51,7 @@
             <!-- Responsive Navbar Part 2: Place all navbar contents you want collapsed withing .navbar-collapse.collapse. -->
             <div class="nav-collapse collapse">
 
-              <div id="header_menu" class="span8"> <!--  pull-right -->
+              <div id="header_menu" class="span8 pull-right "> <!--  pull-right -->
               <ul class="nav">
                 <!-- TODO active set  class="active" -->
                 <!-- <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">Home</a></li> -->
@@ -61,12 +59,12 @@
                 <li class="{{ nc_tutorial_active }}"><a href="{% url 'nc_tutorial' %}">Tutorial</a></li>
                 <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Leaderboard</a>
                 <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Match!</a></li>
-              </ul>
+
               <!-- </div> -->
             {% if user.is_authenticated %}
 
             <!-- <div class="navbar-form pull-right"> -->
-              <ul class="nav pull-right">
+              <!-- <ul class="nav pull-right"> -->
                 <li class="dropdown">
                   <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                     {% trans "Logged in as " %} {{ user.username }}</a>
@@ -81,28 +79,31 @@
                     <li><a href="{% url 'account_logout' %}">Sign Out</a></li>
                   </ul>
                 </li> 
-              </ul>
-            </div>
+
               
             {% else %}
-                <ul class="nav pull-right">
+                <!-- <ul class="nav pull-right"> -->
                 <!-- <div class="navbar-form pull-right"> -->
                 <li><a href="/accounts/signup">Sign up</a></li>
                 <li><a href="/accounts/login">Sign in</a></li>
+
+            {% endif %}
+
                 </ul>
               </div>
-            {% endif %}
 
             </div><!--/.nav-collapse -->
           </div><!-- /.navbar-inner -->
         </div><!-- /.navbar -->
 
-    <div class="container">
+    <div id="wrap">
 
-        {% block content %}
-        {% endblock %}
+      <div class="container">
 
-    </div>
+          {% block content %}
+          {% endblock %}
+
+      </div>
 
 
       <div id="push"></div>

@@ -704,6 +704,8 @@ class Segments(UserFocusedModel):
 
     # nr of human votes
     nr_of_votes = models.IntegerField(db_index=True, default=0)
+    good_counter = models.IntegerField(db_index=True, default=0)
+    bad_counter = models.IntegerField(db_index=True, default=0)
 
     # default is 1. 'deleted' is 0 (not show again)
     status = models.IntegerField(db_index=True, default=1)

@@ -82,12 +82,11 @@ def get_segment_sequence():
     segments = Segments.objects.filter(
             stack = stack,
             project = project,
-            cost__lt = 2.0).all().values('segmentid', 'origin_section', 'target_section', 'id', 'cost')
+            cost__lt = 2.0).all().values('id', 'segmentid', 'origin_section', 'target_section', 'cost')
 
     result = []
-    for i in range(3):
+    for i in range(10):
         result.append( random.choice( segments ) )
-    print 'rresult', result
     return result
 
 def get_segment( project, stack, origin_section, target_section, segment_id ):
@@ -145,7 +144,8 @@ def get_segment_boundingbox(request):
     targetsection = int(request.GET.get('targetsection', '0'))
     edge = int(request.GET.get('edge', '0'))
 
-    segment = get_segment( project, stack, originsection, targetsection, segmentid )
+    # segment = get_segment( project, stack, originsection, targetsection, segmentid )
+    segment = get_segment_by_key( segmentid )
 
     slice_node_ids = [ str(segment.origin_section) + '_' + str(segment.origin_slice_id) ]
     sections = [ segment.origin_section ]
@@ -160,7 +160,7 @@ def get_segment_boundingbox(request):
         sections.append( segment.target_section )
         slicelist = [0] if edge == 0 else [1,2]
 
-    print 'nodeids', slice_node_ids
+    # print 'nodeids', slice_node_ids
 
     slices = list( Slices.objects.filter(
         stack = stack,
