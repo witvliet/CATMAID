@@ -41,6 +41,13 @@ def segment_vote(request):
     # TODO: increase nr_votes for segment
     # segment.update(...)
 
+    segment.nr_of_votes += 1
+    if vote == 1:
+        segment.good_counter += 1
+    elif vote == 2:
+        segment.bad_counter += 1
+    segment.save()
+    
     sv = SegmentVote()
     sv.user = request.user
     sv.project = project

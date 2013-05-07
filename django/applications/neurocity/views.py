@@ -17,10 +17,31 @@ from neurocity.forms import *
 
 import datetime
 import json
+from datetime import timedelta, datetime, date
 
 def userstatistics_view(request):
-    return render_to_response('neurocity/statistics.html', {},
-     context_instance=RequestContext(request))
+
+    total_vote_count_for_user = SegmentVote.objects.filter(
+        user = request.user
+    ).values('id')
+
+    start_date = datetime.now() - timedelta(7)
+    end_date = datetime.now()
+
+    def extract_date(entity):
+        return entity.creation_time.date()
+
+    from itertools import groupby
+
+    entities = SegmentVote.objects.filter(
+        creation_time__range = (start_date, end_date)).order_by('creation_time')
+
+    for creation_date, group in groupby(entities, key=extract_date):
+        print 'creation', creation_date, len(list(group))
+
+    return render_to_response('neurocity/statistics.html', {
+        'total_nr_of_votes': len(total_vote_count_for_user)
+        }, context_instance=RequestContext(request))
 
 def profile_view(request):
     if request.method == 'POST':

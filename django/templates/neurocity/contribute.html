@@ -342,7 +342,7 @@ var canvas2 = new fabric.Canvas('c2'),
             vote( current_segment['id'], 1 );
           }
           if (e.keyCode == 83) {
-            vote( current_segment['id'], 3 );
+            vote( current_segment['id'], 2 );
           }
           if (e.keyCode == 68) {
             show_unclear_modal();
@@ -378,7 +378,7 @@ var canvas2 = new fabric.Canvas('c2'),
     });
 
     $('#buttonbad').on('click', function() {
-      vote( current_segment['id'], 3 );
+      vote( current_segment['id'], 2 );
     });
 
     $('#submitvote').on('click', function() {
