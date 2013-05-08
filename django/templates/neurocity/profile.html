@@ -3,7 +3,7 @@
 
 {% block content %}
 <h1>User Profile</h1>
-
+<hr>
 <form action="{% url 'nc_profile' %}" method="post">{% csrf_token %}
 {{ form.as_p }}
 {{ profileform.as_p }}

@@ -18,6 +18,14 @@ from neurocity.forms import *
 import datetime
 import json
 from datetime import timedelta, datetime, date
+from itertools import groupby
+
+from ratelimit.decorators import ratelimit
+from django.shortcuts import redirect
+
+def maxlimit(request):
+    return render_to_response('neurocity/maxlimit.html', {},
+     context_instance=RequestContext(request))
 
 def userstatistics_view(request):
 
@@ -31,17 +39,18 @@ def userstatistics_view(request):
     def extract_date(entity):
         return entity.creation_time.date()
 
-    from itertools import groupby
-
     entities = SegmentVote.objects.filter(
         creation_time__range = (start_date, end_date)).order_by('creation_time')
 
+    matches = []
     for creation_date, group in groupby(entities, key=extract_date):
-        print 'creation', creation_date, len(list(group))
+        matches.append( (creation_date.strftime("%Y-%m-%d"), len(list(group)) ) )
 
     return render_to_response('neurocity/statistics.html', {
-        'total_nr_of_votes': len(total_vote_count_for_user)
+        'total_nr_of_votes': len(total_vote_count_for_user),
+        'matches': matches
         }, context_instance=RequestContext(request))
+
 
 def profile_view(request):
     if request.method == 'POST':
@@ -118,8 +127,10 @@ class DashboardView(NeurocityBaseView):
 
     template_name = "neurocity/dashboard.html"
 
+
     def get_context_data(self, **kwargs):
         context = super(DashboardView, self).get_context_data(**kwargs)
+
         context['nc_dashboard_active'] = 'active'
         context['flag'] = self.request.user.userprofile.country.code.lower()
         
@@ -129,8 +140,8 @@ class DashboardView(NeurocityBaseView):
         # ).count()
 
         daily_vote_count = SegmentVote.objects.filter(
-            creation_time__gte=datetime.date.today(),
-            creation_time__lt=datetime.date.today()+datetime.timedelta(days=1)
+            creation_time__gte=date.today(),
+            creation_time__lt=date.today()+timedelta(days=1)
         ).values('user', 'user__username', 'user__userprofile__country').annotate(uc = Count('user')).order_by('uc')
         result_score = []
         for i, q in enumerate(daily_vote_count):
@@ -166,18 +177,18 @@ class SegmentOnlyView(NeurocityBaseView):
             
         return context
 
-class ContributeView(NeurocityBaseView):
+@ratelimit(ip=True, method=None, rate='5/m')
+def contribute_view(request):
+    if request.limited:
+        return redirect('maxlimit')
 
-    template_name = "neurocity/contribute.html"
+    segmentsequence = get_segment_sequence()
 
-    def get_context_data(self, **kwargs):
-        context = super(ContributeView, self).get_context_data(**kwargs)
-        context['nc_contribute_active'] = 'active'
-        segmentsequence = get_segment_sequence()
-        context['segmentsequence'] = json.dumps( segmentsequence )
-        context['tile_base_url'] = 'http://localhost:8000/static/stack2/raw/'
-                    
-        return context
+    return render_to_response('neurocity/contribute.html', {
+        'nc_contribute_active': 'active',
+        'segmentsequence': json.dumps( segmentsequence ),
+        'tile_base_url': 'http://localhost:8000/static/stack2/raw/'
+    }, context_instance=RequestContext(request))
 
 def contact_view(request):
 

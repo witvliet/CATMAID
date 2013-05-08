@@ -1,8 +1,24 @@
 {% extends "neurocity/base.html" %}
 
 {% block content %}
+
 <h1>User Statistics</h1>
 <hr>
-Plot ...
+<p class="lead">Total contributed votes: {{ total_nr_of_votes }}</p>
+<table class="table-striped table-condensed" width="350px">
+<thead>
+	<tr>
+		<th width="30px" align="left">date</th>
+		<th width="20px" align="right">contributed votes per day</th>
+	</tr>
+</thead>
+{% for day in matches %}
+<tr>
+	<td align="left">{{ day.0 }}</td>
+	<td align="right">{{ day.1 }}</td>
+</tr>
+{% endfor %}
+</table>
+
 {% endblock %}
 
