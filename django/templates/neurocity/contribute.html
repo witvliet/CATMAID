@@ -35,16 +35,13 @@
   </div>
 </div>
 
-<div id="vote-buttons" style="position:absolute; left:80px; top:100px">
-  {% if not nc_segmentonly %}
-    <a class="btn btn-large btn-primary btn-success" href="#" id='buttongood'>Good match (A)</a><br /><br />
-    <a class="btn btn-large btn-primary btn-danger" href="#" id='buttonbad'>Bad match (S)</a><br />
-    <!-- <a class="btn btn-large btn-primary btn-warning" href="#" id='buttonunclear'>Bad & Comment (D)</a><br /> -->
-  {% endif %}
-</div>
-
 <div id="help" style="position:absolute; right:80px; top:100px">
   <p align="right">
+    {% if not nc_segmentonly %}
+      <a class="btn btn-large btn-primary btn-success" href="#" id='buttongood'>Good match (A)</a><br /><br />
+      <a class="btn btn-large btn-primary btn-danger" href="#" id='buttonbad'>Bad match (S)</a><br />
+    {% endif %}
+    <br />
     <a class="btn btn-medium btn-primary btn-info" href="#" id='buttontoggle'>Toggle (T)</a><br />
     {% if not nc_segmentonly %}
     <a class="btn btn-medium btn-primary btn-info" href="#" id='buttonskip'>Skip (X)</a><br />
@@ -52,11 +49,18 @@
     <br />
     <div id="button-toggle1" align="right">1: Bad fit to membrane</div>
     <div id="button-toggle2" align="right">2: More than one neuron candidate</div>
+    <div id="button-toggle3" align="right">3: Neuron candidate(s) shifted</div>
+    <div id="button-toggle4" align="right">4: Should be a branch</div>
+    <div id="button-toggle5" align="right">5: Neuron candidate match, but not covered completely</div>
+    <div id="button-toggle6" align="right">6: Only mitochondria is covered</div>
+    <div id="button-toggle7" align="right">7: Almost good match, but small dent</div>
+    <div id="button-toggle8" align="right">8: </div>
+    <div id="button-toggle9" align="right">9: </div>
     {% endif %}
   </p>
 </div>
 
-<div align="center">
+<div align="left">
   <table>
     <tr>
       <td>
@@ -74,7 +78,7 @@
 
   <br />
 
-  <h4>Artificial Intelligence estimates a cost of <p id='segmentcost' />.</h4>
+  <h4><div id='segmentcost' /></h4>
 
 </div>
 
@@ -117,7 +121,7 @@ var canvas2 = new fabric.Canvas('c2'),
            origin_slices = [];
            target_slices = [];
            
-           $('#segmentcost').text( current_segment['cost'] );
+           $('#segmentcost').text( 'Artificial Intelligence cost: ' + current_segment['cost'] );
 
            canvas2.setWidth(data['totalbb']['width']+2*border);
            canvas2.setHeight(data['totalbb']['height']+2*border);
@@ -301,37 +305,9 @@ var canvas2 = new fabric.Canvas('c2'),
 
     }
 
-    var show_unclear_modal = function() {
-      $(document).off('keyup'); // disable all key events
-      $('#commentfield').val('');
-      $('#myModal').on('shown', function() { 
-        $('#commentfield').focus();
-        $(document).on('keyup', function(e) { 
-          if (e.keyCode == 13) { 
-            hide_and_submit_modal();
-          }
-        });
-      });
-      $('#myModal').on('hidden', function() {
-        register_keyevents();
-      });
-      $('#myModal').modal('show');
-    }
-
-    var hide_and_submit_modal = function() {
-      $('#myModal').modal('hide');
-      var commentvalue = '';
-      if( $("#more-than-one-candidate").is(':checked') )
-        commentvalue += $("#more-than-one-candidate").val() + ',';
-
-      if( $('#commentfield').val() !== '' )
-        commentvalue += $('#commentfield').val();
-
-      vote( current_segment['id'], 2, commentvalue );
-    }
-
     var skip_segment = function() {
-      location.reload();
+      // location.reload();
+      self.next_segment();
     }
 
     var toggle_slice = function() {
@@ -345,13 +321,29 @@ var canvas2 = new fabric.Canvas('c2'),
     }
 
     var toggle_note = function( value ) {
-      if( button_toggle[value] ) {
+      if( button_toggle[value - 1] ) {
         $('#button-toggle' + value).css({'background-color' : ''});
-        button_toggle[value] = false;
+        button_toggle[value - 1] = false;
       } else {
         $('#button-toggle' + value).css({'background-color' : 'yellow'});
-        button_toggle[value] = true;
+        button_toggle[value - 1] = true;
       }
+    }
+
+    var get_comment = function() {
+      var comment = '';
+      if( button_toggle[0] )
+        comment += '...';
+      return comment;
+
+// TODO: 
+// more-than-one-candidate
+// not-fit-boundary
+// candidate-shifted
+// should-be-branch
+// not-completely-covered
+// only-mitochondria
+// good-match-but-small-dent
 
     }
 
@@ -359,21 +351,39 @@ var canvas2 = new fabric.Canvas('c2'),
       $(document).on('keyup', function(e) { 
 
         {% if not nc_segmentonly %}
-          if (e.keyCode == 65) { 
-            vote( current_segment['id'], 1 );
-          }
-          if (e.keyCode == 83) {
-            vote( current_segment['id'], 2 );
-          }
-          if (e.keyCode == 68) {
-            show_unclear_modal();
-          }
-          if (e.keyCode == 88) {
-            skip_segment();
-          }
 
-          if (e.keyCode == 49) {
-            toggle_note( 1 );
+          switch( e.keyCode ) {
+            case 65:
+              vote( current_segment['id'], 1 );
+              break;
+            case 83:
+              vote( current_segment['id'], 2, get_comment() );
+              break;
+            case 88:
+              skip_segment();
+              break;
+            case 49:
+              toggle_note( 1 );
+              break;
+            case 50:
+              toggle_note( 2 );
+              break;
+            case 51:
+              toggle_note( 3 );
+              break;
+            case 52:
+              toggle_note( 4 );
+              break;
+            case 53:
+              toggle_note( 5 );
+              break;
+            case 54:
+              toggle_note( 6 );
+              break;
+            case 55:
+              toggle_note( 7 );
+              break;
+
           }
 
         {% endif %}
@@ -399,16 +409,8 @@ var canvas2 = new fabric.Canvas('c2'),
       vote( current_segment['id'], 1 );
     });
 
-    $('#buttonunclear').on('click', function() {
-      show_unclear_modal();
-    });
-
     $('#buttonbad').on('click', function() {
-      vote( current_segment['id'], 2 );
-    });
-
-    $('#submitvote').on('click', function() {
-      hide_and_submit_modal();
+      vote( current_segment['id'], 2, get_comment() );
     });
 
     register_keyevents();

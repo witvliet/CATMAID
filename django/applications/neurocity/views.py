@@ -125,16 +125,14 @@ def segmentonly_view(request):
     context['nc_segmentonly'] = True
     segmentkey = int( request.GET.get('segmentkey', '0') )
     segment = get_segment_by_key( segmentkey )
-    context['originsection'] = segment.origin_section
-    context['targetsection'] = segment.target_section
-    context['segmentid'] = segment.segmentid
-    context['segmentkey'] = segment.id
-    context['tile_base_url'] = 'http://localhost/datastatic/stack2/raw/'
-    context['cost'] = segment.cost
-    if segment.cost != 0.0:
-        context['aiguess'] = '%0.2f' % (1./segment.cost)
-    else:
-        context['aiguess'] = 0.0
+    context[ 'segmentsequence' ] = [{
+        'id': segment.id,
+        'segmentid': segment.segmentid,
+        'origin_section': segment.origin_section,
+        'target_section': segment.target_section,
+        'cost': segment.cost
+    }]
+    context[ 'tile_base_url' ] = 'http://localhost:8000/static/stack2/raw/'
     return render(request, 'neurocity/contribute.html', context)
 
 @ratelimit(ip=True, method=None, rate='50/m')
