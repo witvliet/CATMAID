@@ -1,6 +1,7 @@
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 
 import numpy as np
 import os, os.path
@@ -19,8 +20,8 @@ from catmaid.control.common import *
 @login_required
 def segment_vote(request):
 
-    project_id = 11
-    stack_id = 15
+    project_id = settings.CURRENT_PROJECT_ID
+    stack_id = settings.CURRENT_STACK_ID
 
     project = get_object_or_404(Project, pk=project_id)
     stack = get_object_or_404(Stack, pk=stack_id)
@@ -69,8 +70,10 @@ def segment_vote(request):
     return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
 
 def get_segment_sequence():
-    project_id = 11
-    stack_id = 15
+
+    project_id = settings.CURRENT_PROJECT_ID
+    stack_id = settings.CURRENT_STACK_ID
+
     # assumes the primary keys of the segments table
     # are monotonically increasing and continuous
     # dummy random selection strategy:
@@ -87,7 +90,7 @@ def get_segment_sequence():
     # TODO: use center_x/y and origin/target section to
     #       confine to region of interest 
     segments = Segments.objects.filter(
-            stack = stack,
+            # stack = stack,
             project = project,
             cost__lt = 2.0).all().values('id', 'segmentid', 'origin_section', 'target_section', 'cost')
 
@@ -139,9 +142,9 @@ def slice_path2( node_id, sliceinfo ):
 @login_required
 def get_segment_boundingbox(request):
 
-    project_id = 11
-    stack_id = 15
-
+    project_id = settings.CURRENT_PROJECT_ID
+    stack_id = settings.CURRENT_STACK_ID
+    
     stack = get_object_or_404(Stack, pk=stack_id)
     project = get_object_or_404(Project, pk=project_id)
     sliceinfo = StackSliceInfo.objects.get(stack=stack)
@@ -170,7 +173,7 @@ def get_segment_boundingbox(request):
     # print 'nodeids', slice_node_ids
 
     slices = list( Slices.objects.filter(
-        stack = stack,
+        # stack = stack,
         project = project,
         node_id__in = slice_node_ids ) )
 
