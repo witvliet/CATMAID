@@ -154,7 +154,7 @@ var NeuronStagingArea = new function()
 	        dataType: "json",
 	        success: function ( data ) {
 	        	self.add_skeleton_to_stage( skeleton_id, data['neuronname'] );
-	        	if (typeof callback !== "undefined") {
+	        	if (typeof callback !== "undefined" && callback instanceof Function) {
   					callback();
   				}
 	        }
@@ -267,7 +267,7 @@ var NeuronStagingArea = new function()
 		return Object.keys( skeletonmodels );
 	}
 
-	self.add_active_object_to_stage = function() {
+	self.add_active_object_to_stage = function( callback ) {
 		// add either a skeleton or an assembly based on the tool selected
 		if( project.getTool().toolname === 'tracingtool' ) {
     		var atn_id = SkeletonAnnotations.getActiveNodeId(),
@@ -280,7 +280,7 @@ var NeuronStagingArea = new function()
       			alert("Select the node of a skeleton, not a connector, to add it oto the staging area.");
       			return;
     		}
-    		self.add_skeleton_to_stage_without_name( skeleton_id );
+    		self.add_skeleton_to_stage_without_name( skeleton_id, callback );
 		}
 	}
 

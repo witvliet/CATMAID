@@ -8,7 +8,7 @@ var WebGLApp = new function () {
   var resolution, dimension, translation, canvasWidth, canvasHeight, ortho = false, projector, contour_objects = [],
       bbmesh, floormesh, debugax, togglevisibleall = false, missing_sections = [], mouse = new THREE.Vector2();
   var pointLight, light, ambientLight;
-  var is_mouse_down = false, connector_filter = false, missing_section_height = 20, soma_scale = 1.0;
+  var is_mouse_down = false, connector_filter = false, missing_section_height = 20, soma_scale = 30.0;
 
   var labelspheregeometry;
   var radiusSphere;
@@ -211,8 +211,7 @@ var WebGLApp = new function () {
 
     // // if there is an active skeleton, add it to the view if staging area is empty
     if(SkeletonAnnotations.getActiveNodeId() && NeuronStagingArea.get_selected_skeletons().length === 0) {
-      NeuronStagingArea.add_active_object_to_stage();
-      self.refresh_skeletons();
+      NeuronStagingArea.add_active_object_to_stage( WebGLApp.refresh_skeletons );
     }
 
 
@@ -903,23 +902,25 @@ var WebGLApp = new function () {
               this.labelSphere[tokey].skeleton_id = self.id;
               scene.add( this.labelSphere[tokey] );
           }
-          if( ($.inArray( "soma", this.original_vertices[fromkey]['labels'] ) !== -1) && (this.labelSphere[fromkey]=== undefined) ) {
-              this.labelSphere[fromkey] = new THREE.Mesh( labelspheregeometry, new THREE.MeshBasicMaterial( { color: 0xffff00 } ) );
-              this.labelSphere[fromkey].position.set( from_vector.x, from_vector.y, from_vector.z );
-              this.labelSphere[fromkey].scale.set( 2*soma_scale, 2*soma_scale, 2*soma_scale );
-              this.labelSphere[fromkey].node_id = fromkey;
-              this.labelSphere[fromkey].orig_coord = this.original_vertices[fromkey];
-              this.labelSphere[fromkey].skeleton_id = self.id;
-              scene.add( this.labelSphere[fromkey] );
+          if( ( ($.inArray( "soma", this.original_vertices[fromkey]['labels'] ) !== -1) ||
+            ($.inArray( "cell body", this.original_vertices[fromkey]['labels'] ) !== -1 ) ) && (this.radiusSpheres[fromkey]=== undefined) ) {
+              this.radiusSpheres[fromkey] = new THREE.Mesh( labelspheregeometry, new THREE.MeshBasicMaterial( { color: 0xffff00 } ) );
+              this.radiusSpheres[fromkey].position.set( from_vector.x, from_vector.y, from_vector.z );
+              this.radiusSpheres[fromkey].scale.set( soma_scale, soma_scale, soma_scale );
+              this.radiusSpheres[fromkey].node_id = fromkey;
+              this.radiusSpheres[fromkey].orig_coord = this.original_vertices[fromkey];
+              this.radiusSpheres[fromkey].skeleton_id = self.id;
+              scene.add( this.radiusSpheres[fromkey] );
           }
-          if( ($.inArray( "soma", this.original_vertices[tokey]['labels'] ) !== -1) && (this.labelSphere[tokey]=== undefined) ) {
-              this.labelSphere[tokey] = new THREE.Mesh( labelspheregeometry, new THREE.MeshBasicMaterial( { color: 0xffff00  } ) );
-              this.labelSphere[tokey].position.set( to_vector.x, to_vector.y, to_vector.z );
-              this.labelSphere[tokey].scale.set( 2*soma_scale, 2*soma_scale, 2*soma_scale );
-              this.labelSphere[tokey].node_id = fromkey;
-              this.labelSphere[tokey].orig_coord = this.original_vertices[fromkey];
-              this.labelSphere[tokey].skeleton_id = self.id;
-              scene.add( this.labelSphere[tokey] );
+          if( ( ($.inArray( "soma", this.original_vertices[tokey]['labels'] ) !== -1) ||
+              ($.inArray( "cell body", this.original_vertices[tokey]['labels'] ) !== -1) ) && (this.radiusSpheres[tokey]=== undefined) ) {
+              this.radiusSpheres[tokey] = new THREE.Mesh( labelspheregeometry, new THREE.MeshBasicMaterial( { color: 0xffff00  } ) );
+              this.radiusSpheres[tokey].position.set( to_vector.x, to_vector.y, to_vector.z );
+              this.radiusSpheres[tokey].scale.set( soma_scale, soma_scale, soma_scale );
+              this.radiusSpheres[tokey].node_id = fromkey;
+              this.radiusSpheres[tokey].orig_coord = this.original_vertices[fromkey];
+              this.radiusSpheres[tokey].skeleton_id = self.id;
+              scene.add( this.radiusSpheres[tokey] );
           }
 
         }
@@ -1464,13 +1465,17 @@ var WebGLApp = new function () {
         },
         "OK": function() {
           $(this).dialog("close");
+        }
+      },
+      close: function(event, ui) {
+
           missing_section_height = $('#missing-section-height').val();
           soma_scale = $('#soma-scale').val();
           if( show_missing_sections ) {
             self.removeMissingSections();
             self.createMissingSections();            
           }
-        }
+          $('#dialog-confirm').remove();
       }
     });
   }
@@ -1825,8 +1830,7 @@ var WebGLApp = new function () {
   };
 
   self.add_active_and_refresh_skeletons = function() {
-      NeuronStagingArea.add_active_object_to_stage();
-      self.refresh_skeletons();
+      NeuronStagingArea.add_active_object_to_stage( WebGLApp.refresh_skeletons );
   }
 
   // use the staging skeleton list to refresh all neurons
