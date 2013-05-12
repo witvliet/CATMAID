@@ -35,22 +35,28 @@
   </div>
 </div>
 
-<div align="center">
+<div id="vote-buttons" style="position:absolute; left:80px; top:100px">
   {% if not nc_segmentonly %}
-    <a class="btn btn-large btn-primary btn-success" href="#" id='buttongood'>Good (A)</a>
-    <a class="btn btn-large btn-primary btn-danger" href="#" id='buttonbad'>Bad (S)</a>
-    <a class="btn btn-large btn-primary btn-warning" href="#" id='buttonunclear'>Bad & Comment (D)</a>
-    <br /><br />
+    <a class="btn btn-large btn-primary btn-success" href="#" id='buttongood'>Good match (A)</a><br /><br />
+    <a class="btn btn-large btn-primary btn-danger" href="#" id='buttonbad'>Bad match (S)</a><br />
+    <!-- <a class="btn btn-large btn-primary btn-warning" href="#" id='buttonunclear'>Bad & Comment (D)</a><br /> -->
   {% endif %}
-  <div id="help" style="position:absolute; right:80px; top:100px">
-    <p align="right">
-      <a class="btn btn-medium btn-primary btn-info" href="#" id='buttontoggle'>Toggle (T)</a><br />
-      {% if not nc_segmentonly %}
-      <a class="btn btn-medium btn-primary btn-info" href="#" id='buttonskip'>Skip (X)</a><br />
-      <a class="btn btn-medium btn-primary btn-info" href="#" id='buttongeturl'>Share link</a><br />
-      {% endif %}
-    </p>
-  </div>
+</div>
+
+<div id="help" style="position:absolute; right:80px; top:100px">
+  <p align="right">
+    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttontoggle'>Toggle (T)</a><br />
+    {% if not nc_segmentonly %}
+    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttonskip'>Skip (X)</a><br />
+    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttongeturl'>Share link</a><br />
+    <br />
+    <div id="button-toggle1" align="right">1: Bad fit to membrane</div>
+    <div id="button-toggle2" align="right">2: More than one neuron candidate</div>
+    {% endif %}
+  </p>
+</div>
+
+<div align="center">
   <table>
     <tr>
       <td>
@@ -69,10 +75,11 @@
   <br />
 
   <h4>Artificial Intelligence estimates a cost of <p id='segmentcost' />.</h4>
-<!-- TODO: Contributors say ;..... -->
 
-  <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.js"></script>
-  <script type="text/javascript">
+</div>
+
+<script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.js"></script>
+<script type="text/javascript">
 
 var canvas2 = new fabric.Canvas('c2'),
     canvas3 = new fabric.Canvas('c3'),
@@ -80,6 +87,9 @@ var canvas2 = new fabric.Canvas('c2'),
     radius = 300, origin_slices = [], target_slices = [],
     start;
     
+    var button_toggle = [false, false, false, false, false,
+      false, false, false, false, false];
+
     var segmentsequence = eval("{{ segmentsequence|safe|escapejs }}");
 
     var current_segment_index = 0;
@@ -244,10 +254,10 @@ var canvas2 = new fabric.Canvas('c2'),
 
     var hide_slices_image = function() {
       for(var idx = 0; idx < origin_slices.length; idx++) {
-        origin_slices[ idx ].setOpacity( 0.3 );
+        origin_slices[ idx ].setOpacity( 0.0 );
       }
       for(var idx = 0; idx < target_slices.length; idx++) {
-        target_slices[ idx ].setOpacity( 0.3 );
+        target_slices[ idx ].setOpacity( 0.0 );
       }
       canvas2.renderAll();
       canvas3.renderAll();
@@ -334,6 +344,17 @@ var canvas2 = new fabric.Canvas('c2'),
       }
     }
 
+    var toggle_note = function( value ) {
+      if( button_toggle[value] ) {
+        $('#button-toggle' + value).css({'background-color' : ''});
+        button_toggle[value] = false;
+      } else {
+        $('#button-toggle' + value).css({'background-color' : 'yellow'});
+        button_toggle[value] = true;
+      }
+
+    }
+
     var register_keyevents = function() {
       $(document).on('keyup', function(e) { 
 
@@ -350,6 +371,11 @@ var canvas2 = new fabric.Canvas('c2'),
           if (e.keyCode == 88) {
             skip_segment();
           }
+
+          if (e.keyCode == 49) {
+            toggle_note( 1 );
+          }
+
         {% endif %}
           if (e.keyCode == 84) {
             toggle_slice();
@@ -390,10 +416,8 @@ var canvas2 = new fabric.Canvas('c2'),
     $(document).ready(function() {
       start = new Date().getTime();
     });
-
-  </script>
-
-</div>
+  
+</script>
 
 {% endblock %}
 
