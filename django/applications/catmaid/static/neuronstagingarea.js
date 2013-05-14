@@ -198,11 +198,7 @@ var NeuronStagingArea = new function()
 	        dataType: "json",
 	        success: function ( data ) {
 	        	self.add_skeleton_to_stage( skeleton_id, data['neuronname'] );
-<<<<<<< HEAD
 	        	if (typeof callback !== "undefined" && callback instanceof Function) {
-=======
-	        	if (typeof callback === "function") {
->>>>>>> origin/graph-betweenness
   					callback();
   				}
 	        }
