@@ -47,6 +47,8 @@ urlpatterns += i18n_patterns('',
 
     url(r'^segment-vote$', 'catmaid.control.segment.segment_vote'),
     url(r'^segment-bb$', 'catmaid.control.segment.get_segment_boundingbox'),
+
+    url(r'^sopnet$', 'catmaid.control.run_sopnet'),
     
 )
 
