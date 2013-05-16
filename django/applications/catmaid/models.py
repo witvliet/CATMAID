@@ -677,7 +677,7 @@ class SliceContoursHighres(UserFocusedModel):
     node_id = models.CharField(max_length=255,db_index=True)
     length = models.FloatField(null=True)
 
-class Segments(UserFocusedModel):
+class Segments(models.Model):
 
     stack = models.ForeignKey(Stack)
 
