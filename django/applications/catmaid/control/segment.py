@@ -91,7 +91,7 @@ def get_segment_sequence():
     #       confine to region of interest 
     segments = Segments.objects.filter(
             # stack = stack,
-            project = project,
+            # project = project,
             cost__lt = 2.0).all().values('id', 'segmentid', 'origin_section', 'target_section', 'cost')
 
     result = []
@@ -102,8 +102,8 @@ def get_segment_sequence():
 def get_segment( project, stack, origin_section, target_section, segment_id ):
     """ TODO: add segment node_id column to database """
     segments = Segments.objects.filter(
-            stack = stack,
-            project = project,
+            # stack = stack,
+            # project = project,
             origin_section = origin_section,
             target_section = target_section,
             segmentid = segment_id ).all()
