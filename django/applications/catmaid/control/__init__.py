@@ -41,3 +41,4 @@ from useranalytics import *
 from classification import *
 from notifications import *
 from segment import *
+from sopnet import *

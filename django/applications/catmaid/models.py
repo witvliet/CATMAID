@@ -673,10 +673,11 @@ class SliceContoursHighres(UserFocusedModel):
     coordinates = IntegerArrayField()
 
     stack = models.ForeignKey(Stack)
-    node_id = models.CharField(max_length=255,db_index=True) # convention: {sectionindex}_{slide_id}
+    # convention: {sectionindex}_{slide_id}
+    node_id = models.CharField(max_length=255,db_index=True)
     length = models.FloatField(null=True)
 
-class Segments(UserFocusedModel):
+class Segments(models.Model):
 
     stack = models.ForeignKey(Stack)
 
@@ -832,6 +833,86 @@ class SegmentToConstraintMap(models.Model):
     target_section = models.IntegerField(db_index=True)
     segment_node_id = models.CharField(db_index=True,max_length=128)
     constraint = models.ForeignKey(ConstraintsToSegmentMap)
+
+class SliceSegmentMap(models.Model):
+
+    slice = models.ForeignKey(Slices)
+    # convention: {sectionindex}_{slide_id}
+    slice_node_id = models.CharField(max_length=255,db_index=True)
+
+    segment = models.ForeignKey(Segments)
+    # convention: {origin_section}_{target_section}-{node_id}
+    segment_node_id = models.CharField(max_length=255,db_index=True)
+
+    # from slice to segment to the right : 0
+    # from slice to segment to the left  : 1
+    direction = models.IntegerField(db_index=True)
+
+class EndSegments(models.Model):
+
+    stack = models.ForeignKey(Stack)
+
+    # segment id produced by sopnet
+    segmentid = models.IntegerField(db_index=True)
+
+    sectionindex = models.IntegerField(db_index=True)
+    cost = models.FloatField(db_index=True)
+
+    # slice id (primary key this segment is associated with)
+    slice_id = models.IntegerField(db_index=True)
+
+    # 0:LR if origin_section< target_section / 1:RL as boolean, otherwise
+    direction = models.BooleanField()
+
+    # Read/Write columns
+    # ------------------
+    assembly = models.ForeignKey(ClassInstance,null=True)
+
+    # default is 1. 'deleted' is 0 (not show again)
+    status = models.IntegerField(db_index=True, default=1)
+
+class EndSegmentsData(models.Model):
+
+    segment = models.OneToOneField(EndSegments, primary_key = True)
+
+    # center_distance = models.FloatField(default=0.0)
+    # set_difference = models.FloatField(default=0.0)
+    # set_difference_ratio = models.FloatField(default=0.0)
+    # aligned_set_difference = models.FloatField(default=0.0)
+    # aligned_set_difference_ratio = models.FloatField(default=0.0)
+
+    size = models.FloatField(default=0.0)
+
+    # overlap = models.FloatField(default=0.0)
+    # overlap_ratio = models.FloatField(default=0.0)
+    # aligned_overlap = models.FloatField(default=0.0)
+    # aligned_overlap_ratio = models.FloatField(default=0.0)
+    # average_slice_distance = models.FloatField(default=0.0)
+    # max_slice_distance = models.FloatField(default=0.0)
+    # aligned_average_slice_distance = models.FloatField(default=0.0)
+    # aligned_max_slice_distance = models.FloatField(default=0.0)
+
+    histogram_0 = models.FloatField(default=0.0)
+    histogram_1 = models.FloatField(default=0.0)
+    histogram_2 = models.FloatField(default=0.0)
+    histogram_3 = models.FloatField(default=0.0)
+    histogram_4 = models.FloatField(default=0.0)
+    histogram_5 = models.FloatField(default=0.0)
+    histogram_6 = models.FloatField(default=0.0)
+    histogram_7 = models.FloatField(default=0.0)
+    histogram_8 = models.FloatField(default=0.0)
+    histogram_9 = models.FloatField(default=0.0)
+    normalized_histogram_0 = models.FloatField(default=0.0)
+    normalized_histogram_1 = models.FloatField(default=0.0)
+    normalized_histogram_2 = models.FloatField(default=0.0)
+    normalized_histogram_3 = models.FloatField(default=0.0)
+    normalized_histogram_4 = models.FloatField(default=0.0)
+    normalized_histogram_5 = models.FloatField(default=0.0)
+    normalized_histogram_6 = models.FloatField(default=0.0)
+    normalized_histogram_7 = models.FloatField(default=0.0)
+    normalized_histogram_8 = models.FloatField(default=0.0)
+    normalized_histogram_9 = models.FloatField(default=0.0)
+
 
 class Drawing(UserFocusedModel):
     class Meta:
