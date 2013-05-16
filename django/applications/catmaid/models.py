@@ -871,6 +871,49 @@ class EndSegments(models.Model):
     # default is 1. 'deleted' is 0 (not show again)
     status = models.IntegerField(db_index=True, default=1)
 
+class EndSegmentsData(models.Model):
+
+    segment = models.OneToOneField(EndSegments, primary_key = True)
+
+    # center_distance = models.FloatField(default=0.0)
+    # set_difference = models.FloatField(default=0.0)
+    # set_difference_ratio = models.FloatField(default=0.0)
+    # aligned_set_difference = models.FloatField(default=0.0)
+    # aligned_set_difference_ratio = models.FloatField(default=0.0)
+
+    size = models.FloatField(default=0.0)
+
+    # overlap = models.FloatField(default=0.0)
+    # overlap_ratio = models.FloatField(default=0.0)
+    # aligned_overlap = models.FloatField(default=0.0)
+    # aligned_overlap_ratio = models.FloatField(default=0.0)
+    # average_slice_distance = models.FloatField(default=0.0)
+    # max_slice_distance = models.FloatField(default=0.0)
+    # aligned_average_slice_distance = models.FloatField(default=0.0)
+    # aligned_max_slice_distance = models.FloatField(default=0.0)
+
+    histogram_0 = models.FloatField(default=0.0)
+    histogram_1 = models.FloatField(default=0.0)
+    histogram_2 = models.FloatField(default=0.0)
+    histogram_3 = models.FloatField(default=0.0)
+    histogram_4 = models.FloatField(default=0.0)
+    histogram_5 = models.FloatField(default=0.0)
+    histogram_6 = models.FloatField(default=0.0)
+    histogram_7 = models.FloatField(default=0.0)
+    histogram_8 = models.FloatField(default=0.0)
+    histogram_9 = models.FloatField(default=0.0)
+    normalized_histogram_0 = models.FloatField(default=0.0)
+    normalized_histogram_1 = models.FloatField(default=0.0)
+    normalized_histogram_2 = models.FloatField(default=0.0)
+    normalized_histogram_3 = models.FloatField(default=0.0)
+    normalized_histogram_4 = models.FloatField(default=0.0)
+    normalized_histogram_5 = models.FloatField(default=0.0)
+    normalized_histogram_6 = models.FloatField(default=0.0)
+    normalized_histogram_7 = models.FloatField(default=0.0)
+    normalized_histogram_8 = models.FloatField(default=0.0)
+    normalized_histogram_9 = models.FloatField(default=0.0)
+
+
 class Drawing(UserFocusedModel):
     class Meta:
         db_table = "drawing"
