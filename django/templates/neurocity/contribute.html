@@ -85,12 +85,24 @@
 <script type="text/javascript" src="{{ STATIC_URL }}libs/fabric.js/all.js"></script>
 <script type="text/javascript">
 
-var canvas2 = new fabric.Canvas('c2'),
-    canvas3 = new fabric.Canvas('c3'),
-    border = 80, show_slices = true,
-    radius = 300, origin_slices = [], target_slices = [],
-    start;
-    
+    var get_url = function(tile_source_type, tile_base_url, zoom_level, sectionindex, yi, xi ) {
+      if( tile_source_type === 1) {
+        return tile_base_url+sectionindex+'/'+yi+'_'+xi+'_'+zoom_level+'.jpg';
+      } else if( tile_source_type === 5 ) {
+        return tile_base_url+'/'+zoom_level+'/'+sectionindex+'/'+yi+'_'+xi+'.jpg';
+      }
+    }
+
+    var tile_base_url = "{{ tile_base_url|safe|escapejs }}",
+        tile_source_type = eval("{{ tile_source_type|safe|escapejs }}"),
+        zoom_level = eval("{{ zoom_level|safe|escapejs }}");
+
+    var canvas2 = new fabric.Canvas('c2'),
+        canvas3 = new fabric.Canvas('c3'),
+        border = 80, show_slices = true,
+        radius = 300, origin_slices = [], target_slices = [],
+        start;
+      
     var button_toggle = [false, false, false, false, false,
       false, false, false, false, false];
 
@@ -166,11 +178,8 @@ var canvas2 = new fabric.Canvas('c2'),
 
            for(var xi = tile_col_min; xi < tile_col_max; xi++) {
             for(var yi = tile_row_min; yi < tile_row_max; yi++) {
-
-              fabric.Image.fromURL('{{ tile_base_url }}'+current_segment['origin_section']+'/'+yi+'_'+xi+'_0.jpg', build_callback2(xi, yi));
-
-              fabric.Image.fromURL('{{ tile_base_url }}'+current_segment['target_section']+'/'+yi+'_'+xi+'_0.jpg', build_callback3(xi, yi));
-
+              fabric.Image.fromURL( get_url( tile_source_type, tile_base_url, zoom_level, current_segment['origin_section'], yi, xi), build_callback2(xi, yi));
+              fabric.Image.fromURL( get_url( tile_source_type, tile_base_url, zoom_level, current_segment['target_section'], yi, xi), build_callback3(xi, yi));
             }
            }
 

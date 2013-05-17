@@ -120,6 +120,17 @@ def leaderboard_view(request):
 
     return render(request, 'neurocity/dashboard.html', context)
 
+def _add_stackinfo( context ):
+    stack = get_object_or_404(Stack, pk=settings.CURRENT_STACK_ID)
+    context[ 'tile_base_url' ] = stack.image_base
+    context[ 'tile_source_type' ] = stack.tile_source_type
+    if hasattr(settings, 'SEGMENTATION_ZOOM_LEVEL'):
+        context[ 'zoom_level' ] = settings.SEGMENTATION_ZOOM_LEVEL
+    else:
+        context[ 'zoom_level' ] = 0
+    return context
+
+
 def segmentonly_view(request):
     context = {}
     context['nc_segmentonly'] = True
@@ -132,21 +143,20 @@ def segmentonly_view(request):
         'target_section': segment.target_section,
         'cost': segment.cost
     }]
-    context[ 'tile_base_url' ] = 'http://localhost:8000/static/stack2/raw/'
+    context = _add_stackinfo( context )
     return render(request, 'neurocity/contribute.html', context)
 
 @ratelimit(ip=True, method=None, rate='50/m')
 def contribute_view(request):
     if request.limited:
         return redirect('maxlimit')
-
-    segmentsequence = get_segment_sequence()
-
-    return render_to_response('neurocity/contribute.html', {
+    context = {
         'nc_contribute_active': 'active',
-        'segmentsequence': json.dumps( segmentsequence ),
-        'tile_base_url': 'http://localhost:8000/static/stack2/raw/'
-    }, context_instance=RequestContext(request))
+        'segmentsequence': json.dumps( get_segment_sequence() ),
+    }
+    context = _add_stackinfo( context )
+    return render_to_response('neurocity/contribute.html', context,
+     context_instance=RequestContext(request))
 
 def contact_view(request):
     if request.method == 'POST':
