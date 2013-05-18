@@ -818,22 +818,6 @@ class Slices(UserFocusedModel):
     flag_left = models.IntegerField(db_index=True)
     flag_right = models.IntegerField(db_index=True)
 
-class ConstraintsToSegmentMap(models.Model):
-    project = models.ForeignKey(Project)
-    stack = models.ForeignKey(Stack)
-    origin_section = models.IntegerField(db_index=True)
-    target_section = models.IntegerField(db_index=True)
-    segments = IntegerArrayField()
-
-class SegmentToConstraintMap(models.Model):
-    project = models.ForeignKey(Project)
-    stack = models.ForeignKey(Stack)
-    segmentid = models.IntegerField(db_index=True)
-    origin_section = models.IntegerField(db_index=True)
-    target_section = models.IntegerField(db_index=True)
-    segment_node_id = models.CharField(db_index=True,max_length=128)
-    constraint = models.ForeignKey(ConstraintsToSegmentMap)
-
 class SliceSegmentMap(models.Model):
 
     slice = models.ForeignKey(Slices)
@@ -847,6 +831,10 @@ class SliceSegmentMap(models.Model):
     # from slice to segment to the right : 0
     # from slice to segment to the left  : 1
     direction = models.IntegerField(db_index=True)
+
+    # 1: end, 2: continuation, 3: branch
+    segmenttype = models.IntegerField(db_index=True)
+
 
 class EndSegments(models.Model):
 
@@ -913,6 +901,23 @@ class EndSegmentsData(models.Model):
     normalized_histogram_8 = models.FloatField(default=0.0)
     normalized_histogram_9 = models.FloatField(default=0.0)
 
+class ConstraintsToSegmentMap(models.Model):
+    segments = IntegerArrayField(blank=True)
+    endsegments = IntegerArrayField(blank=True)
+
+# map to the constraints that are associated with a pair of sections
+class SegmentToConstraintMap(models.Model):
+    stack = models.ForeignKey(Stack)
+    segment = models.ForeignKey(Segments,db_index=True)
+    origin_section = models.IntegerField(db_index=True)
+    target_section = models.IntegerField(db_index=True)
+    constraint = models.ForeignKey(ConstraintsToSegmentMap)
+
+class EndSegmentToConstraintMap(models.Model):
+    stack = models.ForeignKey(Stack)
+    endsegment = models.ForeignKey(EndSegments,db_index=True)
+    sectionindex = models.IntegerField(db_index=True)
+    constraint = models.ForeignKey(ConstraintsToSegmentMap)
 
 class Drawing(UserFocusedModel):
     class Meta:
