@@ -167,14 +167,12 @@ def delete_slice_from_assembly(request, project_id=None, stack_id=None):
         if nevershow == 0: # delete all associated segments too
             segs = Segments.objects.filter(
             stack = stack,
-            project = p,
             origin_section = slice.sectionindex,
             origin_slice_id = slice.slice_id).update(status = nevershow)
 
             segs = Segments.objects.filter(
             Q(target1_slice_id = slice.slice_id) | Q(target2_slice_id = slice.slice_id),
             stack = stack,
-            project = p,
             target_section = slice.sectionindex).update(status = nevershow)
 
         if slice.assembly is None:
@@ -244,12 +242,10 @@ def segments_for_slice_right(request, project_id=None, stack_id=None):
     sectionindex = int(request.GET.get('sectionindex', '0'))
 
     stack = get_object_or_404(Stack, pk=stack_id)
-    p = get_object_or_404(Project, pk=project_id)
 
     # TODO: filter based on status flag
     segments_right = Segments.objects.filter(
         stack = stack,
-        project = p,
         origin_slice_id = sliceid,
         origin_section = sectionindex,
         segmenttype__gt = 1,
@@ -282,12 +278,10 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
     sectionindex = int(request.GET.get('sectionindex', '0'))
     
     stack = get_object_or_404(Stack, pk=stack_id)
-    p = get_object_or_404(Project, pk=project_id)
 
     # TODO: filter based on status flag
     segments_left = Segments.objects.filter(
         stack = stack,
-        project = p,
         target1_slice_id = sliceid,
         target_section = sectionindex,
         segmenttype = 2,
@@ -313,7 +307,6 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
 
     segments_left_branch = Segments.objects.filter(
         stack = stack,
-        project = p,
         origin_slice_id = sliceid,
         origin_section = sectionindex,
         segmenttype = 3,

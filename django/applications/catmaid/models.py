@@ -824,11 +824,11 @@ class SliceSegmentMap(models.Model):
     # convention: {sectionindex}_{slide_id}
     slice_node_id = models.CharField(max_length=255,db_index=True)
 
-    segment = models.ForeignKey(Segments)
+    segment_id = models.IntegerField(db_index=True)
     # convention: {origin_section}_{target_section}-{node_id}
     segment_node_id = models.CharField(max_length=255,db_index=True)
 
-    # from slice to segment to the right : 0
+    # from slice to segment to the right : 0 TODO: change
     # from slice to segment to the left  : 1
     direction = models.IntegerField(db_index=True)
 

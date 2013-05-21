@@ -197,12 +197,16 @@ var SegmentationAnnotations = new function()
     }
 
     self.run_async_process = function() {
+        console.log('current active', allslices[ current_active_slice ] )
         $.ajax({
           "dataType": 'json',
           "type": "POST",
           "cache": false,
           "url": django_url + project.id + '/stack/' + get_current_stack().id + '/run-sopnet',
-          "data": {},
+          "data": {
+            'current_slice_x': allslices[ current_active_slice ].center_x,
+            'current_slice_y': allslices[ current_active_slice ].center_y
+          },
           "success": function(data) {
              console.log('returned run sopnet', data)
           }
