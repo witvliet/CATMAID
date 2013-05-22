@@ -33,6 +33,7 @@ urlpatterns += i18n_patterns('',
     url(r'^tutorial$', tutorial_view, name='nc_tutorial'),
     url(r'^dashboard$', leaderboard_view, name='nc_dashboard'),
     url(r'^contribute$', contribute_view, name='nc_contribute'),
+    url(r'^match$', match_view, name='nc_match'),
     url(r'^segmentonly$', segmentonly_view, name='nc_segmentonly'),
     url(r'^userstatistics$', userstatistics_view, name='nc_userstatistics'),
     url(r'^about$', about_view, name='nc_about'),
@@ -48,8 +49,6 @@ urlpatterns += i18n_patterns('',
     url(r'^segment-vote$', 'catmaid.control.segment.segment_vote'),
     url(r'^segment-bb$', 'catmaid.control.segment.get_segment_boundingbox'),
 
-    url(r'^sopnet$', 'catmaid.control.run_sopnet'),
-    
 )
 
 # Neuron Catalog
@@ -67,6 +66,13 @@ urlpatterns += patterns('',
     (r'^(?P<project_id>\d+)/lines/delete$', 'vncbrowser.views.lines_delete'),
     (r'^(?P<project_id>\d+)/visual_index$', 'vncbrowser.views.visual_index'),
     (r'^(?P<project_id>\d+)/visual_index(/find/(?P<search>[^/]*))?(/sorted/(?P<order_by>[^/]*))?(/cell_body_location/(?P<cell_body_location>[^/]*))?(/page/(?P<page>[0-9]*))?$', 'vncbrowser.views.visual_index'),
+)
+
+# SOPNET Patterns
+urlpatterns += patterns(
+    '',
+    url(r'^sopnet$', 'catmaid.control.run_sopnet'),
+    url(r'^sliceset$', 'catmaid.control.sliceset')
 )
 
 # Django CATMAID API

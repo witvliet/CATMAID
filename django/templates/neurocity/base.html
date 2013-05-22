@@ -56,10 +56,11 @@
               <ul class="nav">
                 <!-- TODO active set  class="active" -->
                 <!-- <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">Home</a></li> -->
-                <li class="{{ nc_learn_active }}"><a href="{% url 'nc_learn' %}">Get started</a></li>
-                <li class="{{ nc_tutorial_active }}"><a href="{% url 'nc_tutorial' %}">Tutorial</a></li>
+                <!-- <li class="{{ nc_learn_active }}"><a href="{% url 'nc_learn' %}">Get started</a></li> -->
+                <!-- <li class="{{ nc_tutorial_active }}"><a href="{% url 'nc_tutorial' %}">Tutorial</a></li> -->
                 <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Leaderboard</a>
-                <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Match!</a></li>
+                <li class="{{ nc_match_active }}"><a href="{% url 'nc_match' %}">Match 1!</a></li>
+                <li class="{{ nc_contribute_active }}"><a href="{% url 'nc_contribute' %}">Match 2!</a></li>
 
               <!-- </div> -->
             {% if user.is_authenticated %}
