@@ -30,19 +30,24 @@ function SegmentationTool()
      */
     this.destroy = function()
     {
+        console.log('call destroy of segmentation tool');
+
         self.unregister();
 
         self.destroyToolbar();
 
-        // $('#cytograph').remove();
-
         // remove the view element from the DOM
         // canvasLayer.unregister();
 
+        // clear the canvas layer
+        canvasLayer.canvas.clear();
+
+        // TODO: should keep the datastructures intact when
+        // changing the tool, so one can seamlessly switch between
+        // the skeleton tracing tool and the segmentation tool
+
         self.stack.removeLayer( "CanvasLayer" );
-
         canvasLayer = null;
-
         self.stack = null;
     }
 
@@ -444,6 +449,17 @@ function SegmentationTool()
     }) );
 
     this.addAction( new Action({
+        helpText: "Fetch sliceset",
+        keyShortcuts: {
+            'T': [ 84 ]
+        },
+        run: function (e) {
+            SegmentationAnnotations.fetch_sliceset();
+            return true;
+        }
+    }) );
+
+    this.addAction( new Action({
         helpText: "Delete slice group (Shift: Remove and never show again)",
         keyShortcuts: {
              'D': [ 68 ]
@@ -719,12 +735,14 @@ function SegmentationTool()
                         continue;
                     if( current_active_slice && node_id === current_active_slice.node_id) {
                         current_active_slice.img.filters[0] = new fabric.Image.filters.Sepia2();
-                        current_active_slice.img.applyFilters(canvasLayer.canvas.renderAll.bind(canvasLayer.canvas));                            
+                        current_active_slice.img.applyFilters(canvasLayer.canvas.renderAll.bind(canvasLayer.canvas));
                     } else {
-                        if( slice.img.filters.length > 0) {
-                            slice.img.filters = new Array();
-                            slice.img.applyFilters(canvasLayer.canvas.renderAll.bind(canvasLayer.canvas));
-                        }
+                        slice.img.filters[0] = null;
+                        slice.img.applyFilters(canvasLayer.canvas.renderAll.bind(canvasLayer.canvas));
+                        // if( slice.img.filters.length > 0) {
+                        //     slice.img.filters = new Array();
+                        //     slice.img.applyFilters(canvasLayer.canvas.renderAll.bind(canvasLayer.canvas));
+                        // }
                     }
                     add_slice_to_canvas( node_id );
             }

@@ -147,6 +147,18 @@ def segmentonly_view(request):
     return render(request, 'neurocity/contribute.html', context)
 
 @ratelimit(ip=True, method=None, rate='50/m')
+def match_view(request):
+    if request.limited:
+        return redirect('maxlimit')
+    context = {
+        'nc_match_active': 'active',
+        'segmentsequence': json.dumps( get_segment_sequence() ),
+    }
+    context = _add_stackinfo( context )
+    return render_to_response('neurocity/match.html', context,
+     context_instance=RequestContext(request))
+
+@ratelimit(ip=True, method=None, rate='50/m')
 def contribute_view(request):
     if request.limited:
         return redirect('maxlimit')

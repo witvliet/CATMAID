@@ -4,6 +4,7 @@ var allslices = new Object(), slices_grouping = new Object();
 var allvisible_slices = new Object();
 var current_active_slice = null;
 var allsegments = new Object();
+var assembly_colormap = new Object(), default_assembly_color = 'ffffff';
 
 var SegmentationAnnotations = new function()
 {
@@ -1253,7 +1254,40 @@ var SegmentationAnnotations = new function()
     }
     self.add_slice = add_slice;
 
-    var fetch_slice = function( node_id, do_goto_slice, fetch_segments_for_slice) {
+    var fetch_sliceset = function() {
+        // reset current data
+        requestQueue.register(django_url + 'sliceset',
+         "GET", {}, function (status, text, xml) {
+                if (status === 200) {
+                    if (text && text !== " ") {
+                        var e = $.parseJSON(text);
+                        if (e.error) {
+                            alert(e.error);
+                        } else {
+                            console.log('fetched sliceset', e)
+                            for( var slice_id in e['slices']) {
+                                console.log('sliceid', slice_id )
+                                if( e['slices'].hasOwnProperty( slice_id )) {
+                                    // check if there is already a color for the assembly
+                                    // in the color map. if not, create one
+                                    var assembly_id = e['slices'][ slice_id ]['assembly_id'];
+                                    if( !(assembly_id in assembly_colormap) ) {
+                                        assembly_colormap[ assembly_id ] = generate_random_color();
+                                    }
+                                    fetch_slice( slice_id, false, false, assembly_colormap[ assembly_id ] );
+                                }
+                            }
+                            
+                            //  self.add_slice( e[ 0 ], true, true, fetch_segments_for_slice, do_goto_slice );
+                        }
+                    }
+                }
+        });
+    }
+    self.fetch_sliceset = fetch_sliceset;
+
+
+    var fetch_slice = function( node_id, do_goto_slice, fetch_segments_for_slice, assembly_color) {
         // console.log('fetch slide', node_id, '; goto:', do_goto_slice, '; fetch segments', fetch_segments_for_slice);
         var nodeidsplit = inv_cc_slice( node_id );
         // if it does not yet exist, create it and make it visible
@@ -1271,6 +1305,7 @@ var SegmentationAnnotations = new function()
                                 alert('Should only have fetched one slice, but it fetched multiple.');
                                 return false;
                             }
+                            e[ 0 ].assembly_color = assembly_color;
                             self.add_slice( e[ 0 ], true, true, fetch_segments_for_slice, do_goto_slice );
                         }
                     }
@@ -1492,10 +1527,67 @@ var SegmentationAnnotations = new function()
 
     }
 
+    var Colorize = fabric.util.createClass({
+      type: "Colorize",
+      initialize: function(options) {
+        options || (options = { });
+        this.color = options.color || 0;
+      },
+      applyTo: function(canvasEl) {
+        var context = canvasEl.getContext('2d'),
+            imageData = context.getImageData(0, 0, canvasEl.width, canvasEl.height),
+            data = imageData.data,
+            iLen = data.length, i, a;
+
+
+        var cr = parseInt('0x' + this.color.substr(0, 2), 16);
+        var cg = parseInt('0x' + this.color.substr(2, 2), 16);
+        var cb = parseInt('0x' + this.color.substr(4, 2), 16);
+
+        for (i = 0; i < iLen; i+=4) {
+
+          a = data[i+3];
+
+          if (a > 0){
+            data[i] = cr;
+            data[i+1] = cg;
+            data[i+2] = cb;
+          }
+        }
+
+        context.putImageData(imageData, 0, 0);
+      },
+      toJSON: function() {
+        return { type: this.type };
+      }
+    });
+
+    String.prototype.lpad = function(padString, length) {
+        var str = this;
+        while (str.length < length)
+            str = padString + str;
+        return str;
+    }
+
+    var generate_random_color = function() {
+        ranges = [
+            [150,256],
+            [0, 190],
+            [0, 30]
+        ];
+        var g = function() {
+            //select random range and remove
+            var range = ranges.splice(Math.floor(Math.random()*ranges.length), 1)[0];
+            //pick a random number from within the range
+            return Math.floor(Math.random() * (range[1] - range[0])) + range[0] ;
+        }
+        return g().toString(16).lpad("0", 2) + g().toString(16).lpad("0", 2) + g().toString(16).lpad("0", 2);
+    }
+
     function Slice( slice )
     {
         var self = this;
-
+        
         this.assembly_id = slice.assembly_id;
         this.sectionindex = slice.sectionindex;
         this.slice_id = slice.slice_id; // int id is a zero-based index relative to the section
@@ -1516,6 +1608,11 @@ var SegmentationAnnotations = new function()
         this.selected_segment_left = null;
         this.segments_right = new Array();
         this.selected_segment_right = null;
+        if( slice.assembly_color === undefined) {
+            this.assembly_color = default_assembly_color;
+        } else {
+            this.assembly_color = slice.assembly_color; // generate_random_color();
+        }
 
         this.fetch_image = function( trigger_update, fetch_segments_for_slice, is_visible, do_goto_slice ) {
             // console.log('fetch image: trigger_update:', trigger_update, 'fetch_segments_for_slice', fetch_segments_for_slice, 'is_visible', is_visible, 'do_goto_slice', do_goto_slice)
@@ -1529,6 +1626,9 @@ var SegmentationAnnotations = new function()
                 self.img.set('selectable', true)
                 self.img.lockMovementX = self.img.lockMovementY = true;
                 self.img.slice = self; // store a reference from the img to the slice
+                self.img.filters[1] = new Colorize({
+                    color:self.assembly_color
+                });
 
                 if( is_visible ) {
                     make_visible( slice.node_id, do_goto_slice );
