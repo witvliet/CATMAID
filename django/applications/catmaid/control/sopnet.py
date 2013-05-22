@@ -13,6 +13,31 @@ from celery.task import task
 from itertools import chain
 import subprocess
 
+def sliceset(request):
+	""" Returns a set of slices with unique assembly id and color """
+	data = {
+		'0_588': {
+			'assembly_id': 10
+		},
+		'1_227': {
+			'assembly_id': 10
+		},
+		'0_556': {
+			'assembly_id': 20
+		},
+		'1_242': {
+			'assembly_id': 20
+		}
+	}
+	colormap = {
+		10: 'RGBA',
+		20: 'RGBA'
+	}
+
+	return HttpResponse(json.dumps({'slices': data, 'colormap': colormap}), mimetype="text/json")
+
+
+
 def generate_slice_segment_map():
 	""" Generate the equality constraings. Segments ending in slice i
 	from the left, and segments tarting in slice i to the right """
@@ -33,11 +58,10 @@ def problem_formulation(seed_x, seed_y):
 	# x2, y2, z2 = seed_x+100, seed_y+100, 5
 
 	x1, y1, z1 = 0, 0, 0
-	x2, y2, z2 = 800, 800, 2
+	x2, y2, z2 = 1024, 1024, 10
 
 	# 200: 2 segments
 	# 50: 0_580 to 1_576 and 0_444 to 1_231
-
 
 	print 'process from', x1, y1, z1
 	print '...to', x2, y2, z2
@@ -52,7 +76,9 @@ def problem_formulation(seed_x, seed_y):
 	# retrieve all slices in the bounding box
 	slices = get_slices_in_region(x1, y1, z1, x2, y2, z2)
 
-	print 'nr of slices in subregion', len(slices)
+	print 'nr of slices in subregion', len(slices), slices
+
+	# for each constraint, all variables, it has to have a solutions
 
 	# retrieve all segments associated with the slices
 
@@ -68,8 +94,10 @@ def problem_formulation(seed_x, seed_y):
 
 	# TODO, filter based on endsegment or not
 
+	print 'all end segments', endssm
+
 	allsegments_from_map = [s['segment_id'] for s in ssm]
-	allendsegments_from_map = [s['segment_id'] for s in endssm]
+	endsegment_ids = [s['segment_id'] for s in endssm]
 
 	# TODO: do not compute equality constraints for last section
 	# in the stack because we do not have end segments
@@ -79,34 +107,36 @@ def problem_formulation(seed_x, seed_y):
 		if not s['slice_id'] in equality_constraints:
 			equality_constraints[ s['slice_id'] ] = {'left': [], 'right': []}
 		if s['direction'] == 1:
-			equality_constraints[ s['slice_id'] ]['left'].append( s['segment_id'] )
-		else:
 			equality_constraints[ s['slice_id'] ]['right'].append( -1*s['segment_id'] )
+		else:
+			equality_constraints[ s['slice_id'] ]['left'].append( s['segment_id'] )
 
 	for s in endssm:
 		if not s['slice_id'] in equality_constraints:
 			equality_constraints[ s['slice_id'] ] = {'left': [],'right': []}
 		if s['direction'] == 1:
-			equality_constraints[ s['slice_id'] ]['left'].append( s['segment_id'] )
-		else:
 			equality_constraints[ s['slice_id'] ]['right'].append( -1*s['segment_id'] )
+		else:
+			equality_constraints[ s['slice_id'] ]['left'].append( s['segment_id'] )
 
-	# print 'equality constraints', equality_constraints
+	assert len(equality_constraints) == len(slices)
+
+	print 'equality constraints', equality_constraints
 
 	print 'nr of maps to segments found for slices', len(allsegments_from_map)
-	print 'nr of maps to endsegments found for slices', len(allendsegments_from_map)
+	print 'nr of maps to endsegments found for slices', len(endsegment_ids)
 
 	print 'nr of maps to segments found for slices reduced', len(list(set(allsegments_from_map)))
-	print 'nr of maps to end segments found for slices reduced', len(list(set(allendsegments_from_map)))
+	print 'nr of maps to end segments found for slices reduced', len(list(set(endsegment_ids)))
 
 	# retrieve slice information
 	segments = Segments.objects.filter(
 		id__in = allsegments_from_map ).values('id', 'origin_section', 'target_section', 'cost')
 
-	print 'nr of segments', len(segments)
+	print 'nr of continuation/branch segments', len(segments)
 
 	endsegments = EndSegments.objects.filter(
-		id__in = allendsegments_from_map ).values('id', 'sectionindex', 'cost')
+		id__in = endsegment_ids ).values('id', 'sectionindex', 'cost', 'direction')
 
 	print 'nr of end segments', len(endsegments)
 
@@ -117,8 +147,13 @@ def problem_formulation(seed_x, seed_y):
 	for s in endsegments:
 		allendsegments[ s['id'] ] = s
 
-	print 'nr of all segments', len(allsegments)
+	print 'nr of all segments', len(allsegments), allsegments
 	print 'nr of all segments after reduction', len(set(allsegments))
+
+	assert 2 * len(slices) == len(endssm)
+
+	assert 2 * len(slices) == len(allendsegments)
+
 
 	# retrieve all one-constraints associated with these segments
 	constraints = SegmentToConstraintMap.objects.filter(
@@ -126,17 +161,32 @@ def problem_formulation(seed_x, seed_y):
 
 	print 'nr of constraints found', len(constraints)
 
+	# endconstraints = EndSegmentToConstraintMap.objects.filter(
+	# 	endsegment_id__in = allendsegments.keys() ).values('constraint_id')
+
+	print 'end segments---', [k for k,v in allendsegments.items() if v['direction'] == True ]
+
 	endconstraints = EndSegmentToConstraintMap.objects.filter(
-		endsegment_id__in = allendsegments.keys() ).values('constraint_id')
+		endsegment_id__in = [k for k,v in allendsegments.items() if v['direction'] == True ] ).values('constraint_id')
+
+	print 'number of end constraints for end segments to the right', len(endconstraints)
+
+	# endconstraints = EndSegmentToConstraintMap.objects.filter(
+	# 	endsegment_id__in = [k for k,v in allendsegments.items() if v['direction'] == False ] ).values('constraint_id')
+
+	print 'number of end constraints for end segments to the left', len(endconstraints)
 
 	print 'nr of end constraints found', len(endconstraints)
 
 	# contraint set list
 	# subproblem_consistency_contraints = [c['contraint_id'] for c in constraints]
 
-	one_constraints = set([s['constraint_id'] for s in constraints] + [s['constraint_id'] for s in endconstraints])
+	one_constraints = set([s['constraint_id'] for s in constraints] + 
+		[s['constraint_id'] for s in endconstraints])
 
 	print 'nr of constraints', len(one_constraints)
+
+	print 'all one constraints', list(one_constraints)
 
 	# retrieve all other segments associated with the constraints
 	# and union them with the current segment set
@@ -156,16 +206,22 @@ def problem_formulation(seed_x, seed_y):
 				complementary_segments.add( segid )
 		for segid in ele['endsegments']:
 			if not segid in allendsegments:
+				print 'additional end segments found', segid
 				complementary_endsegments.add( segid )
 
 	print 'nr of complementary segments found through constraints not originally in segments', len(complementary_segments)
 
 	# retrieve new segment information
 	segments_to_add = Segments.objects.filter(
-		id__in = list(complementary_segments) ).values('id', 'cost')
+		id__in = list(complementary_segments) ).values('id', 'cost', 'direction')
 
 	endsegments_to_add = EndSegments.objects.filter(
-		id__in = list(complementary_endsegments) ).values('id', 'cost')
+		id__in = list(complementary_endsegments) ).values('id', 'cost', 'direction', 'sectionindex')
+
+	for es in endsegments_to_add:
+		print 'es', es
+
+		assert es['direction'] == True
 
 	for s in segments_to_add:
 		if not s['id'] in allsegments:
@@ -174,6 +230,23 @@ def problem_formulation(seed_x, seed_y):
 	for s in endsegments_to_add:
 		if not s['id'] in allendsegments:
 			allendsegments[ s['id'] ] = s
+
+	
+
+    # DEBUG
+	# for each end segment, it should appear in
+	#  in exactly one equality constraint
+	#  one constraints
+	#     if it points to left, should not appear at all
+	#     if to the right in a set of of one constraints
+	
+	# for k,v in allendsegments.items():
+	# 	# print 'direction', v
+	# 	if v['direction'] == 0: # to the left
+	# 		print 'end segment to the left', v['id']
+	# 	elif v['direction'] == 1:
+	# 		print 'end segment to the right', v['id']
+
 
 	# send problem formulation to sopnet
 	f = open('/tmp/test.txt','w')
