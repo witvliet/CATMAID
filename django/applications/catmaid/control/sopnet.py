@@ -12,76 +12,53 @@ from catmaid.control.common import *
 from celery.task import task
 from itertools import chain
 import subprocess
-
-def sliceset(request):
-	""" Returns a set of slices with unique assembly id and color """
-	data = {
-		'0_588': {
-			'assembly_id': 10
-		},
-		'1_227': {
-			'assembly_id': 10
-		},
-		'0_556': {
-			'assembly_id': 20
-		},
-		'1_242': {
-			'assembly_id': 20
-		}
-	}
-	colormap = {
-		10: 'RGBA',
-		20: 'RGBA'
-	}
-
-	return HttpResponse(json.dumps({'slices': data, 'colormap': colormap}), mimetype="text/json")
-
-
-
-def generate_slice_segment_map():
-	""" Generate the equality constraings. Segments ending in slice i
-	from the left, and segments tarting in slice i to the right """
-	pass
+import networkx as nx
 
 def _segment_convention( origin_section, target_section, segmentid ):
 	return '{0}_{1}-{2}'.format(origin_section, target_section, segmentid)
 
-def problem_formulation(seed_x, seed_y):
+def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 	""" Generate the problem formulation to send to SOPNET """
 
 	border = 100
+	zsection_back = 2
+	zsection_forward = 10
+
+	z1 = seed_z - zsection_back
+	if z1 < 0:
+		z1 = 0
+	z2 = seed_z + zsection_forward
 
 	# top-left-low z index corner
-	# x1, y1, z1 = seed_x-100, seed_y-100, 0
+	x1, y1 = seed_x-border, seed_y-border
 
-	# # bottom-right-high z index corner
-	# x2, y2, z2 = seed_x+100, seed_y+100, 5
+	# bottom-right-high z index corner
+	x2, y2 = seed_x+border, seed_y+border
 
-	x1, y1, z1 = 0, 0, 0
-	x2, y2, z2 = 1024, 1024, 10
+	print 'subproblem bounding box is'
+	print x1, y1, z1
+	print x2, y2, z2
 
-	# 200: 2 segments
-	# 50: 0_580 to 1_576 and 0_444 to 1_231
-
-	print 'process from', x1, y1, z1
-	print '...to', x2, y2, z2
+	# x1, y1, z1 = 0, 0, 0
+	# x2, y2, z2 = 200, 200, 5
+	# x2, y2, z2 = 50, 50, 1
 
 	force_explanation = True
 
-	prior_ends = 0
-	prior_branchcontinuation = 0 # -10000000000
+	# prior_ends = 0
+	# prior_branchcontinuation = 0 # -10000000000
+	prior_continuation = 5e6
+	prior_ends = 25e6
 
 	# TODO: started, terminated timestamp, store sopnet run in database
+
+	# TODO: do not compute equality constraints for last section
+	# in the stack because we do not have end segments
 
 	# retrieve all slices in the bounding box
 	slices = get_slices_in_region(x1, y1, z1, x2, y2, z2)
 
-	print 'nr of slices in subregion', len(slices), slices
-
-	# for each constraint, all variables, it has to have a solutions
-
 	# retrieve all segments associated with the slices
-
 	ssm = SliceSegmentMap.objects.filter(
 		~Q(segmenttype = 1),
 		slice_id__in = [s['id'] for s in slices]
@@ -92,15 +69,8 @@ def problem_formulation(seed_x, seed_y):
 		segmenttype = 1
 		).values('slice_id', 'segment_id', 'direction')
 
-	# TODO, filter based on endsegment or not
-
-	print 'all end segments', endssm
-
 	allsegments_from_map = [s['segment_id'] for s in ssm]
 	endsegment_ids = [s['segment_id'] for s in endssm]
-
-	# TODO: do not compute equality constraints for last section
-	# in the stack because we do not have end segments
 
 	equality_constraints = {}
 	for s in ssm:
@@ -121,24 +91,12 @@ def problem_formulation(seed_x, seed_y):
 
 	assert len(equality_constraints) == len(slices)
 
-	print 'equality constraints', equality_constraints
-
-	print 'nr of maps to segments found for slices', len(allsegments_from_map)
-	print 'nr of maps to endsegments found for slices', len(endsegment_ids)
-
-	print 'nr of maps to segments found for slices reduced', len(list(set(allsegments_from_map)))
-	print 'nr of maps to end segments found for slices reduced', len(list(set(endsegment_ids)))
-
 	# retrieve slice information
 	segments = Segments.objects.filter(
 		id__in = allsegments_from_map ).values('id', 'origin_section', 'target_section', 'cost')
 
-	print 'nr of continuation/branch segments', len(segments)
-
 	endsegments = EndSegments.objects.filter(
 		id__in = endsegment_ids ).values('id', 'sectionindex', 'cost', 'direction')
-
-	print 'nr of end segments', len(endsegments)
 
 	allsegments = {}
 	allendsegments = {}
@@ -147,46 +105,18 @@ def problem_formulation(seed_x, seed_y):
 	for s in endsegments:
 		allendsegments[ s['id'] ] = s
 
-	print 'nr of all segments', len(allsegments), allsegments
-	print 'nr of all segments after reduction', len(set(allsegments))
-
 	assert 2 * len(slices) == len(endssm)
-
 	assert 2 * len(slices) == len(allendsegments)
-
 
 	# retrieve all one-constraints associated with these segments
 	constraints = SegmentToConstraintMap.objects.filter(
 		segment_id__in = allsegments.keys() ).values('constraint_id')
 
-	print 'nr of constraints found', len(constraints)
-
-	# endconstraints = EndSegmentToConstraintMap.objects.filter(
-	# 	endsegment_id__in = allendsegments.keys() ).values('constraint_id')
-
-	print 'end segments---', [k for k,v in allendsegments.items() if v['direction'] == True ]
-
 	endconstraints = EndSegmentToConstraintMap.objects.filter(
 		endsegment_id__in = [k for k,v in allendsegments.items() if v['direction'] == True ] ).values('constraint_id')
 
-	print 'number of end constraints for end segments to the right', len(endconstraints)
-
-	# endconstraints = EndSegmentToConstraintMap.objects.filter(
-	# 	endsegment_id__in = [k for k,v in allendsegments.items() if v['direction'] == False ] ).values('constraint_id')
-
-	print 'number of end constraints for end segments to the left', len(endconstraints)
-
-	print 'nr of end constraints found', len(endconstraints)
-
-	# contraint set list
-	# subproblem_consistency_contraints = [c['contraint_id'] for c in constraints]
-
 	one_constraints = set([s['constraint_id'] for s in constraints] + 
 		[s['constraint_id'] for s in endconstraints])
-
-	print 'nr of constraints', len(one_constraints)
-
-	print 'all one constraints', list(one_constraints)
 
 	# retrieve all other segments associated with the constraints
 	# and union them with the current segment set
@@ -194,10 +124,7 @@ def problem_formulation(seed_x, seed_y):
 		id__in = list(one_constraints)
 		).values('segments', 'endsegments')
 
-	print 'final number of consistency constraints', len(csm)
-
 	# add newly found segments to the subproblem segments
-
 	complementary_segments = set()
 	complementary_endsegments = set()
 	for ele in csm:
@@ -206,10 +133,7 @@ def problem_formulation(seed_x, seed_y):
 				complementary_segments.add( segid )
 		for segid in ele['endsegments']:
 			if not segid in allendsegments:
-				print 'additional end segments found', segid
 				complementary_endsegments.add( segid )
-
-	print 'nr of complementary segments found through constraints not originally in segments', len(complementary_segments)
 
 	# retrieve new segment information
 	segments_to_add = Segments.objects.filter(
@@ -218,10 +142,8 @@ def problem_formulation(seed_x, seed_y):
 	endsegments_to_add = EndSegments.objects.filter(
 		id__in = list(complementary_endsegments) ).values('id', 'cost', 'direction', 'sectionindex')
 
-	for es in endsegments_to_add:
-		print 'es', es
-
-		assert es['direction'] == True
+	# for es in endsegments_to_add:
+	# 	assert es['direction'] == True
 
 	for s in segments_to_add:
 		if not s['id'] in allsegments:
@@ -231,29 +153,12 @@ def problem_formulation(seed_x, seed_y):
 		if not s['id'] in allendsegments:
 			allendsegments[ s['id'] ] = s
 
-	
-
-    # DEBUG
-	# for each end segment, it should appear in
-	#  in exactly one equality constraint
-	#  one constraints
-	#     if it points to left, should not appear at all
-	#     if to the right in a set of of one constraints
-	
-	# for k,v in allendsegments.items():
-	# 	# print 'direction', v
-	# 	if v['direction'] == 0: # to the left
-	# 		print 'end segment to the left', v['id']
-	# 	elif v['direction'] == 1:
-	# 		print 'end segment to the right', v['id']
-
-
 	# send problem formulation to sopnet
 	f = open('/tmp/test.txt','w')
 	f.write('1\n') # nr of subproblems
 	f.write('{0}\n'.format(len(allsegments)+len(allendsegments))) # [number of segments]
 	for k,v in allsegments.iteritems():
-		f.write('{0} {1}\n'.format(k, v['cost'] + prior_branchcontinuation ) )
+		f.write('{0} {1}\n'.format(k, v['cost'] + prior_continuation ) )
 	for k,v in allendsegments.iteritems():
 		f.write('{0} {1}\n'.format(k, v['cost'] + prior_ends ) )
 	f.write('{0}\n'.format(len(csm))) # [number of "1"-constraints]
@@ -273,66 +178,81 @@ def problem_formulation(seed_x, seed_y):
 		f.write('{0} {1}\n'.format(nr_of_constraints, ' '.join(map(str, eq_const)) ) )
 	f.close()
 
-	# run_async_process.delay()
 	process = subprocess.Popen(
 		'/home/stephan/dev/sopnet/build/solve_subproblems -i /tmp/test.txt',  #  -v debug
-		shell = True,
-		stdout=subprocess.PIPE, stderr=subprocess.PIPE )
-		# stdout=subprocess.PIPE)
+		shell = True, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 
 	(stdout, stderr) = process.communicate()
-	print 'stdout', 
 
 	if stdout.split('\n')[1] == '0':
 		print 'Optimal solution *NOT* found'
 		return
 
-	print 'selected segment ids', stdout.split('\n')[2].split(' ')[1:]
 	result_segments = stdout.split('\n')[2].split(' ')[1:]
 	
 	# retrieve slice information
 	segments = Segments.objects.filter(
 		id__in = result_segments ).values('id', 'origin_section', 'target_section', 
-		'origin_slice_id', 'target1_slice_id', 'target2_slice_id', 'segmenttype', 'direction', 'cost')
+		'origin_slice_id', 'target1_slice_id', 'target2_slice_id', 'segmenttype', 'direction', 'cost',
+		'segmentid' )
+
 	endsegments = EndSegments.objects.filter(
 		id__in = result_segments ).values('id', 'sectionindex', 'direction', 'slice_id', 'cost')
 
-	print 'good segments', segments
-	print 'end segments', endsegments
+	print 'Result of SOPNET solve'
+	print 'Segments:', segments
+	print 'EndSegments:', endsegments
 
-	import networkx as nx
-	graph = nx.Graph()
+	graph = nx.DiGraph()
 
 	for seg in segments:
 		if seg['segmenttype'] == 2:
-			print 'continuation segment'
+			# print 'continuation segment'
 			fromkey = '{0}_{1}'.format( seg['origin_section'], seg['origin_slice_id'] )
 			tokey = '{0}_{1}'.format( seg['target_section'], seg['target1_slice_id'] )
-			graph.add_edge(fromkey, tokey)
+			node_id = '{0}_{1}-{2}'.format( seg['origin_section'], seg['target_section'], seg['segmentid'] )
+			seg['segment_node_id'] = node_id
+			graph.add_edge(fromkey, tokey, seg)
 
 		elif seg['segmenttype'] == 3:
-			print 'branch segment'
+			# print 'branch segment'
 			# direction does not matter because have undirected graph
 			fromkey = '{0}_{1}'.format( seg['origin_section'], seg['origin_slice_id'] )
 			tokey1 = '{0}_{1}'.format( seg['target_section'], seg['target1_slice_id'] )
 			tokey2 = '{0}_{1}'.format( seg['target_section'], seg['target2_slice_id'] )
-			graph.add_edge(fromkey, tokey1)
-			graph.add_edge(fromkey, tokey2)
+			node_id = '{0}_{1}-{2}'.format( seg['origin_section'], seg['target_section'], seg['segmentid'] )
+			seg['segment_node_id'] = node_id
+			graph.add_edge(fromkey, tokey1, seg)
+			graph.add_edge(fromkey, tokey2, seg)
 
 	for seg in endsegments:
-		print 'endsegment'
+		# print 'endsegment'
 		slicekey = '{0}_{1}'.format( seg['sectionindex'], seg['slice_id'] )
-		if slicekey in graph:
-			print 'slicekey', slicekey, ' in graph. end slice'
+		if not slicekey in graph:
+			graph.add_node( slicekey, seg ) # selected single slice end segment
 		else:
-			print 'slicekey', slicekey, ' not in graph. there might be a problem.'
-		graph.add_node( slicekey )
+			graph.node[ slicekey ] = seg
+		
+	# print 'graph'
+	# print 'nodes:', graph.nodes()
+	# print 'edges:', graph.edges()
+	subgraphs = nx.weakly_connected_component_subgraphs(graph)
 
-	print 'graph'
-	print 'nodes:', graph.nodes()
-	print 'edges:', graph.edges()
+	print 'number of connected subgraphs', len(subgraphs)
 
-	nx.write_graphml(graph, '/tmp/graph.graphml')
+	# nx.write_graphml(graph, '/tmp/graph.graphml')
+	slicedata = {}
+	segmentdata = {}
+	for i,graph in enumerate(subgraphs):
+		print 'size of connected component', len(graph.nodes())
+		if len(graph.nodes()) < 5:
+			continue
+		slicedata[ i + 10 ] = graph.nodes(data=True)
+		segmentdata[ i + 10 ] = graph.edges(data=True)
+	# slicedata[ 10 ] = subgraphs[0].nodes(data=True)
+	# segmentdata[ 10 ] = subgraphs[0].edges(data=True)
+
+	return HttpResponse(json.dumps({'slices': slicedata, 'segments': segmentdata}), mimetype="text/json")
 
 def get_slices_in_region(x1, y1, z1, x2, y2, z2):
 
@@ -388,13 +308,9 @@ def run_async_process():
 	# for ln in ls.stdout:
 	# 	print('line:', ln)
 
-
-
 # @requires_user_role([UserRole.Annotate, UserRole.Browse])
-def run_sopnet(request, project_id=None, stack_id=None):
-	# result = run_async_process.delay()
-	seed_x = request.POST.get('current_slice_x', 0)
-	seed_y = request.POST.get('current_slice_y', 0)
-	problem_formulation(seed_x, seed_y)
-	return HttpResponse(json.dumps({'message': 'Started async process.'}), mimetype="text/json")
-
+def run_sopnet(request, stack_id=None):
+	seed_x = float(request.POST.get('current_slice_x', 0))
+	seed_y = float(request.POST.get('current_slice_y', 0))
+	seed_z = int(request.POST.get('current_slice_z', 0))
+	return problem_formulation(seed_x, seed_y, seed_z, stack_id)

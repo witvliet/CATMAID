@@ -1256,8 +1256,13 @@ var SegmentationAnnotations = new function()
 
     var fetch_sliceset = function() {
         // reset current data
-        requestQueue.register(django_url + 'sliceset',
-         "GET", {}, function (status, text, xml) {
+        console.log('current active slice', allslices[ current_active_slice ] )
+        requestQueue.register(django_url + project.id + '/sopnet',
+         "POST", {
+            'current_slice_x': allslices[ current_active_slice ].center_x,
+            'current_slice_y': allslices[ current_active_slice ].center_y,
+            'current_slice_z': allslices[ current_active_slice ].sectionindex
+         }, function (status, text, xml) {
                 if (status === 200) {
                     if (text && text !== " ") {
                         var e = $.parseJSON(text);
@@ -1265,19 +1270,21 @@ var SegmentationAnnotations = new function()
                             alert(e.error);
                         } else {
                             console.log('fetched sliceset', e)
-                            for( var slice_id in e['slices']) {
-                                console.log('sliceid', slice_id )
-                                if( e['slices'].hasOwnProperty( slice_id )) {
-                                    // check if there is already a color for the assembly
-                                    // in the color map. if not, create one
-                                    var assembly_id = e['slices'][ slice_id ]['assembly_id'];
+                            var eslices = e['slices'];
+                            for( var assembly_id in eslices) {
+                                if( eslices.hasOwnProperty( assembly_id )) {
+                                    console.log('assemblyid', assembly_id, eslices[assembly_id].length)
                                     if( !(assembly_id in assembly_colormap) ) {
                                         assembly_colormap[ assembly_id ] = generate_random_color();
                                     }
-                                    fetch_slice( slice_id, false, false, assembly_colormap[ assembly_id ] );
+                                    console.log('assemblyid colormap', assembly_colormap[ assembly_id ])
+                                    for(var idx = 0; idx < eslices[assembly_id].length; idx++) {
+
+                                        console.log('slice', eslices[assembly_id][idx][0], assembly_colormap[ assembly_id ]);
+                                        fetch_slice( eslices[assembly_id][idx][0], false, false, assembly_colormap[ assembly_id ] );
+                                    }
                                 }
                             }
-                            
                             //  self.add_slice( e[ 0 ], true, true, fetch_segments_for_slice, do_goto_slice );
                         }
                     }
@@ -1587,7 +1594,7 @@ var SegmentationAnnotations = new function()
     function Slice( slice )
     {
         var self = this;
-        
+
         this.assembly_id = slice.assembly_id;
         this.sectionindex = slice.sectionindex;
         this.slice_id = slice.slice_id; // int id is a zero-based index relative to the section
