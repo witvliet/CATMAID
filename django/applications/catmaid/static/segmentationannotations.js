@@ -132,7 +132,7 @@ var SegmentationAnnotations = new function()
 
     this.show_slices_tiles = function() {
         var wc = self.stack.getFieldOfViewInPixel();
-        self.canvas.clear();        
+        self.canvas.clear();
         var fetchurl = django_url + project.id + '/stack/' + get_current_stack().id + '/slices-tiles?' + $.param({
             sectionindex: get_current_stack().z,
             x: wc.worldLeftC,
@@ -853,7 +853,7 @@ var SegmentationAnnotations = new function()
             '<td>'+slice.node_id+'</td>' +
             '<td>'+slice.assembly_id+'</td>' +
             '<td>'+slice.sectionindex+'</td>' +
-            '<td>' + '</td>' +
+            '<td>'+ '</td>' +
             '<td>'+slice.center_x+'</td>' +
             '<td>'+slice.center_y+'</td>' +
             '<td>'+slice.threshold+'</td>' +
@@ -871,6 +871,7 @@ var SegmentationAnnotations = new function()
         var right_segments = allslices[ node_id ].segments_right;
         $('#segmentstable').append('<tr>'+
             '<td>segments right</td>' +
+            '<td>primary key</td>' +
             '<td>origin</td>' +
             '<td>id</td>' +
             '<td>t</td>' +
@@ -936,6 +937,7 @@ var SegmentationAnnotations = new function()
             $('#segmentstable').append('<tr>'+
                 //'<td>'+segment.segmentid+'</td>' +
                 '<td style="background-color:#000000">'+sliceimage+'</td>' +
+                '<td>'+segment.id+'</td>' +
                 '<td>'+segment.origin_section+'//'+segment.origin_slice_id+'</td>' +
                 '<td>'+segment.segmentid+star+'</td>' +
                 '<td>'+segment.segmenttype+'</td>' +
@@ -982,6 +984,7 @@ var SegmentationAnnotations = new function()
         var left_segments = allslices[ node_id ].segments_left;
         $('#segmentstable').append('<tr>'+
             '<td>segments left</td>' +
+            '<td>primary key</td>' +
             '<td>origin_section</td>' +
             '<td>id</td>' +
             '<td>t</td>' +
@@ -1046,6 +1049,7 @@ var SegmentationAnnotations = new function()
             $('#segmentstable').append('<tr>'+
                 //'<td>'+segment.segmentid+'</td>' +
                 '<td style="background-color:#000000">'+sliceimage+'</td>' +
+                '<td>'+segment.id+'</td>' +
                 '<td>'+segment.origin_section+'//'+segment.origin_slice_id+'</td>' +
                 '<td>'+segment.segmentid+star+'</td>' +
                 '<td>'+segment.segmenttype+'</td>' +
@@ -1255,13 +1259,12 @@ var SegmentationAnnotations = new function()
     self.add_slice = add_slice;
 
     var fetch_sliceset = function() {
-        // reset current data
-        console.log('current active slice', allslices[ current_active_slice ] )
+        var current_active_slice_node_id = current_active_slice;
+        self.reset_all();
+        self.canvas.clear();
         requestQueue.register(django_url + project.id + '/sopnet',
          "POST", {
-            'current_slice_x': allslices[ current_active_slice ].center_x,
-            'current_slice_y': allslices[ current_active_slice ].center_y,
-            'current_slice_z': allslices[ current_active_slice ].sectionindex
+            'slice_node_id': current_active_slice_node_id
          }, function (status, text, xml) {
                 if (status === 200) {
                     if (text && text !== " ") {
@@ -1269,29 +1272,56 @@ var SegmentationAnnotations = new function()
                         if (e.error) {
                             alert(e.error);
                         } else {
-                            console.log('fetched sliceset', e)
-                            var eslices = e['slices'];
+                            var eslices = e['slices'], slicelist = [], sliceassemblies = [];
                             for( var assembly_id in eslices) {
                                 if( eslices.hasOwnProperty( assembly_id )) {
-                                    console.log('assemblyid', assembly_id, eslices[assembly_id].length)
                                     if( !(assembly_id in assembly_colormap) ) {
                                         assembly_colormap[ assembly_id ] = generate_random_color();
                                     }
-                                    console.log('assemblyid colormap', assembly_colormap[ assembly_id ])
                                     for(var idx = 0; idx < eslices[assembly_id].length; idx++) {
-
-                                        console.log('slice', eslices[assembly_id][idx][0], assembly_colormap[ assembly_id ]);
-                                        fetch_slice( eslices[assembly_id][idx][0], false, false, assembly_colormap[ assembly_id ] );
+                                        slicelist.push( eslices[assembly_id][idx][0] );
+                                        sliceassemblies.push( assembly_id );
                                     }
                                 }
                             }
-                            //  self.add_slice( e[ 0 ], true, true, fetch_segments_for_slice, do_goto_slice );
+                            console.log('slicelist', slicelist);
+                            console.log('sliceassemblies', sliceassemblies);
+                            add_sliceset( slicelist, sliceassemblies );
                         }
                     }
                 }
         });
     }
     self.fetch_sliceset = fetch_sliceset;
+
+    var add_sliceset = function( slicelist, sliceassemblies ) {
+        jQuery.ajax({
+          url: django_url + project.id + "/stack/" + get_current_stack().id + '/sliceset',
+          data: { 'slicelist': slicelist },
+          type: "POST",
+          dataType: "json",
+          success: function ( data ) {
+            if (data.error) {
+                alert(e.error);
+            } else {
+                var slice;
+                for(var idx = 0; idx<data.length; idx++) {
+                    console.log(idx, data[idx], sliceassemblies[idx], assembly_colormap[ sliceassemblies[idx] ] )
+                    data[ idx ].assembly_color = assembly_colormap[ sliceassemblies[idx] ];    
+                    slice = new Slice( data[idx] );
+                    add_slice_instance( slice );
+                    // slice.fetch_image( trigger_update, fetch_segments_for_slice, is_visible, do_goto_slice )
+                    if( idx == data.length - 1 )
+                        slice.fetch_image( true, false, true, false );
+                    else
+                        slice.fetch_image( false, false, true, false );
+                }
+
+
+            }
+          }
+        });
+    }
 
 
     var fetch_slice = function( node_id, do_goto_slice, fetch_segments_for_slice, assembly_color) {
@@ -1465,6 +1495,7 @@ var SegmentationAnnotations = new function()
     {
         var self = this;
 
+        this.id = segment.id;
         this.segmentid = segment.segmentid;
         this.node_id = compose_segment_node_id( segment.origin_section, segment.target_section,
             segment.segmentid);
@@ -1672,7 +1703,7 @@ var SegmentationAnnotations = new function()
                             if (e.error) {
                                 alert(e.error);
                             } else {
-                                // console.log('found segments (for right:', for_right, ') :', e);
+                                console.log('found segments (for right:', for_right, ') :', e);
                                 if( e.length == 0 ) {                                    
                                     // TODO: correct ?
                                     if( for_right ) {
@@ -1687,6 +1718,7 @@ var SegmentationAnnotations = new function()
                                     var node_id = compose_segment_node_id( e[idx].origin_section,
                                         e[idx].target_section,
                                         e[idx].segmentid);
+                                    console.log('process', node_id)
                                     if( for_right ) {
                                         function has_segment( segments, node_id ) {
                                             for( var i = 0; i < segments.length; i++ ) {

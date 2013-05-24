@@ -69,6 +69,26 @@ def segment_vote(request):
 
     return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
 
+def get_match_segment_sequence():
+
+    project_id = settings.CURRENT_PROJECT_ID
+    stack_id = settings.CURRENT_STACK_ID
+
+    stack = get_object_or_404(Stack, pk=stack_id)
+    project = get_object_or_404(Project, pk=project_id)    
+
+    # segments = Segments.objects.filter(
+    #         # stack = stack,
+    #         # project = project,
+    #         cost__lt = 2.0).all().values('id', 'segmentid', 'origin_section', 'target_section', 'cost')
+
+    # convention
+
+    x1, y1, z1 = 50, 50, 0
+    x2, y2, z2 = 500, 500, 3
+    
+
+
 def get_segment_sequence():
 
     project_id = settings.CURRENT_PROJECT_ID
@@ -83,20 +103,22 @@ def get_segment_sequence():
     stack = get_object_or_404(Stack, pk=stack_id)
     project = get_object_or_404(Project, pk=project_id)
 
+    
+
     # do performance evaluation on this
     # TODO: if filter based on nr_of_votes, should use
     # read uncommitted to not cause deadlock
     # TODO: performance with a sort_by with a limit
     # TODO: use center_x/y and origin/target section to
     #       confine to region of interest 
-    segments = Segments.objects.filter(
-            # stack = stack,
-            # project = project,
-            cost__lt = 2.0).all().values('id', 'segmentid', 'origin_section', 'target_section', 'cost')
+    # segments = Segments.objects.filter(
+    #         # stack = stack,
+    #         # project = project,
+    #         cost__lt = 2.0).all().values('id', 'segmentid', 'origin_section', 'target_section', 'cost')
 
     result = []
-    for i in range(10):
-        result.append( random.choice( segments ) )
+    # for i in range(10):
+    #     result.append( random.choice( segments ) )
     return result
 
 def get_segment( project, stack, origin_section, target_section, segment_id ):

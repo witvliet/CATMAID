@@ -79,6 +79,22 @@ def get_slice(request, project_id=None, stack_id=None):
 
     return HttpResponse(JSONEncoder().encode(list(slices)), mimetype="text/json")
 
+def get_sliceset(request, project_id=None, stack_id=None):
+    """ Return slice information for a set of slices
+    """
+    slicelist = request.POST.getlist('slicelist[]')
+    stack = get_object_or_404(Stack, pk=stack_id)
+    p = get_object_or_404(Project, pk=project_id)
+
+    slices = Slices.objects.filter(
+        stack = stack,
+        project = p,
+        node_id__in = slicelist).all().values('assembly_id', 'sectionindex', 'slice_id',
+        'node_id', 'min_x', 'min_y', 'max_x', 'max_y', 'center_x',
+        'center_y', 'threshold', 'size', 'status', 'flag_left', 'flag_right')
+
+    return HttpResponse(JSONEncoder().encode(list(slices)), mimetype="text/json")
+
 def get_sliceimage(request):
     project_id=11
     stack_id=15
@@ -189,6 +205,45 @@ def delete_slice_from_assembly(request, project_id=None, stack_id=None):
     return HttpResponse(JSONEncoder().encode({'message': "Successfully deleted slice " + str(sliceid) +
         " in section " + str(sectionindex) + " with assembly id " + str(assemblyid_update) }), mimetype="text/json")
 
+def slices_at_location_pixelbased(request, project_id=None, stack_id=None):
+
+    x = int(request.GET.get('x', '0'))
+    y = int(request.GET.get('y', '0'))
+    z = str(request.GET.get('z', '0'))
+
+    stack = get_object_or_404(Stack, pk=stack_id)
+    p = get_object_or_404(Project, pk=project_id)
+
+    # fetch all the components for the given skeleton and z section
+    slices = Slices.objects.filter(
+        stack = stack,
+        project = p,
+        min_x__lt = x,
+        max_x__gt = x,
+        min_y__lt = y,
+        max_y__gt = y,
+        sectionindex = z).all().values('assembly_id', 'sectionindex', 'slice_id',
+        'node_id', 'min_x', 'min_y', 'max_x', 'max_y', 'center_x',
+        'center_y', 'threshold', 'size', 'status').order_by('size')
+
+    sliceinfo = StackSliceInfo.objects.get(stack=stack)
+
+    print 'all slices that intersect bounding box at location', slices
+
+    return HttpResponse(JSONEncoder().encode({}), mimetype="text/json")
+
+    # height, width = 50, 50
+    # data = np.zeros( (height, width), dtype = np.uint8 )
+    # # for slice in slices:
+    # #     # print >> sys.stderr, 'slice', slice['slice_id']
+    # #     data[slice['min_y']-y:slice['max_y']-y, slice['min_x']-x:slice['max_x']-x] = 255
+    # #     #pic = Image.open(os.path.join(sliceinfo.slice_base_path, '0', '1.png'))
+    # #     #arr = np.array( pic.getdata() ).reshape(pic.size[0], pic.size[1], 2)
+
+    # pilImage = Image.frombuffer('RGBA',(width,height),data,'raw','L',0,1)
+    # response = HttpResponse(mimetype="image/png")
+    # pilImage.save(response, "PNG")
+
 
 def slices_at_location(request, project_id=None, stack_id=None):
     """ Takes a stack location and returns slices at this location
@@ -242,17 +297,19 @@ def segments_for_slice_right(request, project_id=None, stack_id=None):
     sectionindex = int(request.GET.get('sectionindex', '0'))
 
     stack = get_object_or_404(Stack, pk=stack_id)
+    slice_node_id = '{0}_{1}'.format( sectionindex, sliceid )
 
-    # TODO: filter based on status flag
+    ssm = SliceSegmentMap.objects.filter(
+        ~Q(segmenttype = 1),
+        slice_node_id = slice_node_id,
+        direction = 1
+        ).values('segment_id')
+
     segments_right = Segments.objects.filter(
         stack = stack,
-        origin_slice_id = sliceid,
-        origin_section = sectionindex,
-        segmenttype__gt = 1,
-        direction = True,
-        cost__lt = 100,
-        status__gt = 0
-    ).all().values( 
+        id__in = [s['segment_id'] for s in ssm ]
+    ).values(
+        'id',
         'segmentid',
         'segmenttype',
         'origin_section','origin_slice_id',
@@ -270,7 +327,29 @@ def segments_for_slice_right(request, project_id=None, stack_id=None):
         'segmentsdata__aligned_overlap',
         'segmentsdata__aligned_overlap_ratio').order_by('cost')
 
-    return HttpResponse(JSONEncoder().encode(list(segments_right)), mimetype="text/json")
+    endssm = SliceSegmentMap.objects.filter(
+        segmenttype = 1,
+        slice_node_id = slice_node_id,
+        direction = 1
+        ).values('segment_id')
+
+    endsegments_right = EndSegments.objects.filter(
+        stack = stack,
+        id__in = [s['segment_id'] for s in endssm ]
+    ).values(
+        'id',
+        'segmentid',
+        'slice_id',
+        'sectionindex',
+        'direction',
+        'cost',
+        'endsegmentsdata__size').order_by('cost')
+
+    for d in endsegments_right:
+        d['origin_section'] = d['sectionindex']
+        d['target_section'] = d['sectionindex'] # pretend convention
+
+    return HttpResponse(JSONEncoder().encode(list(segments_right)+list(endsegments_right)), mimetype="text/json")
 
 def segments_for_slice_left(request, project_id=None, stack_id=None):
     
@@ -278,42 +357,21 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
     sectionindex = int(request.GET.get('sectionindex', '0'))
     
     stack = get_object_or_404(Stack, pk=stack_id)
+    slice_node_id = '{0}_{1}'.format( sectionindex, sliceid )
 
-    # TODO: filter based on status flag
+    ssm = SliceSegmentMap.objects.filter(
+        ~Q(segmenttype = 1),
+        slice_node_id = slice_node_id,
+        direction = 0
+        ).values('segment_id')
+
     segments_left = Segments.objects.filter(
         stack = stack,
-        target1_slice_id = sliceid,
-        target_section = sectionindex,
-        segmenttype = 2,
-        direction = True,
-        cost__lt = 100,
-        status__gt = 0
-    ).all().values('segmentid',
-        'segmenttype',
-        'origin_section','origin_slice_id',
-        'target_section','target1_slice_id','target2_slice_id',
-        'direction',
-        'cost',
-        'segmentsdata__center_distance',
-        'segmentsdata__set_difference',
-        'segmentsdata__set_difference_ratio',
-        'segmentsdata__aligned_set_difference',
-        'segmentsdata__aligned_set_difference_ratio',
-        'segmentsdata__size',
-        'segmentsdata__overlap',
-        'segmentsdata__overlap_ratio',
-        'segmentsdata__aligned_overlap',
-        'segmentsdata__aligned_overlap_ratio').order_by('cost')
-
-    segments_left_branch = Segments.objects.filter(
-        stack = stack,
-        origin_slice_id = sliceid,
-        origin_section = sectionindex,
-        segmenttype = 3,
         direction = False,
-        cost__lt = 100,
-        status__gt = 0
-    ).all().values('segmentid',
+        id__in = [s['segment_id'] for s in ssm ]
+    ).values(
+        'id',
+        'segmentid',
         'segmenttype',
         'origin_section','origin_slice_id',
         'target_section','target1_slice_id','target2_slice_id',
@@ -330,7 +388,29 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
         'segmentsdata__aligned_overlap',
         'segmentsdata__aligned_overlap_ratio').order_by('cost')
 
-    return HttpResponse(JSONEncoder().encode(list(segments_left)+list(segments_left_branch)), mimetype="text/json")
+    endssm = SliceSegmentMap.objects.filter(
+        segmenttype = 1,
+        slice_node_id = slice_node_id,
+        direction = 0
+        ).values('segment_id')
+
+    endsegments_left = EndSegments.objects.filter(
+        stack = stack,
+        id__in = [s['segment_id'] for s in endssm ]
+    ).values(
+        'id',
+        'segmentid',
+        'slice_id',
+        'sectionindex',
+        'direction',
+        'cost',
+        'endsegmentsdata__size').order_by('cost')
+
+    for d in endsegments_left:
+        d['origin_section'] = d['sectionindex']
+        d['target_section'] = d['sectionindex'] # pretend convention
+
+    return HttpResponse(JSONEncoder().encode(list(segments_left)+list(endsegments_left)), mimetype="text/json")
 
 def slice_contour(request, project_id=None, stack_id=None):
     

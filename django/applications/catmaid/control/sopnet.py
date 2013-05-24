@@ -17,23 +17,30 @@ import networkx as nx
 def _segment_convention( origin_section, target_section, segmentid ):
 	return '{0}_{1}-{2}'.format(origin_section, target_section, segmentid)
 
-def problem_formulation(seed_x, seed_y, seed_z, stack_id):
+def problem_formulation(slice_node_id, stack_id):
 	""" Generate the problem formulation to send to SOPNET """
 
-	border = 100
-	zsection_back = 2
-	zsection_forward = 10
+	startslice = Slices.objects.filter(
+		node_id = slice_node_id)[0]
+	
+	print 'start slice', startslice
 
-	z1 = seed_z - zsection_back
+	debug = True
+
+	border = 5
+	zsection_back = 0
+	zsection_forward = 17
+
+	z1 = startslice.sectionindex - zsection_back
 	if z1 < 0:
 		z1 = 0
-	z2 = seed_z + zsection_forward
+	z2 = startslice.sectionindex + zsection_forward
 
 	# top-left-low z index corner
-	x1, y1 = seed_x-border, seed_y-border
+	x1, y1 = startslice.min_x-border, startslice.min_y-border
 
 	# bottom-right-high z index corner
-	x2, y2 = seed_x+border, seed_y+border
+	x2, y2 = startslice.max_x+border, startslice.max_y+border
 
 	print 'subproblem bounding box is'
 	print x1, y1, z1
@@ -45,18 +52,22 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 
 	force_explanation = True
 
-	# prior_ends = 0
-	# prior_branchcontinuation = 0 # -10000000000
-	prior_continuation = 5e6
-	prior_ends = 25e6
+	# prior_continuation = 5e6
+	# prior_ends = 25e6
+
+	prior_continuation = 0
+	prior_ends = 0
 
 	# TODO: started, terminated timestamp, store sopnet run in database
-
 	# TODO: do not compute equality constraints for last section
 	# in the stack because we do not have end segments
 
 	# retrieve all slices in the bounding box
 	slices = get_slices_in_region(x1, y1, z1, x2, y2, z2)
+
+	print 'all slices fetched', [s['node_id'] for s in slices]
+
+	# return HttpResponse(json.dumps({}), mimetype="text/json")
 
 	# retrieve all segments associated with the slices
 	ssm = SliceSegmentMap.objects.filter(
@@ -69,8 +80,11 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 		segmenttype = 1
 		).values('slice_id', 'segment_id', 'direction')
 
-	allsegments_from_map = [s['segment_id'] for s in ssm]
+	segment_ids = [s['segment_id'] for s in ssm]
 	endsegment_ids = [s['segment_id'] for s in endssm]
+
+	print 'nr of slices', len(slices)
+	print 'end segmets fetched', len(endssm), len(endsegment_ids)
 
 	equality_constraints = {}
 	for s in ssm:
@@ -91,12 +105,15 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 
 	assert len(equality_constraints) == len(slices)
 
+	if debug:
+		print 'equality constraints', len(equality_constraints)
+
 	# retrieve slice information
 	segments = Segments.objects.filter(
-		id__in = allsegments_from_map ).values('id', 'origin_section', 'target_section', 'cost')
+		id__in = segment_ids ).values('id', 'origin_section', 'target_section', 'cost')
 
 	endsegments = EndSegments.objects.filter(
-		id__in = endsegment_ids ).values('id', 'sectionindex', 'cost', 'direction')
+		id__in = endsegment_ids ).values('id', 'sectionindex', 'cost', 'direction', 'slice_id')
 
 	allsegments = {}
 	allendsegments = {}
@@ -104,6 +121,18 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 		allsegments[ s['id'] ] = s
 	for s in endsegments:
 		allendsegments[ s['id'] ] = s
+
+	if debug:
+		print 'slices', len(slices)
+		print 'endssm', len(endssm)
+		print 'allend', len(allendsegments)
+		# for k,v in allendsegments.items():
+		# 	print k,v
+
+		# each slice should have two end segments
+		for node_id in [s['node_id'] for s in slices]:
+			if not node_id in allendsegments:
+				print 'missinsg end segment', node_id
 
 	assert 2 * len(slices) == len(endssm)
 	assert 2 * len(slices) == len(allendsegments)
@@ -118,11 +147,14 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 	one_constraints = set([s['constraint_id'] for s in constraints] + 
 		[s['constraint_id'] for s in endconstraints])
 
+	if debug:
+		print 'one_constraints constraints', len(one_constraints)
+
 	# retrieve all other segments associated with the constraints
 	# and union them with the current segment set
-	csm = ConstraintsToSegmentMap.objects.filter(
+	csm = list(ConstraintsToSegmentMap.objects.filter(
 		id__in = list(one_constraints)
-		).values('segments', 'endsegments')
+		).values('segments', 'endsegments'))
 
 	# add newly found segments to the subproblem segments
 	complementary_segments = set()
@@ -134,6 +166,14 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 		for segid in ele['endsegments']:
 			if not segid in allendsegments:
 				complementary_endsegments.add( segid )
+
+	if debug:
+		print 'complementary_segments constraints', len(complementary_segments)
+		print 'complementary_endsegments constraints', len(complementary_endsegments)
+		
+	# TODO: remove
+	# complementary_endsegments.add( 212263 )
+	# csm.append({'segments': [], 'endsegments': [212263] })
 
 	# retrieve new segment information
 	segments_to_add = Segments.objects.filter(
@@ -179,10 +219,13 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 	f.close()
 
 	process = subprocess.Popen(
-		'/home/stephan/dev/sopnet/build/solve_subproblems -i /tmp/test.txt',  #  -v debug
+		# /home/stephan/dev/sopnet/build-solve-subproblem
+		'/home/stephan/dev/sopnet/build-solve-subproblem/solve_subproblems -i /tmp/test.txt',  #  -v debug
 		shell = True, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 
 	(stdout, stderr) = process.communicate()
+
+	print 'stdout', stdout
 
 	if stdout.split('\n')[1] == '0':
 		print 'Optimal solution *NOT* found'
@@ -200,8 +243,9 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 		id__in = result_segments ).values('id', 'sectionindex', 'direction', 'slice_id', 'cost')
 
 	print 'Result of SOPNET solve'
-	print 'Segments:', segments
-	print 'EndSegments:', endsegments
+	print '======================'
+	# print 'Segments:', segments
+	# print 'EndSegments:', endsegments
 
 	graph = nx.DiGraph()
 
@@ -225,66 +269,51 @@ def problem_formulation(seed_x, seed_y, seed_z, stack_id):
 			graph.add_edge(fromkey, tokey1, seg)
 			graph.add_edge(fromkey, tokey2, seg)
 
-	for seg in endsegments:
-		# print 'endsegment'
-		slicekey = '{0}_{1}'.format( seg['sectionindex'], seg['slice_id'] )
-		if not slicekey in graph:
-			graph.add_node( slicekey, seg ) # selected single slice end segment
-		else:
-			graph.node[ slicekey ] = seg
+	# for seg in endsegments:
+	# 	# print 'endsegment'
+	# 	slicekey = '{0}_{1}'.format( seg['sectionindex'], seg['slice_id'] )
+	# 	if not slicekey in graph:
+	# 		graph.add_node( slicekey, seg ) # selected single slice end segment
+	# 	else:
+	# 		graph.node[ slicekey ] = seg
 		
-	# print 'graph'
-	# print 'nodes:', graph.nodes()
-	# print 'edges:', graph.edges()
 	subgraphs = nx.weakly_connected_component_subgraphs(graph)
 
 	print 'number of connected subgraphs', len(subgraphs)
 
 	# nx.write_graphml(graph, '/tmp/graph.graphml')
+	# TODO: use undirected graph and extract minimum spanning tree from lowest section slice
 	slicedata = {}
 	segmentdata = {}
 	for i,graph in enumerate(subgraphs):
 		print 'size of connected component', len(graph.nodes())
-		if len(graph.nodes()) < 5:
+		if not slice_node_id in graph.nodes():
+			print 'skip component'
 			continue
 		slicedata[ i + 10 ] = graph.nodes(data=True)
 		segmentdata[ i + 10 ] = graph.edges(data=True)
-	# slicedata[ 10 ] = subgraphs[0].nodes(data=True)
-	# segmentdata[ 10 ] = subgraphs[0].edges(data=True)
+		print 'slices'
+		print '-----'
+		for k,d in graph.nodes_iter(data=True):
+			print k, d
+		print 'edges between slices'
+		print '--------------------'
+		for u,v,d in graph.edges_iter(data=True):
+			print u, v, d
 
 	return HttpResponse(json.dumps({'slices': slicedata, 'segments': segmentdata}), mimetype="text/json")
 
 def get_slices_in_region(x1, y1, z1, x2, y2, z2):
 
+	# TODO: use range query
+	# https://docs.djangoproject.com/en/dev/ref/models/querysets/#values-list
 	slices = Slices.objects.filter(
-		sectionindex__gte = z1,
-		sectionindex__lte = z2,
-		center_x__gte = x1,
-		center_x__lte = x2,
-		center_y__gte = y1,
-		center_y__lte = y2
-		).all().values('id', 'sectionindex', 'node_id', 'slice_id')
+		sectionindex__range = (z1,z2),
+		center_x__range = (x1,x2),
+		center_y__range = (y1,y2),
+		).values('id', 'sectionindex', 'node_id', 'slice_id')
 
 	return slices
-
-def get_segments_in_subvolume():
-
-	# top-left-low z index corner
-	x1, y1, z1 = 0, 0, 0
-
-	# bottom-right-high z index corner
-	x2, y2, z2 = 512, 512, 10
-
-	segments = Segments.objects.filter(
-		origin_section__gte = z1,
-		target_section__lte = z2,
-		center_x__gte = x1,
-		center_x__lte = x2,
-		center_y__gte = y1,
-		center_y__lte = y2
-		).all().values('id', 'segmentid', 'origin_section', 'target_section', 'cost')
-
-	print 'segments', segments
 
 @task
 def run_async_process():
@@ -310,7 +339,5 @@ def run_async_process():
 
 # @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def run_sopnet(request, stack_id=None):
-	seed_x = float(request.POST.get('current_slice_x', 0))
-	seed_y = float(request.POST.get('current_slice_y', 0))
-	seed_z = int(request.POST.get('current_slice_z', 0))
-	return problem_formulation(seed_x, seed_y, seed_z, stack_id)
+	slice_node_id = request.POST.get('slice_node_id', 0)
+	return problem_formulation(slice_node_id, stack_id)

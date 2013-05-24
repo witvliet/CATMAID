@@ -73,7 +73,6 @@ urlpatterns += patterns(
     '',
     # url(r'^sopnet$', 'catmaid.control.run_sopnet'),
     (r'^(?P<stack_id>\d+)/sopnet$', 'catmaid.control.run_sopnet'),
-    url(r'^sliceset$', 'catmaid.control.sliceset')
 )
 
 # Django CATMAID API
@@ -119,7 +118,11 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slices-tiles$', 'catmaid.control.get_slices_tiles'),
     
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slices-at-location$', 'catmaid.control.slices_at_location'),
+    # (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slices-at-location$', 'catmaid.control.slices_at_location_pixelbased'),
+    
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slice$', 'catmaid.control.get_slice'),
+    (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/sliceset$', 'catmaid.control.get_sliceset'),
+    
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slice/image$', 'catmaid.control.get_sliceimage'),
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slice/delete-slice-from-assembly$', 'catmaid.control.delete_slice_from_assembly'),
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/slice/contour$', 'catmaid.control.slice_contour'),
