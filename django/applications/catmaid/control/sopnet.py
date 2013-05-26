@@ -23,13 +23,22 @@ def problem_formulation(slice_node_id, stack_id):
 	startslice = Slices.objects.filter(
 		node_id = slice_node_id)[0]
 	
-	print 'start slice', startslice
+	sectionindex, slice_id = slice_node_id.split('_')
+
+	startsegment = Segments.objects.filter(
+		origin_section = int(sectionindex),
+		origin_slice_id = int(slice_id),
+		direction = 1,
+		segmenttype = 2 ).order_by('cost')[0]
+
+	print 'startsegment', startsegment.id, startsegment.cost
+	print 'start slice', slice_node_id
 
 	debug = True
 
-	border = 5
+	border = 10
 	zsection_back = 0
-	zsection_forward = 17
+	zsection_forward = 20
 
 	z1 = startslice.sectionindex - zsection_back
 	if z1 < 0:
@@ -52,11 +61,11 @@ def problem_formulation(slice_node_id, stack_id):
 
 	force_explanation = True
 
-	# prior_continuation = 5e6
-	# prior_ends = 25e6
+	prior_continuation = 0 # 5e6
+	prior_ends = 0 # 1e6 # 25e6
 
-	prior_continuation = 0
-	prior_ends = 0
+	# prior_continuation = 0
+	# prior_ends = 0
 
 	# TODO: started, terminated timestamp, store sopnet run in database
 	# TODO: do not compute equality constraints for last section
@@ -65,39 +74,31 @@ def problem_formulation(slice_node_id, stack_id):
 	# retrieve all slices in the bounding box
 	slices = get_slices_in_region(x1, y1, z1, x2, y2, z2)
 
-	print 'all slices fetched', [s['node_id'] for s in slices]
+	# print 'all slices fetched', [s['node_id'] for s in slices]
 
 	# return HttpResponse(json.dumps({}), mimetype="text/json")
 
 	# retrieve all segments associated with the slices
 	ssm = SliceSegmentMap.objects.filter(
-		~Q(segmenttype = 1),
+		# ~Q(segmenttype = 1),
 		slice_id__in = [s['id'] for s in slices]
 		).values('slice_id', 'segment_id', 'direction')
 
-	endssm = SliceSegmentMap.objects.filter(
-		slice_id__in = [s['id'] for s in slices],
-		segmenttype = 1
-		).values('slice_id', 'segment_id', 'direction')
+	# endssm = SliceSegmentMap.objects.filter(
+	# 	slice_id__in = [s['id'] for s in slices],
+	# 	segmenttype = 1
+	# 	).values('slice_id', 'segment_id', 'direction')
 
 	segment_ids = [s['segment_id'] for s in ssm]
-	endsegment_ids = [s['segment_id'] for s in endssm]
+	# endsegment_ids = [s['segment_id'] for s in endssm]
 
 	print 'nr of slices', len(slices)
-	print 'end segmets fetched', len(endssm), len(endsegment_ids)
+	print 'segmets fetched between slices', len(segment_ids)
 
 	equality_constraints = {}
 	for s in ssm:
 		if not s['slice_id'] in equality_constraints:
 			equality_constraints[ s['slice_id'] ] = {'left': [], 'right': []}
-		if s['direction'] == 1:
-			equality_constraints[ s['slice_id'] ]['right'].append( -1*s['segment_id'] )
-		else:
-			equality_constraints[ s['slice_id'] ]['left'].append( s['segment_id'] )
-
-	for s in endssm:
-		if not s['slice_id'] in equality_constraints:
-			equality_constraints[ s['slice_id'] ] = {'left': [],'right': []}
 		if s['direction'] == 1:
 			equality_constraints[ s['slice_id'] ]['right'].append( -1*s['segment_id'] )
 		else:
@@ -113,7 +114,7 @@ def problem_formulation(slice_node_id, stack_id):
 		id__in = segment_ids ).values('id', 'origin_section', 'target_section', 'cost')
 
 	endsegments = EndSegments.objects.filter(
-		id__in = endsegment_ids ).values('id', 'sectionindex', 'cost', 'direction', 'slice_id')
+		id__in = segment_ids ).values('id', 'sectionindex', 'cost', 'direction', 'slice_id')
 
 	allsegments = {}
 	allendsegments = {}
@@ -124,18 +125,13 @@ def problem_formulation(slice_node_id, stack_id):
 
 	if debug:
 		print 'slices', len(slices)
-		print 'endssm', len(endssm)
-		print 'allend', len(allendsegments)
+		print 'end segments fetched', len(allendsegments)
+		print 'continuation segments fetched', len(allsegments)
 		# for k,v in allendsegments.items():
 		# 	print k,v
 
-		# each slice should have two end segments
-		for node_id in [s['node_id'] for s in slices]:
-			if not node_id in allendsegments:
-				print 'missinsg end segment', node_id
-
-	assert 2 * len(slices) == len(endssm)
-	assert 2 * len(slices) == len(allendsegments)
+	# assert 2 * len(slices) == len(endssm)
+	# assert 2 * len(slices) == len(allendsegments)
 
 	# retrieve all one-constraints associated with these segments
 	constraints = SegmentToConstraintMap.objects.filter(
@@ -168,12 +164,14 @@ def problem_formulation(slice_node_id, stack_id):
 				complementary_endsegments.add( segid )
 
 	if debug:
-		print 'complementary_segments constraints', len(complementary_segments)
-		print 'complementary_endsegments constraints', len(complementary_endsegments)
+		print 'complementary_segments', len(complementary_segments)
+		print 'complementary_endsegments', len(complementary_endsegments)
 		
 	# TODO: remove
-	# complementary_endsegments.add( 212263 )
-	# csm.append({'segments': [], 'endsegments': [212263] })
+	# Pin one segment
+	value = startsegment.id # 417607
+	complementary_segments.add( value )
+	csm.append({'segments': [value], 'endsegments': [] })
 
 	# retrieve new segment information
 	segments_to_add = Segments.objects.filter(
@@ -244,10 +242,10 @@ def problem_formulation(slice_node_id, stack_id):
 
 	print 'Result of SOPNET solve'
 	print '======================'
-	# print 'Segments:', segments
-	# print 'EndSegments:', endsegments
+	print 'nr segments:', len(segments)
+	print 'nr EndSegments:', len(endsegments)
 
-	graph = nx.DiGraph()
+	graph = nx.Graph()
 
 	for seg in segments:
 		if seg['segmenttype'] == 2:
@@ -260,7 +258,7 @@ def problem_formulation(slice_node_id, stack_id):
 
 		elif seg['segmenttype'] == 3:
 			# print 'branch segment'
-			# direction does not matter because have undirected graph
+			# TODO: direction does not matter because have undirected graph
 			fromkey = '{0}_{1}'.format( seg['origin_section'], seg['origin_slice_id'] )
 			tokey1 = '{0}_{1}'.format( seg['target_section'], seg['target1_slice_id'] )
 			tokey2 = '{0}_{1}'.format( seg['target_section'], seg['target2_slice_id'] )
@@ -277,7 +275,7 @@ def problem_formulation(slice_node_id, stack_id):
 	# 	else:
 	# 		graph.node[ slicekey ] = seg
 		
-	subgraphs = nx.weakly_connected_component_subgraphs(graph)
+	subgraphs = nx.connected_component_subgraphs(graph)
 
 	print 'number of connected subgraphs', len(subgraphs)
 
@@ -285,21 +283,26 @@ def problem_formulation(slice_node_id, stack_id):
 	# TODO: use undirected graph and extract minimum spanning tree from lowest section slice
 	slicedata = {}
 	segmentdata = {}
-	for i,graph in enumerate(subgraphs):
-		print 'size of connected component', len(graph.nodes())
-		if not slice_node_id in graph.nodes():
-			print 'skip component'
-			continue
-		slicedata[ i + 10 ] = graph.nodes(data=True)
-		segmentdata[ i + 10 ] = graph.edges(data=True)
-		print 'slices'
-		print '-----'
-		for k,d in graph.nodes_iter(data=True):
-			print k, d
+	for i,component in enumerate(subgraphs):
+		print '=================='
+		print 'size of connected component', len(component.nodes())
 		print 'edges between slices'
 		print '--------------------'
-		for u,v,d in graph.edges_iter(data=True):
-			print u, v, d
+		for u,v,d in component.edges_iter(data=True):
+			print u, v, d['cost']
+		if not slice_node_id in component.nodes():
+			print 'skip component'
+			continue
+		# if component.number_of_edges() < 10:
+		# 	continue
+		slicedata[ i + 10 ] = component.nodes(data=True)
+		segmentdata[ i + 10 ] = component.edges(data=True)
+		# print 'slices'
+		# print '-----'
+		# for k,d in component.nodes_iter(data=True):
+		# 	print k, d
+
+
 
 	return HttpResponse(json.dumps({'slices': slicedata, 'segments': segmentdata}), mimetype="text/json")
 
@@ -312,6 +315,14 @@ def get_slices_in_region(x1, y1, z1, x2, y2, z2):
 		center_x__range = (x1,x2),
 		center_y__range = (y1,y2),
 		).values('id', 'sectionindex', 'node_id', 'slice_id')
+
+	print 'query', Slices.objects.filter(
+		( (Q(min_x__range = (x1, x2)) & Q(min_y__range = (y1, y2))) |
+			(Q(max_x__range = (x1, x2)) & Q(max_y__range = (y1, y2))) ),
+			sectionindex__range = (z1,z2),
+		).query
+
+	print 'found slices', [s['node_id'] for s in slices]
 
 	return slices
 

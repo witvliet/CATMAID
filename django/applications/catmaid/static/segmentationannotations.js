@@ -1273,15 +1273,24 @@ var SegmentationAnnotations = new function()
                             alert(e.error);
                         } else {
                             var eslices = e['slices'], slicelist = [], sliceassemblies = [];
+                            var counter = 0;
                             for( var assembly_id in eslices) {
                                 if( eslices.hasOwnProperty( assembly_id )) {
                                     if( !(assembly_id in assembly_colormap) ) {
-                                        assembly_colormap[ assembly_id ] = generate_random_color();
+                                        if( counter === 0)
+                                            assembly_colormap[ self.current_active_assembly ] = generate_random_color();
+                                        else
+                                            assembly_colormap[ assembly_id ] = generate_random_color();
                                     }
                                     for(var idx = 0; idx < eslices[assembly_id].length; idx++) {
                                         slicelist.push( eslices[assembly_id][idx][0] );
-                                        sliceassemblies.push( assembly_id );
+                                        if( counter === 0)
+                                            sliceassemblies.push( self.current_active_assembly );
+                                        else
+                                            sliceassemblies.push( assembly_id );
+
                                     }
+                                    counter += 1;
                                 }
                             }
                             console.log('slicelist', slicelist);
@@ -1306,7 +1315,7 @@ var SegmentationAnnotations = new function()
             } else {
                 var slice;
                 for(var idx = 0; idx<data.length; idx++) {
-                    console.log(idx, data[idx], sliceassemblies[idx], assembly_colormap[ sliceassemblies[idx] ] )
+                    // console.log(idx, data[idx], sliceassemblies[idx], assembly_colormap[ sliceassemblies[idx] ] )
                     data[ idx ].assembly_color = assembly_colormap[ sliceassemblies[idx] ];    
                     slice = new Slice( data[idx] );
                     add_slice_instance( slice );
