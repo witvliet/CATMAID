@@ -228,7 +228,7 @@ def slices_at_location_pixelbased(request, project_id=None, stack_id=None):
 
     sliceinfo = StackSliceInfo.objects.get(stack=stack)
 
-    print 'all slices that intersect bounding box at location', slices
+    # print 'all slices that intersect bounding box at location', slices
 
     return HttpResponse(JSONEncoder().encode({}), mimetype="text/json")
 
@@ -273,7 +273,6 @@ def slices_at_location(request, project_id=None, stack_id=None):
 
     slices = Slices.objects.filter(
         stack = stack,
-        project = p,
         center_x__lt = x + size,
         center_x__gt = x - size,
         center_y__lt = y + size,

@@ -29,7 +29,7 @@ def save_assembly(request, project_id=None, stack_id=None):
     slices_right_flags = request.POST.getlist('slices_right_flags[]')
     
     stack = get_object_or_404(Stack, pk=stack_id)
-    p = get_object_or_404(Project, pk=project_id)
+    # p = get_object_or_404(Project, pk=project_id)
     
     # TODO: set assemblyid to null for all slices with this
     # assembly id, or set to null when deleting (better)
@@ -40,20 +40,20 @@ def save_assembly(request, project_id=None, stack_id=None):
         # TODO: first completely remove assembly and the reset
         Slices.objects.filter(
                 stack = stack,
-                project = p,
+                # project = p,
                 assembly = assemblyid
                 ).update( assembly = None)
 
         Segments.objects.filter(
                 stack = stack,
-                project = p,
+                # project = p,
                 assembly = assemblyid
                 ).update( assembly = None)
 
         for j, node_id in enumerate( slices ):
             Slices.objects.filter(
                 stack = stack,
-                project = p,
+                # project = p,
                 node_id = node_id
                 ).update(assembly=assemblyid, 
                 flag_left = int(slices_left_flags[j]),
@@ -65,7 +65,7 @@ def save_assembly(request, project_id=None, stack_id=None):
             segmentid = int(node_id.split('_')[1].split('-')[1])
             Segments.objects.filter(
                 stack = stack,
-                project = p,
+                # project = p,
                 origin_section = orig,
                 target_section = targ,
                 segmentid = segmentid
@@ -154,7 +154,7 @@ def slices_of_assembly_for_section(request, project_id=None, stack_id=None):
     # fetch all the components for the given skeleton and z section
     all_slices = Slices.objects.filter(
         stack = stack,
-        project = p,
+        # project = p,
         assembly_id = assembly_id,
         sectionindex = sectionindex).all().values('assembly_id', 'sectionindex', 'slice_id',
         'node_id', 'min_x', 'min_y', 'max_x', 'max_y', 'center_x', 'center_y', 'threshold',
@@ -165,7 +165,7 @@ def slices_of_assembly_for_section(request, project_id=None, stack_id=None):
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def slices_of_assembly(request, project_id=None, stack_id=None):
-
+    print 'got assembly id ', request.GET['assemblyid']
     assembly_id = int(request.GET['assemblyid'])
 
     stack = get_object_or_404(Stack, pk=stack_id)
@@ -174,7 +174,7 @@ def slices_of_assembly(request, project_id=None, stack_id=None):
     # fetch all the components for the given skeleton and z section
     all_slices = Slices.objects.filter(
         stack = stack,
-        project = p,
+        # project = p,
         assembly_id = assembly_id).all().values('assembly_id', 'sectionindex', 'slice_id',
         'node_id', 'min_x', 'min_y', 'max_x', 'max_y', 'center_x',
         'center_y', 'threshold', 'size', 'status', 'flag_left', 'flag_right')
@@ -192,17 +192,26 @@ def segments_of_assembly(request, project_id=None, stack_id=None):
 
     all_segments = Segments.objects.filter(
         stack = stack,
-        project = p,
-        assembly_id = assembly_id).all().values('segmentid','segmenttype','origin_section','origin_slice_id','target_section',
-    'target1_slice_id','target2_slice_id','direction',
-    'center_distance','set_difference','cost','set_difference','set_difference_ratio',
-    'aligned_set_difference','aligned_set_difference_ratio',
-    'size','overlap','overlap_ratio','aligned_overlap','aligned_overlap_ratio',
-    'average_slice_distance', 'max_slice_distance',
-    'aligned_average_slice_distance', 'aligned_max_slice_distance',
-    'histogram_0', 'histogram_1', 'histogram_2', 'histogram_3', 'histogram_4', 'histogram_5',
-    'histogram_6', 'histogram_7', 'histogram_8', 'histogram_9', 'normalized_histogram_0',
-    'normalized_histogram_1', 'normalized_histogram_2', 'normalized_histogram_3', 'normalized_histogram_4', 'normalized_histogram_5',
-    'normalized_histogram_6', 'normalized_histogram_7', 'normalized_histogram_8', 'normalized_histogram_9')
+        # project = p,
+        assembly_id = assembly_id).all().values(
+            'segmentid',
+            'segmenttype',
+            'origin_section',
+            'origin_slice_id',
+            'target_section',
+            'target1_slice_id',
+            'target2_slice_id',
+            'direction',
+            'cost',
+            'segmentsdata__center_distance',
+            'segmentsdata__set_difference',
+            'segmentsdata__set_difference_ratio',
+            'segmentsdata__aligned_set_difference',
+            'segmentsdata__aligned_set_difference_ratio',
+            'segmentsdata__size',
+            'segmentsdata__overlap',
+            'segmentsdata__overlap_ratio',
+            'segmentsdata__aligned_overlap',
+            'segmentsdata__aligned_overlap_ratio')
 
     return HttpResponse(json.dumps(list(all_segments)), mimetype="text/json")

@@ -385,7 +385,7 @@ var SegmentationAnnotations = new function()
         }
         // only update if assembly id has changed
         if ( assembly_id !== self.current_active_assembly) {
-            self.save_assembly();
+            // self.save_assembly();
             self.reset_all();
             self.current_active_assembly = assembly_id;
             self.load_assembly( self.current_active_assembly );
@@ -1252,6 +1252,11 @@ var SegmentationAnnotations = new function()
 
     var add_slice = function( slice, is_visible, trigger_update, fetch_segments_for_slice, do_goto_slice ) {
         // console.log('add_slice', slice, is_visible, trigger_update, fetch_segments_for_slice, do_goto_slice);
+        console.log('add slice', slice, slice.assembly_id)
+        if( !(slice.assembly_id in assembly_colormap) ) {
+            assembly_colormap[ slice.assembly_id ] = generate_random_color();
+            console.log('define new colormap', assembly_colormap[ slice.assembly_id ])
+        }
         var slice = new Slice( slice );
         add_slice_instance( slice );
         slice.fetch_image( trigger_update, fetch_segments_for_slice, is_visible, do_goto_slice )
@@ -1335,6 +1340,8 @@ var SegmentationAnnotations = new function()
 
     var fetch_slice = function( node_id, do_goto_slice, fetch_segments_for_slice, assembly_color) {
         // console.log('fetch slide', node_id, '; goto:', do_goto_slice, '; fetch segments', fetch_segments_for_slice);
+        if( node_id === undefined) // TODO: should never be undefined
+            return;
         var nodeidsplit = inv_cc_slice( node_id );
         // if it does not yet exist, create it and make it visible
         requestQueue.register(django_url + project.id + "/stack/" + get_current_stack().id + '/slice', "GET", {
@@ -1665,6 +1672,7 @@ var SegmentationAnnotations = new function()
             // console.log('fetch image: trigger_update:', trigger_update, 'fetch_segments_for_slice', fetch_segments_for_slice, 'is_visible', is_visible, 'do_goto_slice', do_goto_slice)
             fabric.Image.fromURL(self.get_slice_image_url(), function(img)
             {
+                console.log('fetch image', assembly_colormap, self.assembly_id)
                 self.img = img;
                 self.img.perPixelTargetFind = true;
                 self.img.targetFindTolerance = 4;
@@ -1674,7 +1682,7 @@ var SegmentationAnnotations = new function()
                 self.img.lockMovementX = self.img.lockMovementY = true;
                 self.img.slice = self; // store a reference from the img to the slice
                 self.img.filters[1] = new Colorize({
-                    color:self.assembly_color
+                    color: assembly_colormap[ self.assembly_id ]
                 });
 
                 if( is_visible ) {
@@ -1727,7 +1735,7 @@ var SegmentationAnnotations = new function()
                                     var node_id = compose_segment_node_id( e[idx].origin_section,
                                         e[idx].target_section,
                                         e[idx].segmentid);
-                                    console.log('process', node_id)
+                                    // console.log('process', node_id)
                                     if( for_right ) {
                                         function has_segment( segments, node_id ) {
                                             for( var i = 0; i < segments.length; i++ ) {

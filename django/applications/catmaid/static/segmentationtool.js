@@ -731,13 +731,16 @@ function SegmentationTool()
         for (var node_id in allvisible) {
             if( allvisible.hasOwnProperty( node_id ) ) {
                     var slice = SegmentationAnnotations.get_slice( node_id );
+                    // console.log('process slice', node_id)
                     if( !slice )
                         continue;
                     if( current_active_slice && node_id === current_active_slice.node_id) {
+                        // console.log('thi is current active slice', current_active_slice)
                         current_active_slice.img.filters[0] = new fabric.Image.filters.Sepia2();
                         current_active_slice.img.applyFilters(canvasLayer.canvas.renderAll.bind(canvasLayer.canvas));
                     } else {
-                        slice.img.filters[0] = null;
+                        // console.log('remove filter')
+                        // slice.img.filters[0] = null;
                         slice.img.applyFilters(canvasLayer.canvas.renderAll.bind(canvasLayer.canvas));
                         // if( slice.img.filters.length > 0) {
                         //     slice.img.filters = new Array();
