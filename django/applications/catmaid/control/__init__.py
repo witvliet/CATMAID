@@ -2,6 +2,7 @@ __author__ = 'stephan'
 
 from assembly import *
 from authentication import *
+from annotation import *
 from common import *
 from connector import *
 from cropping import *

@@ -38,6 +38,9 @@ var CompartmentGraphWidget = new function()
     sync.setAttribute("id", "confidence_threshold");
     for (var i = 0; i < 6; ++i) {
       var option = document.createElement("option");
+      if( i == confidence_threshold ) {
+        option.selected = 'selected';
+      }
       option.text = i.toString();
       option.value = i;
       sync.appendChild(option);

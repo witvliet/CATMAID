@@ -13,6 +13,119 @@ var ObjectTree = new function()
     $('#tree_object').jstree("rename");
   }
 
+  var annotateNeuron = function() {
+    return function(obj) {
+        // retrieve all associated annotation for the neuron
+        var neuron_id = obj.attr("id").replace("node_", "");
+        requestQueue.register(django_url + project.id + '/neuron/' + neuron_id + '/get-all-annotations', "POST", {},
+          function(status, text) {
+            if (200 !== status) return;
+            var json = $.parseJSON(text);
+            if (json.error) {
+              alert(json.error);
+              return;
+            }
+            
+            var dialog = document.createElement('div');
+            dialog.setAttribute("id", "dialog-annotation");
+            dialog.setAttribute("title", "Neuron Annotation");
+
+            $(dialog).dialog({
+              height: 540,
+              width: 480,
+              modal: true,
+              buttons: [
+                {
+                  text: "Save",
+                  click: function() {
+                    $( this ).dialog( "close" );
+                  }
+                }
+              ],
+              close: function(event, ui) { 
+                $('#dialog-annotation').remove();
+              }
+            });
+
+            // TODO: interface to backend
+            json = {
+              'data': [
+                {
+                  'classname': 'GAL4 line',
+                  'relation_id': 1234, // to neuron id
+                  'instance_name': 'A007test',
+                }
+              ],
+              'annotations': [
+                {
+                  'classname': 'GAL4 line',
+                  'class_id': 123,
+                  'instances': ['A007test'],
+                  'instance_ids': [321]
+                },
+                {
+                  'classname': 'Lateral',
+                  'class_id': 123,
+                  'instances': ['Left', 'Right'],
+                  'instance_ids': [321, 122]
+                },
+              ]
+            }
+
+            var table = $('<table />').attr('width', '100%').attr('id', 'neuron-annotation-table').attr('border', '0');
+            $('#dialog-annotation').append( table );
+
+            // create header
+            var thead = $('<thead />');
+            table.append( thead );
+            row = $('<tr />')
+            row.append( $('<td />').text("class") );
+            row.append( $('<td />').text("value") );
+            row.append( $('<td />').text("command") );
+            thead.append( row );
+
+            var tbody = $('<tbody />');
+            table.append( tbody );
+
+            for( var idx = 0; idx < json['data'].length; idx++ ) {
+                  row = $('<tr />')
+                  // ID of relation instance
+                  row.append( $('<td />').text( json['data'][idx]['classname']) );
+                  row.append( $('<td />').text( json['data'][idx]['instance_name']) );
+                  row.append( $('<td />').html( '<a href="#" onclick="return false;" style="text-decoration:none; color: black;" onmouseover="this.style.textDecoration=\'underline\';" onmouseout="this.style.textDecoration=\'none\';">Remove '+ json['data'][idx]['relation_id'] +'</a>') );
+                  tbody.append( row );
+            }
+
+            var classoptions = document.createElement('select');
+            classoptions.setAttribute("id", "selected_class");
+            for( var idx = 0; idx < json['annotations'].length; idx++ ) {
+              var option = document.createElement("option");
+              option.text = json['annotations'][idx]['classname'];
+              option.value = json['annotations'][idx]['class_id'];
+              classoptions.appendChild(option);
+            }
+
+            row = $('<tr />')
+            row.append( $('<td />').append( classoptions ) );
+            row.append( $('<td />').text( 'instances...' ) );
+            row.append( $('<td />').html( '<a href="#" onclick="return false;" style="text-decoration:none; color: black;" onmouseover="this.style.textDecoration=\'underline\';" onmouseout="this.style.textDecoration=\'none\';">Add</a>') );
+            tbody.append( row );
+
+            $('#selected_class').change(function(evt) {
+              // TODO: how to get the class_id and update the instances selection field
+              console.log('selected ', $(this).text(), $(this).val() )
+              $("selected_class option:selected").each(function () {
+                  console.log('selected ', $(this).text(), $(this).val() )
+              });
+
+            });
+
+          });
+
+
+    };
+  }
+
   var goToNearestNodeFn = function(type) {
     return function(obj) {
       TracingTool.goToNearestInNeuronOrSkeleton(type, obj.attr("id").replace("node_", ""));
@@ -306,6 +419,14 @@ var ObjectTree = new function()
                 this.create(obj, "inside", att, null, true);
               }
             },*/
+
+
+              "annotate_neuron": {
+                  "separator_before": true,
+                  "separator_after": true,
+                  "label": "Annotate neuron",
+                  "action": annotateNeuron()
+                },
 
               "create_assembly": {
                   "separator_before": true,
