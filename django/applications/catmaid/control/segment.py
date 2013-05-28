@@ -75,18 +75,26 @@ def get_match_segment_sequence():
     stack_id = settings.CURRENT_STACK_ID
 
     stack = get_object_or_404(Stack, pk=stack_id)
-    project = get_object_or_404(Project, pk=project_id)    
 
-    # segments = Segments.objects.filter(
-    #         # stack = stack,
-    #         # project = project,
-    #         cost__lt = 2.0).all().values('id', 'segmentid', 'origin_section', 'target_section', 'cost')
 
-    # convention
 
-    x1, y1, z1 = 50, 50, 0
-    x2, y2, z2 = 500, 500, 3
-    
+    # TODO: using SliceSegmentMap and also include the EndSegment (but then start with slice)
+    segments = Segments.objects.filter(
+        origin_section = 0,
+        origin_slice_id = 19,
+        direction = 1,
+        stack = stack,
+        # cost__lt = 4.0
+        ).order_by('cost').values('id', 'segmentid', 
+            'origin_section', 'origin_slice_id',
+            'target_section', 'target1_slice_id', 'target2_slice_id', 'cost')
+
+    print 'segments', segments
+    result = {}
+    for seg in segments:
+        result[seg['id']] = seg
+
+    return [result]
 
 
 def get_segment_sequence():
@@ -104,7 +112,6 @@ def get_segment_sequence():
     project = get_object_or_404(Project, pk=project_id)
 
     
-
     # do performance evaluation on this
     # TODO: if filter based on nr_of_votes, should use
     # read uncommitted to not cause deadlock

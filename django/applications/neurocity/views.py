@@ -152,7 +152,7 @@ def match_view(request):
         return redirect('maxlimit')
     context = {
         'nc_match_active': 'active',
-        'segmentsequence': json.dumps( get_segment_sequence() ),
+        'segmentsequence': json.dumps( get_match_segment_sequence() ),
     }
     context = _add_stackinfo( context )
     return render_to_response('neurocity/match.html', context,

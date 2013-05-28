@@ -18,16 +18,8 @@
 <div align="left">
   <table>
     <tr id="origin_row">
-      <td>Origin</td>
-      <td>
-        <canvas id="c2" style="border:0px solid #aaa"></canvas>
-      </td>
-      <td>
-        <canvas id="c3" style="border:0px solid #aaa"></canvas>
-      </td>
     </tr>
     <tr id="target_row">
-      <td>Target</td>
     </tr>
   </table>
 
@@ -69,6 +61,20 @@
     var current_segment = segmentsequence[ current_segment_index ];
 
     var origin_canvases = [], target_canvases = [];
+
+    console.log('append columns')
+    $('#origin_row').append('<td><canvas id="o1" style="border:2px solid #aaa"></canvas></td>');  
+    for(var idx=2; idx < 5; idx++) {
+      $('#target_row').append('<td><canvas id="t'+idx+'" style="border:2px solid #aaa"></canvas></td>');  
+    }
+    console.log('segmentsequence', segmentsequence)
+    
+    for(var segmentid in segmentsequence) {
+      if( segmentsequence.hasOwnProperty(segmentid)) {
+        
+      }
+    }
+
     // target_slices = [] -> target_slices[ target_canvas_index ] = []
     // append to td in table
     // <canvas id="c2" style="border:0px solid #aaa"></canvas>
