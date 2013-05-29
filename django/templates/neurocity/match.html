@@ -8,8 +8,8 @@
 <div id="help" style="position:absolute; right:80px; top:100px">
   <p align="right">
     <a class="btn btn-medium btn-primary btn-info" href="#" id='buttontoggle'>Toggle (T)</a><br />
-    {% if not nc_segmentonly %}
-    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttonskip'>Skip (X)</a><br />
+    {% if not nc_matchonly %}
+    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttonskip'>Skip (Space)</a><br />
     <a class="btn btn-medium btn-primary btn-info" href="#" id='buttongeturl'>Share link</a><br />
     {% endif %}
   </p>
@@ -46,60 +46,44 @@
 
     var tile_base_url = "{{ tile_base_url|safe|escapejs }}",
         tile_source_type = eval("{{ tile_source_type|safe|escapejs }}"),
-        zoom_level = eval("{{ zoom_level|safe|escapejs }}");
+        zoom_level = eval("{{ zoom_level|safe|escapejs }}"),
+        is_interactive = true;
+        {% if nc_matchonly %}
+            is_interactive = false;
+        {% endif %}
+        console.log('is interactive', is_interactive)
 
-    var canvas2 = new fabric.Canvas('c2'),
-        canvas3 = new fabric.Canvas('c3'),
-        border = 80, show_slices = true,
+    var border = 80, show_slices = true,
         radius = 300, origin_slices = [], target_slices = [],
-        start;
+        start, allslices = [];
 
     var segmentsequence = eval("{{ segmentsequence|safe|escapejs }}");
 
-    var current_segment_index = 0;
-
-    var current_segment = segmentsequence[ current_segment_index ];
-
-    var origin_canvases = [], target_canvases = [];
-
-    console.log('append columns')
-    $('#origin_row').append('<td><canvas id="o1" style="border:2px solid #aaa"></canvas></td>');  
-    for(var idx=2; idx < 5; idx++) {
-      $('#target_row').append('<td><canvas id="t'+idx+'" style="border:2px solid #aaa"></canvas></td>');  
-    }
-    console.log('segmentsequence', segmentsequence)
-    
-    for(var segmentid in segmentsequence) {
-      if( segmentsequence.hasOwnProperty(segmentid)) {
-        
-      }
-    }
-
-    // target_slices = [] -> target_slices[ target_canvas_index ] = []
-    // append to td in table
-    // <canvas id="c2" style="border:0px solid #aaa"></canvas>
-    // cost field and segment type
-    // create canvas object
-
-    // make canvas clickable as a whole
-    // Returned JSON object layout
-    // List of dictionary keyed by origin and target, each
-    // containing a list of dictionaries representing individual
-    // canvas displays (i.e. set of slices, cost, segment type, sectionindex)
+    var current_decision_index = 0;
+    var current_decision = segmentsequence[ current_decision_index ];
+    var origin_canvas;
+    var target_canvases = [];
 
     // colorize slices
     // vote is one good, rest bad, or undefined when origin slice bad (?)
 
     var next_segment = function() {
-      if( current_segment_index + 1 === segmentsequence.length ) {
+      if( current_decision_index + 1 === segmentsequence.length ) {
         location.reload();
         return;
       }
-      current_segment_index++;
-      current_segment = segmentsequence[ current_segment_index ];
+      current_decision_index++;
+      current_decision = segmentsequence[ current_decision_index ];
 
+      reset_all();
+      update_data( current_decision );
+    }
+
+    var reset_all = function() {
+      // remove all canvas elements
       clear_canvas();
-      update_data( current_segment['data'] );
+      // remove all canvases from DOM
+      // reinit variables
     }
 
     var clear_canvas = function() {
@@ -108,21 +92,10 @@
     }
 
     var update_data = function( data ) {
-           origin_slices = [];
-           target_slices = [];
-           
-           $('#segmentcost').text( 'Artificial Intelligence cost: ' + current_segment['cost'] );
 
-           canvas2.setWidth(data['totalbb']['width']+2*border);
-           canvas2.setHeight(data['totalbb']['height']+2*border);
-           canvas2.renderAll();
-           canvas2.selection = false;
-
-           canvas3.setWidth(data['totalbb']['width']+2*border);
-           canvas3.setHeight(data['totalbb']['height']+2*border);
-           canvas3.renderAll();
-           canvas3.selection = false;
-
+           console.log('current_decision', data )
+            
+           // compute tile dimensions
            tile_col_min = Math.floor( (data['totalbb']['min_x'] - border) / data['tile_width']);
            tile_col_max = Math.ceil( (data['totalbb']['max_x'] + border) / data['tile_width'] );
            tile_row_min = Math.floor( (data['totalbb']['min_y'] - border) / data['tile_height'] );
@@ -131,77 +104,132 @@
            tile_left_offset = (data['totalbb']['min_x'] - border) - tile_col_min * data['tile_width'];
            tile_top_offset = (data['totalbb']['min_y'] - border) - tile_row_min * data['tile_height'];
 
-           var build_callback2 = function (xi, yi) {
-                return function(img) {
-                    img.set({
-                      left: -tile_left_offset + data['tile_width'] / 2. + data['tile_width'] * (xi - tile_col_min),
-                      top: -tile_top_offset + data['tile_height'] / 2. + data['tile_height'] * (yi - tile_row_min),
-                    });
-                    img.hasControls = img.hasBorders = false;
-                    img.lockMovementX = img.lockMovementY = true;
-                    canvas2.add(img).sendToBack(img);
-                };
-              },
-              build_callback3 = function (xi, yi) {
-                return function(img) {
-                    img.set({
-                      left: -tile_left_offset + data['tile_width'] / 2. + data['tile_width'] * (xi - tile_col_min),
-                      top: -tile_top_offset + data['tile_height'] / 2. + data['tile_height'] * (yi - tile_row_min),
-                    });
-                    img.hasControls = img.hasBorders = false;
-                    img.lockMovementX = img.lockMovementY = true;
-                    canvas3.add(img).sendToBack(img);
-                };
-              };
+            var vote_callback = function( event, canvas_index ) {
+              return function( event ) {
+                var bad_segments = [], good_segment = null;
+                for(var idx=0; idx < current_decision['target_segments'].length; idx++) {
+                  if( idx == (canvas_index-2)) {
+                    good_segment = current_decision['target_segments'][idx]['primarykey'];
+                    continue;
+                  }
+                  bad_segments.push( current_decision['target_segments'][idx]['primarykey'] )
+                }
+                data = {
+                  'good_segment': good_segment,
+                  'bad_segments': bad_segments,
+                  'elapsed_time': new Date().getTime() - start
 
+                }
+                $.ajax({
+                  "dataType": 'json',
+                  "type": "POST",
+                  "cache": false,
+                  "url": 'vote',
+                  "data": data,
+                  "success": function(data) {
+                     next_segment();
+                  }
+                });
+
+              }
+            }
+
+           // create the origin canvas
+           $('#origin_row').append('<td><canvas id="o1" style="border:2px solid #aaa"></canvas></td>');
+           origin_canvas = new fabric.Canvas('o1');
+           origin_canvas.setWidth(data['totalbb']['width']+2*border);
+           origin_canvas.setHeight(data['totalbb']['height']+2*border);
+           origin_canvas.renderAll();
+           origin_canvas.selection = false;
+           if( is_interactive )
+            origin_canvas.on('mouse:down', vote_callback( event, (idx+2) ));
+
+           var tile_canvas_callback = function (index, xi, yi) {
+                return function(img) {
+                    img.set({
+                      left: -tile_left_offset + data['tile_width'] / 2. + data['tile_width'] * (xi - tile_col_min),
+                      top: -tile_top_offset + data['tile_height'] / 2. + data['tile_height'] * (yi - tile_row_min),
+                    });
+                    img.hasControls = img.hasBorders = false;
+                    img.lockMovementX = img.lockMovementY = true;
+                    if( index == 1) // per convention the origin canvas has index 1
+                      origin_canvas.add(img).sendToBack(img);
+                    else
+                      target_canvases[index-2].add(img).sendToBack(img);
+                };
+              }
+
+           // create the target canvases for each segment
+           for(var idx=0; idx < data['target_segments'].length; idx++) {
+              console.log('create target canvas', idx )
+             $('#target_row').append('<td><canvas id="t'+(idx+2)+'" style="border:2px solid #aaa"></canvas></td>');  
+               target_canvas = new fabric.Canvas('t'+(idx+2));
+               target_canvas.setWidth(data['totalbb']['width']+2*border);
+               target_canvas.setHeight(data['totalbb']['height']+2*border);
+               target_canvas.selection = false;
+               if( is_interactive )
+                target_canvas.on('mouse:down', vote_callback( event, (idx+2) ));
+               target_canvases.push( target_canvas )
+            }
+
+           // add tiles to canvases
            for(var xi = tile_col_min; xi < tile_col_max; xi++) {
             for(var yi = tile_row_min; yi < tile_row_max; yi++) {
-              fabric.Image.fromURL( get_url( tile_source_type, tile_base_url, zoom_level, current_segment['origin_section'], yi, xi), build_callback2(xi, yi));
-              fabric.Image.fromURL( get_url( tile_source_type, tile_base_url, zoom_level, current_segment['target_section'], yi, xi), build_callback3(xi, yi));
+              fabric.Image.fromURL( get_url( tile_source_type, 
+                tile_base_url, 
+                zoom_level, 
+                data['origin_section'], 
+                yi, 
+                xi), tile_canvas_callback(1, xi, yi));
+              // loop over all target canvase
+              for(var idx=0; idx < data['target_segments'].length; idx++) {
+                fabric.Image.fromURL( get_url( tile_source_type, 
+                  tile_base_url, 
+                  zoom_level, 
+                  data['target_section'], 
+                  yi, 
+                  xi), tile_canvas_callback(idx+2, xi, yi));
+              }
             }
            }
-
-           var slice_callback2 = function (slice2_left_offset, slice2_top_offset) {
+           
+           var slice_callback = function (index, slice_left_offset, slice_top_offset) {
                 return function(img) {
                     img.set({
-                      left: slice2_left_offset,
-                      top: slice2_top_offset,
+                      left: slice_left_offset,
+                      top: slice_top_offset,
                     });
                     img.hasControls = img.hasBorders = false;
                     img.lockMovementX = img.lockMovementY = true;
                     img.opacity = 0.8;
-                    canvas2.add(img).bringToFront(img);
-                    origin_slices.push( img );
+                    if( index === 1)
+                      origin_canvas.add(img).bringToFront(img);
+                    else
+                      target_canvases[index-2].add(img).sendToBack(img);
+                    allslices.push( img );
                 };
               };
+
+           // add origin slices to canvas
+           var slice_left_offset = data['origin_slice']['min_x'] - data['totalbb']['min_x'] + border + data['origin_slice']['width'] / 2. ,
+              
+               slice_top_offset = data['origin_slice']['min_y'] - data['totalbb']['min_y'] + border  + data['origin_slice']['height'] / 2.;
+
+            fabric.Image.fromURL(data['origin_slice']['slicepath'], 
+                slice_callback( 1, slice_left_offset, slice_top_offset ) );
 
            // add slices to canvas, need to be in the foreground
-           for(var sliceidx = 0; sliceidx < data['originsection'].length; sliceidx++) {
-              var slice_left_offset = data['originsection'][sliceidx]['min_x'] - data['totalbb']['min_x'] + border + data['originsection'][sliceidx]['width'] / 2. ,
-                slice_top_offset = data['originsection'][sliceidx]['min_y'] - data['totalbb']['min_y'] + border  + data['originsection'][sliceidx]['height'] / 2.;
-              fabric.Image.fromURL(data['originsection'][sliceidx]['slicepath'], 
-                slice_callback2( slice_left_offset, slice_top_offset ) );
-           }
+           for(var idx=0; idx < data['target_segments'].length; idx++) {
+            console.log('process segment', idx)
+             for(var slice_idx=0; slice_idx < data['target_segments'][idx]['slice_ids'].length; slice_idx++) {
+               var current_slice = data['target_segments'][idx]['slice_ids'][slice_idx];
+               console.log('process slice', slice_idx, current_slice)
+               var slice_left_offset = current_slice['min_x'] - data['totalbb']['min_x'] + border + current_slice['width'] / 2. ,
+                   slice_top_offset = current_slice['min_y'] - data['totalbb']['min_y'] + border  + current_slice['height'] / 2.;
+                fabric.Image.fromURL(current_slice['slicepath'], 
+                    slice_callback( idx+2, slice_left_offset, slice_top_offset ) );
 
-           var slice_callback3 = function (slice2_left_offset, slice2_top_offset) {
-                return function(img) {
-                    img.set({
-                      left: slice2_left_offset,
-                      top: slice2_top_offset,
-                    });
-                    img.hasControls = img.hasBorders = false;
-                    img.lockMovementX = img.lockMovementY = true;
-                    img.opacity = 0.8;
-                    canvas3.add(img).bringToFront(img);
-                    target_slices.push( img );
-                };
-              };
-
-           for(var sliceidx = 0; sliceidx < data['targetsection'].length; sliceidx++) {
-              var slice2_left_offset = data['targetsection'][sliceidx]['min_x'] - data['totalbb']['min_x'] + border + data['targetsection'][sliceidx]['width'] / 2. ,
-                slice2_top_offset = data['targetsection'][sliceidx]['min_y'] - data['totalbb']['min_y'] + border  + data['targetsection'][sliceidx]['height'] / 2.;
-              fabric.Image.fromURL(data['targetsection'][sliceidx]['slicepath'], 
-                slice_callback3( slice2_left_offset, slice2_top_offset ));
+             }
            }
     }
 
@@ -209,61 +237,60 @@
       if( index == segmentsequence.length ) {
         return;
       }
-      $.ajax({
-        "dataType": 'json',
-        "type": "GET",
-        "cache": false,
-        "url": 'segment-bb',
-        "data": {
-          'originsection': segmentsequence[ index ]['origin_section'],
-          'targetsection': segmentsequence[ index ]['target_section'],
-          'segmentid': segmentsequence[ index ]['id'],
-        },
-        "success": function(data) {
-          segmentsequence[ index ]['data'] = data;
-          index++;
-          LoadData( index );
-        }
-      });
+      console.log('preload data in the background ...')
+      // $.ajax({
+      //   "dataType": 'json',
+      //   "type": "GET",
+      //   "cache": false,
+      //   "url": 'segment-bb',
+      //   "data": {
+      //     'originsection': segmentsequence[ index ]['origin_section'],
+      //     'targetsection': segmentsequence[ index ]['target_section'],
+      //     'segmentid': segmentsequence[ index ]['id'],
+      //   },
+      //   "success": function(data) {
+      //     segmentsequence[ index ]['data'] = data;
+      //     index++;
+      //     LoadData( index );
+      //   }
+      // });
     }
 
-    $.ajax({
-      "dataType": 'json',
-      "type": "GET",
-      "cache": false,
-      "url": 'segment-bb',
-      "data": {
-        'originsection': current_segment['origin_section'],
-        'targetsection': current_segment['target_section'],
-        'segmentid': current_segment['id'],
-      },
-      "success": function(data) {
-        update_data( data );
-        LoadData( 1 );
+    // $.ajax({
+    //   "dataType": 'json',
+    //   "type": "GET",
+    //   "cache": false,
+    //   "url": 'segment-bb',
+    //   "data": {
+    //     'originsection': current_segment['origin_section'],
+    //     'targetsection': current_segment['target_section'],
+    //     'segmentid': current_segment['id'],
+    //   },
+    //   "success": function(data) {
+    //     update_data( data );
+    //     LoadData( 1 );
+    //   }
+    // });
+
+    var render_all = function() {
+      origin_canvas.renderAll();
+      for(var idx = 0; idx < target_canvases.length; idx++) {
+        target_canvases[ idx ].renderAll();
       }
-    });
+    }
 
     var hide_slices_image = function() {
-      for(var idx = 0; idx < origin_slices.length; idx++) {
-        origin_slices[ idx ].setOpacity( 0.0 );
+      for(var idx = 0; idx < allslices.length; idx++) {
+        allslices[ idx ].setOpacity( 0.0 );
       }
-      for(var idx = 0; idx < target_slices.length; idx++) {
-        target_slices[ idx ].setOpacity( 0.0 );
-      }
-      canvas2.renderAll();
-      canvas3.renderAll();
+      render_all();
     }
 
     var show_slices_image = function() {
-      for(var idx = 0; idx < origin_slices.length; idx++) {
-        origin_slices[ idx ].setOpacity( 0.9 );
+      for(var idx = 0; idx < allslices.length; idx++) {
+        allslices[ idx ].setOpacity( 0.9 );
       }
-      canvas2.renderAll();
-      for(var idx = 0; idx < target_slices.length; idx++) {
-        target_slices[ idx ].setOpacity( 0.9 );
-      }
-      canvas2.renderAll();
-      canvas3.renderAll();
+      render_all();
     }
 
     var vote = function( segmentkey, value, comment ) {
@@ -311,7 +338,7 @@
     var register_keyevents = function() {
       $(document).on('keyup', function(e) { 
 
-        {% if not nc_segmentonly %}
+        {% if not nc_matchonly %}
 
           switch( e.keyCode ) {
             case 65:
@@ -320,31 +347,9 @@
             case 83:
               vote( current_segment['id'], 2, get_comment() );
               break;
-            case 88:
+            case 32:
               skip_segment();
               break;
-            case 49:
-              toggle_note( 1 );
-              break;
-            case 50:
-              toggle_note( 2 );
-              break;
-            case 51:
-              toggle_note( 3 );
-              break;
-            case 52:
-              toggle_note( 4 );
-              break;
-            case 53:
-              toggle_note( 5 );
-              break;
-            case 54:
-              toggle_note( 6 );
-              break;
-            case 55:
-              toggle_note( 7 );
-              break;
-
           }
 
         {% endif %}
@@ -359,13 +364,17 @@
     });
 
     $('#buttongeturl').on('click', function() {
-      window.open( 'segmentonly?segmentkey=' + current_segment['id'] )
+      window.open( 'matchonly?sectionindex=' + current_decision['origin_section'] +
+        '&slice_id=' + current_decision['origin_slice']['origin_slice_id'] )
     });
 
     register_keyevents();
 
     $(document).ready(function() {
       start = new Date().getTime();
+
+      update_data( current_decision );
+
     });
   
 </script>

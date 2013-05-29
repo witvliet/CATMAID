@@ -15,6 +15,54 @@ from catmaid.objects import *
 from catmaid.control.authentication import *
 from catmaid.control.common import *
 
+@login_required
+def vote(request):
+
+    stack_id = settings.CURRENT_STACK_ID
+    stack = get_object_or_404(Stack, pk=stack_id)
+
+    print 'request', request.POST
+
+    good_segment = int(request.POST.get('good_segment', -1))
+    bad_segments = map(int, request.POST.getlist('bad_segments[]', []))
+    elapsed_time = int(request.POST.get('elapsed_time', 0))
+
+    if good_segment == -1:
+        return HttpResponse(json.dumps({'error':'Invalid segmentkey'}), mimetype='text/json')
+    else:
+        good_segment = Segments.objects.get(pk=good_segment)
+    
+    # update good segment
+    good_segment.nr_of_votes += 1
+    good_segment.good_counter += 1
+    good_segment.save()
+    
+    sv = SegmentVote()
+    sv.user = request.user
+    sv.stack = stack
+    sv.vote = 1
+    sv.segment = good_segment
+    sv.elapsed_time = elapsed_time
+    sv.save()
+
+    # update bad segments
+    for bad_segment_id in bad_segments:
+
+        bad_segment = Segments.objects.get(pk=bad_segment_id)
+        bad_segment.nr_of_votes += 1
+        bad_segment.bad_counter += 1
+        bad_segment.save()
+        
+        sv = SegmentVote()
+        sv.user = request.user
+        sv.stack = stack
+        sv.vote = 1
+        sv.segment = bad_segment
+        sv.elapsed_time = elapsed_time
+        sv.save()
+
+    return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
+
 # change roles; prevent random vote requests (how?)
 # @requires_user_role([UserRole.Annotate, UserRole.Browse])
 @login_required
@@ -51,7 +99,6 @@ def segment_vote(request):
     
     sv = SegmentVote()
     sv.user = request.user
-    sv.project = project
     sv.stack = stack
     sv.vote = vote
     sv.segment = segment
@@ -69,32 +116,116 @@ def segment_vote(request):
 
     return HttpResponse(json.dumps({'message':'Voted'}), mimetype='text/json')
 
-def get_match_segment_sequence():
+def slicekey( sectionindex, slice_id ):
+    return str(sectionindex)+'_'+str(slice_id)
+
+def get_match_segment_sequence_random():
+
+    origin_section = 0
+    origin_slice_id = 19
+
+    return [get_match_segment_sequence( origin_section, origin_slice_id )]
+
+def get_match_segment_sequence_for_slice( sectionindex, slice_id ):
+
+    return get_match_segment_sequence( sectionindex, slice_id )
+
+def get_match_segment_sequence(origin_section, origin_slice_id):
 
     project_id = settings.CURRENT_PROJECT_ID
     stack_id = settings.CURRENT_STACK_ID
 
     stack = get_object_or_404(Stack, pk=stack_id)
+    sliceinfo = StackSliceInfo.objects.get(stack=stack)
 
-
+    target_section = None
 
     # TODO: using SliceSegmentMap and also include the EndSegment (but then start with slice)
     segments = Segments.objects.filter(
-        origin_section = 0,
-        origin_slice_id = 19,
+        origin_section = origin_section,
+        origin_slice_id = origin_slice_id,
         direction = 1,
         stack = stack,
         # cost__lt = 4.0
-        ).order_by('cost').values('id', 'segmentid', 
+        # center_x/center_y range
+        ).order_by('cost').values('id', 'segmentid', 'segmenttype',
             'origin_section', 'origin_slice_id',
             'target_section', 'target1_slice_id', 'target2_slice_id', 'cost')
 
-    print 'segments', segments
-    result = {}
-    for seg in segments:
-        result[seg['id']] = seg
+    # retrieve slice information for each fetched slice
 
-    return [result]
+    slice_node_ids = [ str(origin_section) + '_' + str(origin_slice_id) ]
+    for segment in segments:
+        if segment['segmenttype'] == 2:
+            slice_node_ids.append( slicekey( segment['target_section'], segment['target1_slice_id'] ) )
+            target_section = segment['target_section']
+        elif segment['segmenttype'] == 3:
+            slice_node_ids.append( slicekey( segment['target_section'], segment['target1_slice_id'] ) )
+            slice_node_ids.append( slicekey( segment['target_section'], segment['target2_slice_id'] ) )
+            target_section = segment['target_section']
+
+    # print 'nodeids', slice_node_ids
+
+    slices = list( Slices.objects.filter(
+        stack = stack,
+        node_id__in = slice_node_ids ) )
+
+    # find maximal bounding box across all slices
+    # TODO: check, should not individually call database again
+    min_x, min_y, max_x, max_y = slices[0].min_x, slices[0].min_y, slices[0].max_x, slices[0].max_y
+    origin_slice = {
+            'min_x': slices[0].min_x, 'max_x': slices[0].max_x,
+            'min_y': slices[0].min_y, 'max_y': slices[0].max_y,
+            'slicepath': slice_path2( slices[0].node_id, sliceinfo ),
+            'width': slices[0].max_x - slices[0].min_x,
+            'height': slices[0].max_y - slices[0].min_y,
+            'origin_slice_id': slices[0].slice_id }
+
+    targetslices = {}
+    for slice in slices[1:]:
+        min_x = min(min_x, slice.min_x)
+        min_y = min(min_y, slice.min_y)
+        max_x = max(max_x, slice.max_x)
+        max_y = max(max_y, slice.max_y)
+        targetslices[ slice.node_id ] = {
+            'min_x': slice.min_x, 'max_x': slice.max_x,
+            'min_y': slice.min_y, 'max_y': slice.max_y,
+            'slicepath': slice_path2( slice.node_id, sliceinfo ),
+            'width': slice.max_x - slice.min_x,
+            'height': slice.max_y - slice.min_y }
+
+    target_segments = []
+    for segment in segments:
+        segmententry = {
+            'segmenttype': segment['segmenttype'],
+            'cost': segment['cost'],
+            'primarykey': segment['id'],
+            'slice_ids': []
+        }
+        if segment['segmenttype'] == 2:
+            segmententry['slice_ids'].append( targetslices[ slicekey( segment['target_section'], segment['target1_slice_id'] ) ] )
+        elif segment['segmenttype'] == 3:
+            segmententry['slice_ids'].append( targetslices[ slicekey( segment['target_section'], segment['target1_slice_id'] ) ] )
+            segmententry['slice_ids'].append( targetslices[ slicekey( segment['target_section'], segment['target2_slice_id'] ) ] )
+
+        target_segments.append( segmententry )
+
+    totalbb = {
+            'min_x': min_x, 'max_x': max_x,
+            'min_y': min_y, 'max_y': max_y,
+            'width': max_x - min_x,
+            'height': max_y - min_y }
+
+    result = {
+        'origin_section': origin_section,
+        'target_section': target_section,
+        'totalbb': totalbb,
+        'tile_width': stack.tile_width,
+        'tile_height': stack.tile_height,
+        'origin_slice': origin_slice,
+        'target_segments': target_segments
+    }
+    return result
 
 
 def get_segment_sequence():
@@ -111,7 +242,6 @@ def get_segment_sequence():
     stack = get_object_or_404(Stack, pk=stack_id)
     project = get_object_or_404(Project, pk=project_id)
 
-    
     # do performance evaluation on this
     # TODO: if filter based on nr_of_votes, should use
     # read uncommitted to not cause deadlock

@@ -753,7 +753,6 @@ class SegmentsData(models.Model):
 class SegmentVote(models.Model):
 
     user = models.ForeignKey(User)
-    project = models.ForeignKey(Project)
     creation_time = models.DateTimeField(default=datetime.now)
 
     stack = models.ForeignKey(Stack)
@@ -761,7 +760,7 @@ class SegmentVote(models.Model):
     # segment_node_id = models.CharField(max_length=255,db_index=True)
     segment = models.ForeignKey(Segments,null=False)
 
-    # convention is 1: good; 2: unclear; 3: bad
+    # convention is 1: good; 2: bad;
     vote = models.IntegerField(db_index=True,null=False)
 
     # interval from loading the vote page to sending the vote ajax
