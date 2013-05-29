@@ -133,7 +133,9 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/skeleton/analytics$', 'catmaid.control.analyze_skeletons'),
 
     (r'^(?P<project_id>\d+)/neuron/(?P<neuron_id>\d+)/get-all-skeletons$', 'catmaid.control.get_all_skeletons_of_neuron'),
-    (r'^(?P<project_id>\d+)/neuron/(?P<neuron_id>\d+)/get-all-annotations$', 'catmaid.control.get_all_annotations_of_neuron'),
+    (r'^(?P<project_id>\d+)/neuron/(?P<neuron_id>\d+)/get-all-annotations-of-neuron$', 'catmaid.control.get_all_annotations_of_neuron'),
+    (r'^(?P<project_id>\d+)/get-all-annotations$', 'catmaid.control.get_all_annotations'),
+    (r'^(?P<project_id>\d+)/create-neuron-annotation$', 'catmaid.control.create_neuron_annotation'),
     (r'^(?P<project_id>\d+)/neuron/(?P<neuron_id>\d+)/give-to-user$', 'catmaid.control.give_neuron_to_other_user'),
 
     (r'^(?P<project_id>\d+)/node/(?P<node_id>\d+)/confidence/update$', 'catmaid.control.update_confidence'),

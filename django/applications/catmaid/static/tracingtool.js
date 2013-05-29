@@ -780,6 +780,22 @@ function TracingTool()
       }
   }) );
 
+  this.addAction( new Action({
+      helpText: "Annotate neuron",
+      keyShortcuts: {
+          'F4': [ 115 ]
+      },
+      run: function (e) {
+          if (!mayEdit()) {
+              return false;
+          }
+          if( project.selectedObjects.selectedneuron !== null)
+            ObjectTree.annotateMyNeuron( project.selectedObjects.selectedneuron );
+          return true;
+      }
+  }) );
+
+
 
   var keyCodeToAction = getKeyCodeToActionMap(actions);
 

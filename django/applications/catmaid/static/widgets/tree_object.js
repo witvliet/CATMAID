@@ -13,11 +13,8 @@ var ObjectTree = new function()
     $('#tree_object').jstree("rename");
   }
 
-  var annotateNeuron = function() {
-    return function(obj) {
-        // retrieve all associated annotation for the neuron
-        var neuron_id = obj.attr("id").replace("node_", "");
-        requestQueue.register(django_url + project.id + '/neuron/' + neuron_id + '/get-all-annotations', "POST", {},
+  this.annotateMyNeuron = function( neuron_id ) {
+        requestQueue.register(django_url + project.id + '/get-all-annotations', "POST", {},
           function(status, text) {
             if (200 !== status) return;
             var json = $.parseJSON(text);
@@ -28,16 +25,27 @@ var ObjectTree = new function()
             
             var dialog = document.createElement('div');
             dialog.setAttribute("id", "dialog-annotation");
-            dialog.setAttribute("title", "Neuron Annotation");
+            dialog.setAttribute("title", "Neuron Annotation: ID "+ neuron_id);
 
             $(dialog).dialog({
-              height: 540,
+              height: 200,
               width: 480,
               modal: true,
               buttons: [
                 {
                   text: "Save",
                   click: function() {
+                    requestQueue.register(django_url + project.id + '/create-neuron-annotation', "POST",
+                     {'neuron_id': neuron_id,
+                      'class_instance_id': json['annotations'][current_class_index]['instance_ids'][current_instance_index] },
+                        function(status, text) {
+                          if (200 !== status) return;
+                          var json = $.parseJSON(text);
+                          if (json.error) {
+                            alert(json.error);
+                            return;
+                          }
+                        });
                     $( this ).dialog( "close" );
                   }
                 }
@@ -47,31 +55,6 @@ var ObjectTree = new function()
               }
             });
 
-            // TODO: interface to backend
-            json = {
-              'data': [
-                {
-                  'classname': 'GAL4 line',
-                  'relation_id': 1234, // to neuron id
-                  'instance_name': 'A007test',
-                }
-              ],
-              'annotations': [
-                {
-                  'classname': 'GAL4 line',
-                  'class_id': 123,
-                  'instances': ['A007test'],
-                  'instance_ids': [321]
-                },
-                {
-                  'classname': 'Lateral',
-                  'class_id': 123,
-                  'instances': ['Left', 'Right'],
-                  'instance_ids': [321, 122]
-                },
-              ]
-            }
-
             var table = $('<table />').attr('width', '100%').attr('id', 'neuron-annotation-table').attr('border', '0');
             $('#dialog-annotation').append( table );
 
@@ -79,50 +62,64 @@ var ObjectTree = new function()
             var thead = $('<thead />');
             table.append( thead );
             row = $('<tr />')
-            row.append( $('<td />').text("class") );
+            row.append( $('<td />').attr('width', '80px').text("class") );
             row.append( $('<td />').text("value") );
-            row.append( $('<td />').text("command") );
             thead.append( row );
 
             var tbody = $('<tbody />');
             table.append( tbody );
 
-            for( var idx = 0; idx < json['data'].length; idx++ ) {
-                  row = $('<tr />')
-                  // ID of relation instance
-                  row.append( $('<td />').text( json['data'][idx]['classname']) );
-                  row.append( $('<td />').text( json['data'][idx]['instance_name']) );
-                  row.append( $('<td />').html( '<a href="#" onclick="return false;" style="text-decoration:none; color: black;" onmouseover="this.style.textDecoration=\'underline\';" onmouseout="this.style.textDecoration=\'none\';">Remove '+ json['data'][idx]['relation_id'] +'</a>') );
-                  tbody.append( row );
-            }
+            var current_class_index = 0, current_instance_index = 0;
 
             var classoptions = document.createElement('select');
             classoptions.setAttribute("id", "selected_class");
             for( var idx = 0; idx < json['annotations'].length; idx++ ) {
               var option = document.createElement("option");
               option.text = json['annotations'][idx]['classname'];
-              option.value = json['annotations'][idx]['class_id'];
+              option.value = idx;
+              if( idx === 0 ) {
+                option.selected = 'selected';
+                current_class_index = idx;
+              }
               classoptions.appendChild(option);
+            }
+
+            var instanceoptions = document.createElement('select');
+            instanceoptions.setAttribute("id", "selected_instance");
+            for( var idx = 0; idx < json['annotations'][current_class_index]['instance_ids'].length; idx++ ) {
+              var option = document.createElement("option");
+              option.text = json['annotations'][current_class_index]['instance_names'][idx];
+              option.value = idx;
+              instanceoptions.appendChild(option);
             }
 
             row = $('<tr />')
             row.append( $('<td />').append( classoptions ) );
-            row.append( $('<td />').text( 'instances...' ) );
-            row.append( $('<td />').html( '<a href="#" onclick="return false;" style="text-decoration:none; color: black;" onmouseover="this.style.textDecoration=\'underline\';" onmouseout="this.style.textDecoration=\'none\';">Add</a>') );
+            row.append( $('<td />').append( instanceoptions ) );
             tbody.append( row );
 
-            $('#selected_class').change(function(evt) {
-              // TODO: how to get the class_id and update the instances selection field
-              console.log('selected ', $(this).text(), $(this).val() )
-              $("selected_class option:selected").each(function () {
-                  console.log('selected ', $(this).text(), $(this).val() )
-              });
+            $('#selected_class').change(function() {
+                $('#selected_instance').empty();
+                current_class_index = $(this).attr('value');
+                for( var idx = 0; idx < json['annotations'][current_class_index]['instance_ids'].length; idx++ ) {
+                  var option = document.createElement("option");
+                  option.text = json['annotations'][current_class_index]['instance_names'][idx];
+                  option.value = idx;
+                  $('#selected_instance').append( option );
+                }
+            });
 
+            $('#selected_instance').change(function() {
+               current_instance_index = $(this).attr('value');
             });
 
           });
+  }
 
-
+  var annotateNeuron = function() {
+    return function(obj) {
+        var neuron_id = obj.attr("id").replace("node_", "");
+        self.annotateMyNeuron( neuron_id );
     };
   }
 
@@ -806,9 +803,17 @@ var ObjectTree = new function()
             "icon": {
               "image": STATIC_URL_JS + "widgets/themes/kde/jsTree/neuron/neuron.png"
             },
-            "valid_children": ["skeleton", "assembly"],
+            "valid_children": ["skeleton", "assembly", "annotation"],
             "start_drag": true,
             "select_node": true
+          },
+          "annotation": {
+            "icon": {
+              // "image": STATIC_URL_JS + "widgets/themes/kde/jsTree/neuron/neuron.png"
+            },
+            "valid_children": [],
+            "start_drag": false,
+            "select_node": false
           },
           "skeleton": {
             "icon": {
