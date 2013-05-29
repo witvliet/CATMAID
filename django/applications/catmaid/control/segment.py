@@ -21,8 +21,6 @@ def vote(request):
     stack_id = settings.CURRENT_STACK_ID
     stack = get_object_or_404(Stack, pk=stack_id)
 
-    print 'request', request.POST
-
     good_segment = int(request.POST.get('good_segment', -1))
     bad_segments = map(int, request.POST.getlist('bad_segments[]', []))
     elapsed_time = int(request.POST.get('elapsed_time', 0))
@@ -121,8 +119,34 @@ def slicekey( sectionindex, slice_id ):
 
 def get_match_segment_sequence_random():
 
-    origin_section = 0
-    origin_slice_id = 19
+    # TODO: configure extend in settings
+    x = int(random.uniform(27470, 35438))
+    y = int(random.uniform(24074, 27898))
+    z = int(random.uniform(875, 1750))
+
+    border = 30
+
+    project_id = settings.CURRENT_PROJECT_ID
+    stack_id = settings.CURRENT_STACK_ID
+
+    stack = get_object_or_404(Stack, pk=stack_id)
+
+    i = 0
+    selected_segments = []
+    while len(selected_segments) == 0 and i < 10:
+        selected_segments = Segments.objects.filter(
+            stack = stack,
+            center_x__range = (x-border,x+border),
+            center_y__range = (y-border,y+border),
+            origin_section = z,
+            cost__lt = 1.0,
+            nr_of_votes = 0 # TODO: remove later, now only pick segments without a vote
+            ).all().order_by('cost').values('origin_section', 'origin_slice_id')
+        i += 1
+
+    # TODO: handle the case that after then iterations, still no good segment found
+    origin_section = selected_segments[0]['origin_section']
+    origin_slice_id = selected_segments[0]['origin_slice_id']
 
     return [get_match_segment_sequence( origin_section, origin_slice_id )]
 
