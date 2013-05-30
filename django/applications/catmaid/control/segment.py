@@ -27,22 +27,24 @@ def vote(request):
     elapsed_time = int(request.POST.get('elapsed_time', 0))
 
     if good_segment == -1:
-        return HttpResponse(json.dumps({'error':'Invalid segmentkey'}), mimetype='text/json')
+        return HttpResponse(json.dumps({'error':'Invalid good segment'}), mimetype='text/json')
+    elif good_segment == 0:
+        pass
     else:
         good_segment = Segments.objects.get(pk=good_segment)
     
-    # update good segment
-    good_segment.nr_of_votes += 1
-    good_segment.good_counter += 1
-    good_segment.save()
-    
-    sv = SegmentVote()
-    sv.user = request.user
-    sv.stack = stack
-    sv.vote = 1
-    sv.segment = good_segment
-    sv.elapsed_time = elapsed_time
-    sv.save()
+        # update good segment
+        good_segment.nr_of_votes += 1
+        good_segment.good_counter += 1
+        good_segment.save()
+        
+        sv = SegmentVote()
+        sv.user = request.user
+        sv.stack = stack
+        sv.vote = 1
+        sv.segment = good_segment
+        sv.elapsed_time = elapsed_time
+        sv.save()
 
     # update bad segments
     for bad_segment_id in bad_segments:
