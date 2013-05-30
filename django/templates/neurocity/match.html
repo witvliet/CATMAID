@@ -154,9 +154,15 @@
                 };
               }
 
+           var additional_information = "";
            // create the target canvases for each segment
            for(var idx=0; idx < data['target_segments'].length; idx++) {
-             $('#target_row').append('<td><canvas id="t'+(idx+2)+'" style="border:2px solid #aaa"></canvas></td>');  
+             if( !is_interactive ) {
+               additional_information = data['target_segments'][idx]['cost'] +
+                " / " + data['target_segments'][idx]['primarykey'] +
+                " / " + data['target_segments'][idx]['segmenttype'];
+             }
+             $('#target_row').append('<td>'+additional_information+'<canvas id="t'+(idx+2)+'" style="border:2px solid #aaa"></canvas></td>');  
                target_canvas = new fabric.Canvas('t'+(idx+2));
                target_canvas.setWidth(data['totalbb']['width']+2*border);
                target_canvas.setHeight(data['totalbb']['height']+2*border);
