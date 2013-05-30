@@ -113,6 +113,7 @@ def leaderboard_view(request):
         creation_time__gte=date.today(),
         creation_time__lt=date.today()+timedelta(days=1)
     ).values('user', 'user__username', 'user__userprofile__country').annotate(uc = Count('user')).order_by('uc')
+    print >> sys.stderr, 'daily_vote_count', daily_vote_count
     result_score = []
     for i, q in enumerate(daily_vote_count):
         result_score.append((i+1, q['user__username'], q['user__userprofile__country'].lower(), q['uc']) )
@@ -151,10 +152,12 @@ def match_view(request):
     if request.limited:
         return redirect('maxlimit')
     context = {
+        'nc_matchonly': False,
         'nc_match_active': 'active',
         'segmentsequence': json.dumps( get_match_segment_sequence_random() ),
     }
     context = _add_stackinfo( context )
+    print >> sys.stderr, context
     return render_to_response('neurocity/match.html', context,
      context_instance=RequestContext(request))
 
@@ -169,6 +172,7 @@ def matchonly_view(request):
             slice_id ) ),
     }
     context = _add_stackinfo( context )
+    print >> sys.stderr, context
     return render_to_response('neurocity/match.html', context,
      context_instance=RequestContext(request))
 

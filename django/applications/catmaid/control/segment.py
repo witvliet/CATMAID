@@ -9,6 +9,7 @@ from contextlib import closing
 import h5py
 import random
 import time
+import sys
 
 from catmaid.models import *
 from catmaid.objects import *
@@ -119,30 +120,37 @@ def slicekey( sectionindex, slice_id ):
 
 def get_match_segment_sequence_random():
 
-    # TODO: configure extend in settings
-    x = int(random.uniform(27470, 35438))
-    y = int(random.uniform(24074, 27898))
-    z = int(random.uniform(875, 1750))
-
+    x = int(random.uniform(settings.CURRENT_EXTENT_MIN_X, settings.CURRENT_EXTENT_MAX_X))
+    y = int(random.uniform(settings.CURRENT_EXTENT_MIN_Y, settings.CURRENT_EXTENT_MAX_Y))
+    z = int(random.uniform(settings.CURRENT_EXTENT_MIN_Z, settings.CURRENT_EXTENT_MAX_Z))
     border = 30
 
     project_id = settings.CURRENT_PROJECT_ID
     stack_id = settings.CURRENT_STACK_ID
-
     stack = get_object_or_404(Stack, pk=stack_id)
 
     i = 0
     selected_segments = []
     while len(selected_segments) == 0 and i < 10:
+        print >> sys.stderr, 'index i', i
+        x = int(random.uniform(settings.CURRENT_EXTENT_MIN_X, settings.CURRENT_EXTENT_MAX_X))
+        y = int(random.uniform(settings.CURRENT_EXTENT_MIN_Y, settings.CURRENT_EXTENT_MAX_Y))
+        z = int(random.uniform(settings.CURRENT_EXTENT_MIN_Z, settings.CURRENT_EXTENT_MAX_Z))
+        print >> sys.stderr, 'randomized location', x, y, z
         selected_segments = Segments.objects.filter(
             stack = stack,
-            center_x__range = (x-border,x+border),
-            center_y__range = (y-border,y+border),
+            # center_x__range = (x-border,x+border),
+            # center_y__range = (y-border,y+border),
             origin_section = z,
-            cost__lt = 1.0,
-            nr_of_votes = 0 # TODO: remove later, now only pick segments without a vote
+            cost__lt = 2.0,
+            # nr_of_votes = 0 # TODO: remove later, now only pick segments without a vote
             ).all().order_by('cost').values('origin_section', 'origin_slice_id')
+        print 'selected segments', selected_segments.query, 'nr of segments', len(selected_segments)
+        border += 20 # grow the border
         i += 1
+
+    if i == 10:
+        return []
 
     # TODO: handle the case that after then iterations, still no good segment found
     origin_section = selected_segments[0]['origin_section']
@@ -151,8 +159,8 @@ def get_match_segment_sequence_random():
     return [get_match_segment_sequence( origin_section, origin_slice_id )]
 
 def get_match_segment_sequence_for_slice( sectionindex, slice_id ):
-
-    return get_match_segment_sequence( sectionindex, slice_id )
+    print 'sectionindex is', sectionindex, 'sliceid', slice_id
+    return [get_match_segment_sequence( sectionindex, slice_id )]
 
 def get_match_segment_sequence(origin_section, origin_slice_id):
 
@@ -170,8 +178,6 @@ def get_match_segment_sequence(origin_section, origin_slice_id):
         origin_slice_id = origin_slice_id,
         direction = 1,
         stack = stack,
-        # cost__lt = 4.0
-        # center_x/center_y range
         ).order_by('cost').values('id', 'segmentid', 'segmenttype',
             'origin_section', 'origin_slice_id',
             'target_section', 'target1_slice_id', 'target2_slice_id', 'cost')
@@ -249,6 +255,7 @@ def get_match_segment_sequence(origin_section, origin_slice_id):
         'origin_slice': origin_slice,
         'target_segments': target_segments
     }
+    print >> sys.stderr, 'results', result
     return result
 
 

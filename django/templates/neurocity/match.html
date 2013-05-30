@@ -49,9 +49,8 @@
         zoom_level = eval("{{ zoom_level|safe|escapejs }}"),
         is_interactive = true;
         {% if nc_matchonly %}
-            is_interactive = false;
+        is_interactive = false;
         {% endif %}
-        console.log('is interactive', is_interactive)
 
     var border = 80, show_slices = true,
         radius = 300, origin_slices = [], target_slices = [],
@@ -81,14 +80,35 @@
 
     var reset_all = function() {
       // remove all canvas elements
-      clear_canvas();
       // remove all canvases from DOM
       // reinit variables
     }
 
-    var clear_canvas = function() {
-      canvas2.clear();
-      canvas3.clear();
+    var vote_for_segment = function( canvas_index ) {
+      var bad_segments = [], good_segment = null;
+      for(var idx=0; idx < current_decision['target_segments'].length; idx++) {
+        if( idx == (canvas_index-2)) {
+          good_segment = current_decision['target_segments'][idx]['primarykey'];
+          continue;
+        }
+        bad_segments.push( current_decision['target_segments'][idx]['primarykey'] )
+      }
+      data = {
+        'good_segment': good_segment,
+        'bad_segments': bad_segments,
+        'elapsed_time': new Date().getTime() - start
+
+      }
+      $.ajax({
+        "dataType": 'json',
+        "type": "POST",
+        "cache": false,
+        "url": 'vote',
+        "data": data,
+        "success": function(data) {
+           next_segment();
+        }
+      });
     }
 
     var update_data = function( data ) {
@@ -106,31 +126,7 @@
 
             var vote_callback = function( event, canvas_index ) {
               return function( event ) {
-                var bad_segments = [], good_segment = null;
-                for(var idx=0; idx < current_decision['target_segments'].length; idx++) {
-                  if( idx == (canvas_index-2)) {
-                    good_segment = current_decision['target_segments'][idx]['primarykey'];
-                    continue;
-                  }
-                  bad_segments.push( current_decision['target_segments'][idx]['primarykey'] )
-                }
-                data = {
-                  'good_segment': good_segment,
-                  'bad_segments': bad_segments,
-                  'elapsed_time': new Date().getTime() - start
-
-                }
-                $.ajax({
-                  "dataType": 'json',
-                  "type": "POST",
-                  "cache": false,
-                  "url": 'vote',
-                  "data": data,
-                  "success": function(data) {
-                     next_segment();
-                  }
-                });
-
+                vote_for_segment( canvas_index );
               }
             }
 
@@ -141,11 +137,13 @@
            origin_canvas.setHeight(data['totalbb']['height']+2*border);
            origin_canvas.renderAll();
            origin_canvas.selection = false;
-           if( is_interactive )
+           if( is_interactive ) {
             origin_canvas.on('mouse:down', vote_callback( event, (idx+2) ));
-
+           }
+            
            var tile_canvas_callback = function (index, xi, yi) {
                 return function(img) {
+                    console.log('tile canvas  callback', index, xi, yi)
                     img.set({
                       left: -tile_left_offset + data['tile_width'] / 2. + data['tile_width'] * (xi - tile_col_min),
                       top: -tile_top_offset + data['tile_height'] / 2. + data['tile_height'] * (yi - tile_row_min),
@@ -161,15 +159,17 @@
 
            // create the target canvases for each segment
            for(var idx=0; idx < data['target_segments'].length; idx++) {
-              console.log('create target canvas', idx )
+              console.log('create target canvas (index):', idx )
              $('#target_row').append('<td><canvas id="t'+(idx+2)+'" style="border:2px solid #aaa"></canvas></td>');  
                target_canvas = new fabric.Canvas('t'+(idx+2));
                target_canvas.setWidth(data['totalbb']['width']+2*border);
                target_canvas.setHeight(data['totalbb']['height']+2*border);
                target_canvas.selection = false;
-               if( is_interactive )
+               if( is_interactive ) {
                 target_canvas.on('mouse:down', vote_callback( event, (idx+2) ));
+               }
                target_canvases.push( target_canvas )
+               console.log('target canvases are ', target_canvases)
             }
 
            // add tiles to canvases
@@ -183,29 +183,32 @@
                 xi), tile_canvas_callback(1, xi, yi));
               // loop over all target canvase
               for(var idx=0; idx < data['target_segments'].length; idx++) {
+                console.log('create target image', idx, 'witch canvas id', idx+2);
                 fabric.Image.fromURL( get_url( tile_source_type, 
                   tile_base_url, 
                   zoom_level, 
                   data['target_section'], 
                   yi, 
-                  xi), tile_canvas_callback(idx+2, xi, yi));
+                  xi), tile_canvas_callback( (idx+2), xi, yi));
               }
             }
            }
            
            var slice_callback = function (index, slice_left_offset, slice_top_offset) {
                 return function(img) {
+                    console.log('slice callback', index, slice_left_offset, slice_top_offset)
+
                     img.set({
                       left: slice_left_offset,
                       top: slice_top_offset,
                     });
                     img.hasControls = img.hasBorders = false;
                     img.lockMovementX = img.lockMovementY = true;
-                    img.opacity = 0.8;
+                    img.opacity = 0.7;
                     if( index === 1)
                       origin_canvas.add(img).bringToFront(img);
                     else
-                      target_canvases[index-2].add(img).sendToBack(img);
+                      target_canvases[index-2].add(img).bringToFront(img);
                     allslices.push( img );
                 };
               };
@@ -288,7 +291,7 @@
 
     var show_slices_image = function() {
       for(var idx = 0; idx < allslices.length; idx++) {
-        allslices[ idx ].setOpacity( 0.9 );
+        allslices[ idx ].setOpacity( 0.7 );
       }
       render_all();
     }
@@ -341,11 +344,14 @@
         {% if not nc_matchonly %}
 
           switch( e.keyCode ) {
-            case 65:
-              vote( current_segment['id'], 1 );
-              break;
-            case 83:
-              vote( current_segment['id'], 2, get_comment() );
+            // case 65:
+            //   vote( current_segment['id'], 1 );
+            //   break;
+            // case 83:
+            //   vote( current_segment['id'], 2, get_comment() );
+            //   break;
+            case 39:
+              skip_segment();
               break;
             case 32:
               skip_segment();
