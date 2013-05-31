@@ -110,8 +110,8 @@ def leaderboard_view(request):
     # ).count()
 
     daily_vote_count = SegmentVote.objects.filter(
-        creation_time__gte=date.today(),
-        creation_time__lt=date.today()+timedelta(days=1)
+        # creation_time__gte=date.today(),
+        # creation_time__lt=date.today()+timedelta(days=1)
     ).values('user', 'user__username', 'user__userprofile__country').annotate(uc = Count('user')).order_by('uc')
     print >> sys.stderr, 'daily_vote_count', daily_vote_count
     result_score = []
