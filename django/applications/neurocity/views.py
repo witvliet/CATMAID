@@ -10,6 +10,7 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.core.mail import send_mail, BadHeaderError
 from django.core.urlresolvers import reverse
+from django.contrib.auth.decorators import login_required
 
 from catmaid.control.segment import *
 from catmaid.models import SegmentVote
@@ -27,6 +28,7 @@ def maxlimit(request):
     return render_to_response('neurocity/maxlimit.html', {},
      context_instance=RequestContext(request))
 
+@login_required
 def userstatistics_view(request):
 
     total_vote_count_for_user = SegmentVote.objects.filter(
@@ -132,21 +134,22 @@ def _add_stackinfo( context ):
     return context
 
 
-def segmentonly_view(request):
-    context = {}
-    context['nc_segmentonly'] = True
-    segmentkey = int( request.GET.get('segmentkey', '0') )
-    segment = get_segment_by_key( segmentkey )
-    context[ 'segmentsequence' ] = [{
-        'id': segment.id,
-        'segmentid': segment.segmentid,
-        'origin_section': segment.origin_section,
-        'target_section': segment.target_section,
-        'cost': segment.cost
-    }]
-    context = _add_stackinfo( context )
-    return render(request, 'neurocity/contribute.html', context)
+# def segmentonly_view(request):
+#     context = {}
+#     context['nc_segmentonly'] = True
+#     segmentkey = int( request.GET.get('segmentkey', '0') )
+#     segment = get_segment_by_key( segmentkey )
+#     context[ 'segmentsequence' ] = [{
+#         'id': segment.id,
+#         'segmentid': segment.segmentid,
+#         'origin_section': segment.origin_section,
+#         'target_section': segment.target_section,
+#         'cost': segment.cost
+#     }]
+#     context = _add_stackinfo( context )
+#     return render(request, 'neurocity/contribute.html', context)
 
+@login_required
 @ratelimit(ip=True, method=None, rate='50/m')
 def match_view(request):
     if request.limited:
@@ -161,6 +164,8 @@ def match_view(request):
     return render_to_response('neurocity/match.html', context,
      context_instance=RequestContext(request))
 
+@login_required
+@ratelimit(ip=True, method=None, rate='50/m')
 def matchonly_view(request):
     sectionindex = int( request.GET.get('sectionindex', '0') )
     slice_id = int( request.GET.get('slice_id', '0') )
@@ -176,17 +181,17 @@ def matchonly_view(request):
     return render_to_response('neurocity/match.html', context,
      context_instance=RequestContext(request))
 
-@ratelimit(ip=True, method=None, rate='50/m')
-def contribute_view(request):
-    if request.limited:
-        return redirect('maxlimit')
-    context = {
-        'nc_contribute_active': 'active',
-        'segmentsequence': json.dumps( get_segment_sequence() ),
-    }
-    context = _add_stackinfo( context )
-    return render_to_response('neurocity/contribute.html', context,
-     context_instance=RequestContext(request))
+# @ratelimit(ip=True, method=None, rate='50/m')
+# def contribute_view(request):
+#     if request.limited:
+#         return redirect('maxlimit')
+#     context = {
+#         'nc_contribute_active': 'active',
+#         'segmentsequence': json.dumps( get_segment_sequence() ),
+#     }
+#     context = _add_stackinfo( context )
+#     return render_to_response('neurocity/contribute.html', context,
+#      context_instance=RequestContext(request))
 
 def contact_view(request):
     if request.method == 'POST':
