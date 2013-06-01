@@ -20,15 +20,15 @@ class Command(NoArgsCommand):
         user = User.objects.get(pk=options['user_id'])
 
         annotation_ontology = {
-            'GAL4 line': [],
-            'segment': [ 'T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'P (protocerebrum)', 'D (deuterocerebrum)', 'T (tritocerebrum)', 'L (labial SOG)', 'Mx (maxillar SOG)', 'Md (mandibular SOG)' ],
+            'GAL4 line': ['GMR_94F01_AE_01', 'GMR_20B01_AE_01'],
+            'segment': [ 'T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'Protocerebrum', 'Deuterocerebrum', 'Tritocerebrum', 'Labial', 'Maxillar', 'Mandibular' ],
             'region': ['Brain', 'SOG', 'Thorax', 'Abdomen'],
             'compartment': ['Antennal lobe', 'Optic lobe'],
-            'nerve': ['ISNa (anterior root)', 'ISNp (posterior root)', 'SN', 'Bolwigs nerve', 'Antennal nerve'],
+            'nerve': ['ISNa', 'ISNp', 'SN', 'Bolwigs nerve', 'Antennal nerve'],
             'neuron_name' : ['A09b'],
-            'lineate': ['00','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32'],
+            'lineage': ['%02d' % i for i in xrange(33)],
             'neuron_type': ['sensory neuron', 'motor neuron', 'interneuron'],
-            'status': ['TODO', 'draft (reviewed by same user or untrusted user)', 'reviewed (by trusted user)', 'finalized'],
+            'status': ['TODO', 'draft', 'reviewed', 'finalized'],
         }
 
         # Create the classes first:
@@ -56,3 +56,4 @@ class Command(NoArgsCommand):
                 relation_name=relation_required,
                 project=project,
                 defaults={'user': user})
+
