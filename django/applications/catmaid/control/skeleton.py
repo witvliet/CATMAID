@@ -65,6 +65,8 @@ def skeleton_statistics(request, project_id=None, skeleton_id=None):
         'node_count': skel.node_count(),
         'input_count': skel.input_count(),
         'output_count': skel.output_count(),
+        'presynaptic_sites': skel.presynaptic_sites_count(),
+        'postsynaptic_sites': skel.postsynaptic_sites_count(),
         'cable_length': int(skel.cable_length()),
         'measure_construction_time': construction_time,
         'percentage_reviewed': skel.percentage_reviewed() }), mimetype='text/json')
@@ -279,6 +281,7 @@ def _connected_skeletons(skeleton_ids, op, relation_id_1, relation_id_2, model_o
     for srcID, partnerID in cursor.fetchall():
         partners[partnerID].skids[srcID] += 1
 
+    # There may not be any synapses
     if not partners:
         return partners
 
@@ -287,6 +290,10 @@ def _connected_skeletons(skeleton_ids, op, relation_id_1, relation_id_2, model_o
         for partnerID in partners.keys(): # keys() is a copy of the keys
             if 1 == len(partners[partnerID].skids):
                 del partners[partnerID]
+
+    # With AND it is possible that no common partners exist
+    if not partners:
+        return partners
 
     # Obtain a string with unique skeletons
     skids_string = ','.join(str(x) for x in partners.iterkeys())
@@ -309,11 +316,14 @@ def _connected_skeletons(skeleton_ids, op, relation_id_1, relation_id_2, model_o
       AND reviewer_id=-1
     GROUP BY skeleton_id
     ''' % skids_string) # no need to sanitize
+    seen = set()
     for row in cursor.fetchall():
+        seen.add(row[0])
         partner = partners[row[0]]
         partner.reviewed = int(100.0 * (1 - float(row[1]) / partner.num_nodes))
     # If 100%, it will not be there, so add it
-    for partner in partners.values():
+    for partnerID in set(partners.keys()) - seen:
+        partner = partners[partnerID]
         if 0 == partner.reviewed:
             partner.reviewed = 100
 
