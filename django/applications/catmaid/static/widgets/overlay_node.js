@@ -16,6 +16,8 @@ var SkeletonElements = new function()
   var TYPE_NODE = "treenode";
   var TYPE_CONNECTORNODE = "connector";
 
+  // For drawing:
+  var NODE_RADIUS = 3;
   var CATCH_RADIUS = 8;
 
   var DISABLED = -1; // ID of the disabled nodes
@@ -34,24 +36,33 @@ var SkeletonElements = new function()
   };
 
   this.clearCache = function() {
-    nodePool = [];
-    connectorPool = [];
+    nodePool.splice(0).forEach(obliterateNode);
+    connectorPool.splice(0).forEach(obliterateConnectorNode);
     nextNodeIndex = 0;
     nextConnectorIndex = 0;
     firstDisabledNodeIndex = -1;
   };
 
-  /** Disable all cached Node instances at or beyond the cutoff index. */
+  /** Disable all cached Node instances at or beyond the cutoff index,
+   * preserving up to 100 disabled nodes and 20 disabled connector nodes,
+   * and removing the rest from the cache. */
   this.disableBeyond = function(nodeCuttoff, connectorCuttoff) {
-    var i;
-    for (i = nodeCuttoff; i < nodePool.length; ++i) {
-      disableNode(nodePool[i]);
-    }
-    for (i = connectorCuttoff; i < connectorPool.length; ++i) {
-      disableConnectorNode(connectorPool[i]);
+    if (nodeCuttoff < nodePool.length) {
+      // Cut cache array beyond desired cut off point plus 100, and obliterate nodes
+      if (nodePool.length > nodeCuttoff + 100) {
+        nodePool.splice(nodeCuttoff + 100).forEach(obliterateNode);
+      }
+      // Disable nodes from cut off to new ending of node pool array
+      nodePool.slice(nodeCuttoff).forEach(disableNode);
     }
 
-    //console.log(nodePool.length, nextNodeIndex, nodeCuttoff);
+    // idem for connectorNode
+    if (connectorCuttoff < connectorPool.length) {
+      if (connectorPool.length > connectorCuttoff + 20) {
+        connectorPool.splice(connectorCuttoff + 20).forEach(obliterateConnectorNode);
+      }
+      connectorPool.slice(connectorCuttoff).forEach(disableConnectorNode);
+    }
   };
 
   /** Surrogate constructor that may reuse an existing, cached Node instance currently not in use.
@@ -61,7 +72,7 @@ var SkeletonElements = new function()
     paper, // the raphael paper this node is drawn to
     parent, // the parent node, if present within the subset of nodes retrieved for display; otherwise null.
     parent_id, // the id of the parent node, or null if it is root
-    r, // the radius
+    radius,
     x, // the x coordinate in pixel coordinates
     y, // y coordinates
     z, // z coordinates
@@ -73,9 +84,9 @@ var SkeletonElements = new function()
     var node;
     if (nextNodeIndex < nodePool.length) {
       node = nodePool[nextNodeIndex];
-      reuseNode(node, id, parent, parent_id, r, x, y, z, zdiff, confidence, skeleton_id, can_edit);
+      reuseNode(node, id, parent, parent_id, radius, x, y, z, zdiff, confidence, skeleton_id, can_edit);
     } else {
-      node = new this.Node(id, paper, parent, parent_id, r, x, y, z, zdiff, confidence, skeleton_id, can_edit);
+      node = new this.Node(id, paper, parent, parent_id, radius, x, y, z, zdiff, confidence, skeleton_id, can_edit);
       nodePool.push(node);
     }
     nextNodeIndex += 1;
@@ -88,7 +99,7 @@ var SkeletonElements = new function()
     paper, // the raphael paper this node is drawn to
     parent, // the parent node (may be null if the node is not loaded)
     parent_id, // is null only for the root node
-    r, // the radius
+    radius, // the radius
     x, // the x coordinate in pixel coordinates
     y, // y coordinates
     z, // z coordinates
@@ -104,7 +115,8 @@ var SkeletonElements = new function()
     this.parent_id = parent_id;
     this.children = {};
     this.numberOfChildren = 0;
-    this.r = r > 0 ? 60 : 3; // 3; // not use radius size on overlay display
+    this.radius = radius; // the radius as stored in the database
+    this.r = NODE_RADIUS; // for drawing
     this.x = x;
     this.y = y;
     this.z = z;
@@ -118,7 +130,7 @@ var SkeletonElements = new function()
     this.c = null; // The Raphael circle for drawing
     this.mc = null; // The Raphael circle for mouse actions (it's a bit larger)
     this.line = paper.path(); // The Raphael line element that represents an edge between nodes
-    this.line.toBack();
+    // NOT needed this.line.toBack();
 
     // The member functions:
     this.setXY = setXY;
@@ -137,10 +149,32 @@ var SkeletonElements = new function()
       // node objects can be reused for different IDs
       this.children[childNode.id] = childNode;
     };
+  };
 
-    // Init block
-    // 1. Add this node to the parent's children if it exists
-    if (parent) parent.addChildNode(this);
+  /** Prepare node for removal from cache. */
+  var obliterateNode = function(node) {
+    node.id = null;
+    node.parent = null;
+    node.parent_id = null;
+    node.type = null;
+    node.children = null;
+    node.color = null;
+    if (node.c) {
+      node.c.remove();
+      node.c = null;
+      node.mc.catmaidNode = null; // break circular reference
+      node.mc.remove();
+      node.mc = null;
+    }
+    if (node.line) {
+      node.line.remove();
+    }
+    if (node.number_text) {
+      node.number_text.remove();
+      node.number_text = null;
+    }
+    node.paper = null;
+    // Note: mouse event handlers are removed by c.remove and mc.remove()
   };
 
   /** Before reusing a node, clear all the member variables that
@@ -151,6 +185,7 @@ var SkeletonElements = new function()
   {
     node.id = DISABLED;
     node.parent = null;
+    node.parent_id = DISABLED;
     node.children = {};
     node.numberOfChildren = 0;
     if (node.c) {
@@ -167,14 +202,14 @@ var SkeletonElements = new function()
   };
 
   /** Takes an existing Node and sets all the proper members as given, and resets its children. */
-  var reuseNode = function(node, id, parent, parent_id, r, x, y, z, zdiff, confidence, skeleton_id, can_edit)
+  var reuseNode = function(node, id, parent, parent_id, radius, x, y, z, zdiff, confidence, skeleton_id, can_edit)
   {
     node.id = id;
     node.parent = parent;
     node.parent_id = parent_id;
     node.children = {};
     node.numberOfChildren = 0;
-    node.r = r > 0 ? 60 : 3;// 3; // hardcode value r < 0 ? 3 : r;
+    node.radius = radius; // the radius as stored in the database
     node.x = x;
     node.y = y;
     node.z = z;
@@ -265,7 +300,7 @@ var SkeletonElements = new function()
     newConfidenceX = (x + parentx) / 2 + nx * numberOffset,
     newConfidenceY = (y + parenty) / 2 + ny * numberOffset;
 
-    if (typeof existing == "undefined") {
+    if (typeof existing === "undefined") {
       result = paper.text(newConfidenceX,
                           newConfidenceY,
                           ""+confidence);
@@ -461,12 +496,9 @@ var SkeletonElements = new function()
       if (this.c && this.mc) {
       } else {
         // create a raphael circle object
-        this.c = paper.circle(this.x, this.y, this.r); // again hard-code the radius to address issue #522
+        this.c = paper.circle(this.x, this.y, this.r);
         // a raphael circle oversized for the mouse logic
-        if( this.r > 0 )
-          this.mc = paper.circle(this.x, this.y, this.r + 5);
-        else
-          this.mc = paper.circle(this.x, this.y, CATCH_RADIUS);
+        this.mc = paper.circle(this.x, this.y, CATCH_RADIUS);
 
         assignEventHandlers(this.mc, this.type);
       }
@@ -745,7 +777,6 @@ var SkeletonElements = new function()
   this.newConnectorNode = function(
     id, // unique id for the node from the database
     paper, // the raphael paper this node is drawn to
-    r, // radius
     x, // the x coordinate in pixel coordinates
     y, // y coordinates
     z, // z coordinates
@@ -756,9 +787,9 @@ var SkeletonElements = new function()
     var connector;
     if (nextConnectorIndex < connectorPool.length) {
       connector = connectorPool[nextConnectorIndex];
-      reuseConnectorNode(connector, id, r, x, y, z, zdiff, confidence, can_edit);
+      reuseConnectorNode(connector, id, x, y, z, zdiff, confidence, can_edit);
     } else {
-      connector = new this.ConnectorNode(id, paper, r, x, y, z, zdiff, confidence, can_edit);
+      connector = new this.ConnectorNode(id, paper, x, y, z, zdiff, confidence, can_edit);
       connectorPool.push(connector);
     }
     nextConnectorIndex += 1;
@@ -771,7 +802,6 @@ var SkeletonElements = new function()
   this.ConnectorNode = function (
     id, // unique id for the node from the database
     paper, // the raphael paper this node is drawn to
-    r, // radius
     x, // the x coordinate in pixel coordinates
     y, // y coordinates
     z, // z coordinates
@@ -792,7 +822,7 @@ var SkeletonElements = new function()
     this.paper = paper;
     this.pregroup = {}; // set of presynaptic treenodes
     this.postgroup = {}; // set of postsynaptic treenodes
-    this.r = r; // prefixed radius for now
+    this.r = 8;
     this.c = null; // The Raphael circle for drawing
     this.mc = null; // The Raphael circle for mouse actions (it's a bit larger)
     this.preLines = {}; // The Raphael edges to the presynaptic nodes
@@ -809,6 +839,22 @@ var SkeletonElements = new function()
     this.drawEdges = connectorDrawEdges;
   };
 
+  var obliterateConnectorNode = function(con) {
+    con.id = null;
+    con.fillcolor = null;
+    if (con.c) {
+      con.c.remove();
+      con.mc.catmaidNode = null;
+      con.mc.remove();
+    }
+    con.pregroup = null;
+    con.postgroup = null;
+    con.paper = null;
+    // Note: mouse event handlers are removed by c.remove and mc.remove()
+    removeConnectorEdges(con.preLines, con.postLines); // also removes confidence text associated with edges
+    con.preLines = null;
+    con.postLines = null;
+  };
 
   /**
    * @param c The Node to reuse
@@ -819,10 +865,9 @@ var SkeletonElements = new function()
    * @param z
    * @param zdiff
    */
-  var reuseConnectorNode = function(c, id, r, x, y, z, zdiff, confidence, can_edit)
+  var reuseConnectorNode = function(c, id, x, y, z, zdiff, confidence, can_edit)
   {
     c.id = id;
-    c.r = r;
     c.x = x;
     c.y = y;
     c.z = z;
@@ -852,6 +897,7 @@ var SkeletonElements = new function()
    * @param c The ConnectorNode instance to disable
    */
   var disableConnectorNode = function(c) {
+    c.id = DISABLED;
     if (c.c) {
       c.c.hide();
       c.mc.hide();
@@ -914,19 +960,26 @@ var SkeletonElements = new function()
   };
 
   var removeConnectorEdges = function(preLines, postLines) {
+
+    // TODO why is 'remove' checked for existence?
+
     var i;
     for (i in preLines) {
       if (preLines.hasOwnProperty(i)) {
-        if (preLines[i].remove)
+        if (preLines[i].remove) {
           preLines[i].remove();
+          delete preLines[i];
+        }
         else console.log(i, preLines[i]);
       }
     }
 
     for (i in postLines) {
       if (postLines.hasOwnProperty(i)) {
-        if (postLines[i].remove)
+        if (postLines[i].remove) {
           postLines[i].remove();
+          delete postLines[i];
+        }
         else console.log(i, postLines[i]);
       }
     }
@@ -946,6 +999,7 @@ var SkeletonElements = new function()
         pregroup = this.pregroup,
         postgroup = this.postgroup;
 
+    // TODO reuse instead
     removeConnectorEdges(preLines, postLines);
 
     // re-create
@@ -1037,7 +1091,6 @@ var SkeletonElements = new function()
           strocol,
           confidence,
           paper);
-        confidenceText.toBack();
       }
       // The 'this' refers to the new ArrowLine
       this.remove = function () {
