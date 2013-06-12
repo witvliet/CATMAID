@@ -25,22 +25,25 @@ var SkeletonElements = new function()
   // Two arrays containing all created Node and ConnectorNode, for their reuse.
   var nodePool = [];
   var connectorPool = [];
+  var arrowPool = [];
   // The two corresponding indices in the pool for the next available instance for reuse
   var nextNodeIndex = 0;
   var nextConnectorIndex = 0;
-  var firstDisabledNodeIndex = -1;
+  var nextArrowIndex = 0;
 
   this.resetCache = function() {
     nextNodeIndex = 0;
     nextConnectorIndex = 0;
+    nextArrowIndex = 0;
   };
 
   this.clearCache = function() {
     nodePool.splice(0).forEach(obliterateNode);
     connectorPool.splice(0).forEach(obliterateConnectorNode);
+    arrowPool.splice(0).forEach(function(arrow) { arrow.obliterate(); });
     nextNodeIndex = 0;
     nextConnectorIndex = 0;
-    firstDisabledNodeIndex = -1;
+    nextArrowIndex = 0;
   };
 
   /** Disable all cached Node instances at or beyond the cutoff index,
@@ -63,6 +66,15 @@ var SkeletonElements = new function()
       }
       connectorPool.slice(connectorCuttoff).forEach(disableConnectorNode);
     }
+  };
+
+  this.disableRemainingArrows = function() {
+    // Cur cache array beyond used arrows plus 50, and obliterate the rest
+    if (nextArrowIndex + 50 < arrowPool.length) {
+      arrowPool.splice(nextArrowIndex + 50).forEach(function(arrow) { arrow.obliterate(); });
+    }
+    // Disable unused arrows
+    arrowPool.splice(nextArrowIndex).forEach(function(arrow) { arrow.disable(); });
   };
 
   /** Surrogate constructor that may reuse an existing, cached Node instance currently not in use.
@@ -162,12 +174,14 @@ var SkeletonElements = new function()
     if (node.c) {
       node.c.remove();
       node.c = null;
+      mouseEventManager.forget(node.mc, TYPE_NODE);
       node.mc.catmaidNode = null; // break circular reference
       node.mc.remove();
       node.mc = null;
     }
     if (node.line) {
       node.line.remove();
+      node.line = null;
     }
     if (node.number_text) {
       node.number_text.remove();
@@ -500,7 +514,7 @@ var SkeletonElements = new function()
         // a raphael circle oversized for the mouse logic
         this.mc = paper.circle(this.x, this.y, CATCH_RADIUS);
 
-        assignEventHandlers(this.mc, this.type);
+        mouseEventManager.attach(this.mc, this.type);
       }
 
       this.c.attr({
@@ -534,7 +548,7 @@ var SkeletonElements = new function()
    * Below, the function() is but a namespace that returns the actual nodeAssignEventHandlers function,
    * which assigns the event handlers to the mc given to it as argument.
   */
-  var assignEventHandlers = function ()
+  var mouseEventManager = new (function()
   {
     /** Variables used for mouse events, which involve a single node at a time.
      * These are set at mc_start and then used at mc_move. */
@@ -746,9 +760,7 @@ var SkeletonElements = new function()
       }
     };
 
-    // The actual assignEventHandlers function
-    // BEWARE that 'this' cannot be used to refer to the node within this function
-    return function(mc, type) {
+    this.attach = function(mc, type) {
       mc.drag(mc_move, mc_start, mc_up);
       mc.mousedown(mc_mousedown);
       mc.dblclick(mc_dblclick);
@@ -760,7 +772,20 @@ var SkeletonElements = new function()
         mc.click(connector_mc_click);
       }
     };
-  }();
+    
+    this.forget = function(mc, type) {
+      mc.undrag();
+      mc.unmousedown(mc_mousedown);
+      mc.undblclick(mc_dblclick);
+
+      if (TYPE_NODE === type) {
+        mc.unclick(mc_click);
+      } else {
+        // TYPE_CONNECTORNODE
+        mc.unclick(connector_mc_click);
+      }
+    };
+  })();
 
 
   // TODO must reuse nodes instead of creating them new, to avoid DOM insertions.
@@ -825,8 +850,8 @@ var SkeletonElements = new function()
     this.r = 8;
     this.c = null; // The Raphael circle for drawing
     this.mc = null; // The Raphael circle for mouse actions (it's a bit larger)
-    this.preLines = {}; // The Raphael edges to the presynaptic nodes
-    this.postLines = {}; // The Raphael edges to the postsynaptic nodes
+    this.preLines = null; // Array of ArrowLine to the presynaptic nodes
+    this.postLines = null; // Array of ArrowLine to the postsynaptic nodes
     this.fillcolor = null;
 
     // Member functions
@@ -844,6 +869,7 @@ var SkeletonElements = new function()
     con.fillcolor = null;
     if (con.c) {
       con.c.remove();
+      mouseEventManager.forget(con.mc, TYPE_CONNECTORNODE);
       con.mc.catmaidNode = null;
       con.mc.remove();
     }
@@ -851,7 +877,7 @@ var SkeletonElements = new function()
     con.postgroup = null;
     con.paper = null;
     // Note: mouse event handlers are removed by c.remove and mc.remove()
-    removeConnectorEdges(con.preLines, con.postLines); // also removes confidence text associated with edges
+    removeConnectorArrows(con); // also removes confidence text associated with edges
     con.preLines = null;
     con.postLines = null;
   };
@@ -889,7 +915,8 @@ var SkeletonElements = new function()
       }
     }
 
-    // preLines and postLines are always removed and then recreated when calling drawEdges
+    c.preLines = null;
+    c.postLines = null;
   };
 
   /**
@@ -902,7 +929,7 @@ var SkeletonElements = new function()
       c.c.hide();
       c.mc.hide();
     }
-    removeConnectorEdges(c.preLines, c.postLines);
+    removeConnectorArrows(c);
   };
 
   /** Here 'this' is the connector node. */
@@ -959,156 +986,230 @@ var SkeletonElements = new function()
     });
   };
 
-  var removeConnectorEdges = function(preLines, postLines) {
-
-    // TODO why is 'remove' checked for existence?
-
-    var i;
-    for (i in preLines) {
-      if (preLines.hasOwnProperty(i)) {
-        if (preLines[i].remove) {
-          preLines[i].remove();
-          delete preLines[i];
-        }
-        else console.log(i, preLines[i]);
-      }
+  /** Disables the ArrowLine object and removes entries from the preLines and postLines. */
+  var removeConnectorArrows = function(c) {
+    var disable;
+    if (c.preLines || c.postLines) disable = function(arrow) { arrow.disable(); };
+    if (c.preLines) {
+      c.preLines.forEach(disable);
+      c.preLines = null;
     }
-
-    for (i in postLines) {
-      if (postLines.hasOwnProperty(i)) {
-        if (postLines[i].remove) {
-          postLines[i].remove();
-          delete postLines[i];
-        }
-        else console.log(i, postLines[i]);
-      }
+    if (c.postLines) {
+      c.postLines.forEach(disable);
+      c.postLines = null;
     }
   };
 
   /**
    * Here 'this' is the connector node.
    */
-  var connectorDrawEdges = function()
+  var connectorDrawEdges = function(redraw)
   {
     var i,
         tnid,
         treenode,
         confidence,
-        preLines = this.preLines,
-        postLines = this.postLines,
         pregroup = this.pregroup,
         postgroup = this.postgroup;
 
-    // TODO reuse instead
-    removeConnectorEdges(preLines, postLines);
+    if (redraw) {
+      removeConnectorArrows(this);
+    }
 
     // re-create
     for (i in pregroup) {
       if (pregroup.hasOwnProperty(i)) {
         treenode = pregroup[i].treenode;
-        tnid = treenode.id;
         confidence = pregroup[i].confidence;
-        if (displayBetweenNodes(this, treenode))
-          preLines[tnid] = connectorCreateLine(this, tnid, confidence, true);
+        if (displayBetweenNodes(this, treenode)) {
+          tnid = treenode.id;
+          if (!this.preLines) this.preLines = [];
+          this.preLines.push(connectorCreateArrow(this, tnid, confidence, true));
+        }
       }
     }
 
     for (i in postgroup) {
       if (postgroup.hasOwnProperty(i)) {
         treenode = postgroup[i].treenode;
-        tnid = treenode.id;
         confidence = postgroup[i].confidence;
-        if (displayBetweenNodes(this, treenode))
-          postLines[tnid] = connectorCreateLine(this, tnid, confidence, false);
+        if (displayBetweenNodes(this, treenode)) {
+          tnid = treenode.id;
+          if (!this.postLines) this.postLines = [];
+          this.postLines.push(connectorCreateArrow(this, tnid, confidence, false));
+        }
       }
     }
   };
 
-  /** Below, a function that acts as a namespace and assigns to connectorCreateLine the proper function.
+  /** Below, a function that acts as a namespace and assigns to connectorCreateArrow the proper function.
    * (Notice how it is executed at the end of its declaration. */
-  var connectorCreateLine = function()
+  var connectorCreateArrow = function()
   {
-    /** Constructor method for ArrowLine. */
-    var ArrowLine = function (paper, x1, y1, x2, y2, confidence, size, strowi, strocol, fromid, toid) {
-      // Compute position for arrowhead pointer
-      var rloc = 9;
-      var xdiff = (x2 - x1);
-      var ydiff = (y2 - y1);
-      var le = Math.sqrt(xdiff * xdiff + ydiff * ydiff);
-      if( le === 0 ) {
-          le = 0.9 * rloc;
+    var PRE_COLOR = "rgb(200, 0, 0)";
+    var POST_COLOR = "rgb(0, 217, 232)";
+    var pathString = "M0,0,L1,0";
+    var arrowString = "M0,0,L-5,-5,L-5,5,L0,0";
+
+    var mousedown = (function(e) {
+      e.stopPropagation();
+      if(!(e.shiftKey && (e.ctrlKey || e.metaKey))) {
+        return;
       }
-      var x1new = (x1 - x2) * (1 - rloc / le) + x2;
-      var y1new = (y1 - y2) * (1 - rloc / le) + y2;
-      var x2new = (x2 - x1) * (1 - rloc / le) + x1;
-      var y2new = (y2 - y1) * (1 - rloc / le) + y1;
-
-      var angle = Math.atan2(x1 - x2, y2 - y1);
-      angle = (angle / (2 * Math.PI)) * 360;
-      var linePath = paper.path("M" + x1new + " " + y1new + " L" + x2new + " " + y2new);
-
-      var arrowPath = paper.path("M" + x2new + " " + y2new + " L" + (x2new - size) + " " + (y2new - size) + " L" + (x2new - size) + " " + (y2new + size) + " L" + x2new + " " + y2new).attr("fill", "black").rotate((90 + angle), x2new, y2new);
-
-      linePath.attr({
-        "stroke-width": strowi,
-        "stroke": strocol
-      });
-      var arrow_mousedown = function(e) {
-        e.stopPropagation();
-        if(!(e.shiftKey && (e.ctrlKey || e.metaKey))) {
-          return;
-        }
-        requestQueue.register(django_url + project.id + '/link/delete', "POST", {
-          pid: project.id,
-          connector_id: fromid,
-          treenode_id: toid
-        }, function (status, text, xml) {
-          if (status !== 200) {
-            alert("The server returned an unexpected status (" + status + ") " + "with error message:\n" + text);
-          } else {
-              if (text && text !== " ") {
-                var e = $.parseJSON(text);
-                if (e.error) {
-                  alert(e.error);
-                } else {  
-                  paper.catmaidSVGOverlay.updateNodes();
-                  return true;
-                }
+      // 'this' is the arrowPath
+      var updateNodes = this.paper.catmaidSVGOverlay.updateNodes;
+      requestQueue.register(django_url + project.id + '/link/delete', "POST", {
+        pid: project.id,
+        connector_id: this.connector_id,
+        treenode_id: this.treenode_id
+      }, function (status, text) {
+        if (status !== 200) {
+          alert("The server returned an unexpected status (" + status + ") " + "with error message:\n" + text);
+        } else {
+            if (text && text !== " ") {
+              var e = $.parseJSON(text);
+              if (e.error) {
+                alert(e.error);
+              } else {
+                updateNodes();
+                return true;
               }
-          }
+            }
+        }
+      });
+    });
+
+    /** Constructor method for ArrowLine. */
+    var ArrowLine = function(paper) {
+      var linePath = paper.path(pathString);
+      var arrowPath = paper.path(arrowString);
+      arrowPath.mousedown(mousedown);
+      var confidence_text;
+
+      this.init = function(x1, y1, x2, y2, confidence, stroke_color, connectorID, treenodeID) {
+        arrowPath.connector_id = connectorID;
+        arrowPath.treenode_id = treenodeID;
+
+        this.update(x1, y1, x2, y2, confidence);
+
+        // Adjust
+        linePath.attr({"stroke": stroke_color,
+                       "stroke-width": 2});
+        // Adjust color
+        arrowPath.attr({
+          "fill": stroke_color,
+          "stroke": stroke_color
         });
 
+        this.show();
       };
-      arrowPath.mousedown( arrow_mousedown );
-      arrowPath.attr({
-        "fill": strocol,
-        "stroke": strocol
-      });
-      var confidenceText = null;
-      if (confidence < 5) {
-        confidenceText = updateConfidenceText(
-          x1, y1, x2, y2,
-          strocol,
-          confidence,
-          paper);
-      }
-      // The 'this' refers to the new ArrowLine
-      this.remove = function () {
-        arrowPath.remove();
-        linePath.remove();
-        if (confidenceText) {
-          confidenceText.remove();
+
+      this.update = function(x1, y1, x2, y2, confidence) {
+        var rloc = 9;
+        var xdiff = (x2 - x1);
+        var ydiff = (y2 - y1);
+        var le = Math.sqrt(xdiff * xdiff + ydiff * ydiff);
+        if( le === 0 ) {
+            le = 0.9 * rloc;
         }
+        var F = (1 - rloc / le);
+        var x1new = (x1 - x2) * F + x2;
+        var y1new = (y1 - y2) * F + y2;
+        var x2new = (x2 - x1) * F + x1;
+        var y2new = (y2 - y1) * F + y1;
+
+        var angle = Raphael.angle(x2new, y2new, x1new, y1new);
+
+        // Reset transform
+        linePath.transform("");
+        // Translate, rotate and scale
+        var length = Math.sqrt((x2new - x1new) * (x2new - x1new)
+                             + (y2new - y1new) * (y2new - y1new));
+        linePath.transform( "t" + x1new + "," + y1new
+                          + "r" + angle + ",0,0"
+                          + "s" + length + "," + length + ",0,0");
+
+        // Reset transform
+        arrowPath.transform("");
+        // Translate and then rotate relative to 0,0 (preconcatenates)
+        arrowPath.transform("t" + x2new + "," + y2new + "r" + angle + ",0,0");
+
+        if (confidence_text) {
+          if (confidence < 5) {
+            confidence_text.hide();
+          } else {
+            updateConfidenceText(x1, y1, x2, y2, stroke_color, confidence, paper, confidence_text);
+            confidence_text.show();
+          }
+        } else if (confidence < 5) {
+            confidence_text = updateConfidenceText(x1, y1, x2, y2, stroke_color, confidence, paper);
+        }
+      };
+
+      this.show = function() {
+        // Ensure visible
+        if ("none" === linePath.node.style.display) {
+          linePath.show();
+          arrowPath.show();
+          // show may not enough
+          linePath.node.style.display = "block";
+          arrowPath.node.style.display = "block";
+        }
+      };
+
+      this.disable = function() {
+        arrowPath.connector_id = null;
+        arrowPath.treenode_id = null;
+        linePath.hide();
+        arrowPath.hide();
+        if (confidence_text) confidence_text.hide();
+      };
+
+      this.obliterate = function() {
+        arrowPath.connector_id = null;
+        arrowPath.treenode_id = null;
+        arrowPath.unmousedown(mousedown);
+        arrowPath.remove();
+        arrowPath = null;
+        linePath.remove();
+        linePath = null;
+        if (confidence_text) {
+          confidence_text.remove();
+          confidence_text = null;
+        }
+        paper = null;
       };
     };
 
-    // Return the actual connectorCreateLine function
-    return function(self, to_id, confidence, pre) {
-      if (pre) {
-        return new ArrowLine(self.paper, self.pregroup[to_id].treenode.x, self.pregroup[to_id].treenode.y, self.x, self.y, confidence, 5, 2, "rgb(200, 0, 0)", self.id, to_id);
-      } else {
-        return new ArrowLine(self.paper, self.x, self.y, self.postgroup[to_id].treenode.x, self.postgroup[to_id].treenode.y, confidence, 5, 2, "rgb(0, 217, 232)", self.id, to_id);
+    /** Return the actual connectorCreateArrow function
+     *  The 'arrow' argument is optional, and if not undefined or null, will be reused.
+     */
+    return function(self, treenode_id, confidence, pre, arrow) {
+      if (!arrow) {
+        if (nextArrowIndex < arrowPool.length) {
+          arrow = arrowPool[nextArrowIndex];
+        } else {
+          arrow = new ArrowLine(self.paper);
+          arrowPool.push(arrow);
+        }
+        nextArrowIndex += 1;
       }
+
+      var src, tgt, color;
+      if (pre) {
+        src = self.pregroup[treenode_id].treenode;
+        tgt = self;
+        color = PRE_COLOR;
+      } else {
+        src = self;
+        tgt = self.postgroup[treenode_id].treenode;
+        color = POST_COLOR;
+      }
+      arrow.init(src.x, src.y,
+                 tgt.x, tgt.y,
+                 confidence, color,
+                 self.id, treenode_id);
+      return arrow;
     };
   }();
 

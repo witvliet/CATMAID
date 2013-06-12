@@ -1086,29 +1086,6 @@ var SkeletonAnnotations = new function()
       }
     };
 
-    /** Only called when changing magnification. */
-/*
-    this.updateNodeCoordinates = function (new_scale) {
-      var i,
-          fact = new_scale / old_scale,
-          node, ID;
-      // depending on the scale, update all the node coordinates
-      // First alter X,Y
-      for (ID in nodes) {
-        if (nodes.hasOwnProperty(ID)) {
-          node = nodes[ID];
-          node.setXY(Math.floor(node.x * fact), Math.floor(node.y * fact));
-        }
-      }
-      // Then redraw edges, now that children and parents have been updated
-      for (ID in nodes) {
-        if (nodes.hasOwnProperty(ID)) {
-          nodes[ID].drawEdges();
-        }
-      }
-    };
-*/
-
 
     /** Recreate all nodes (or reuse existing ones if possible).
      *
@@ -1198,11 +1175,14 @@ var SkeletonAnnotations = new function()
         for (var i in nodes) {
           if (nodes.hasOwnProperty(i)) {
             nodes[i].setColor();
-            // Will only create it or unhide it the edge is to be displayed
             nodes[i].drawEdges();
           }
         }
       } // end speed toggle
+      
+      // Now that all edges have been created, disable unused arrows
+      SkeletonElements.disableRemainingArrows();
+
 
       // Create raphael's circles on top of the edges
       // so that the events reach the circles first
@@ -1231,9 +1211,6 @@ var SkeletonAnnotations = new function()
         growlAlert('WARNING', msg);
       }
     };
-
-    // Initialize to the value of stack.scale at instantiation of SVGOverlay
-    var old_scale = stack.scale;
 
 
     /* When we pass a completedCallback to redraw, it's essentially
@@ -1417,7 +1394,7 @@ var SkeletonAnnotations = new function()
       var wc;
       var worldX, worldY;
       var stackX, stackY;
-      m = ui.getMouse(e, stack.getView(), true);
+      var m = ui.getMouse(e, stack.getView(), true);
       if (m) {
         wc = stack.getWorldTopLeft();
         worldX = wc.worldLeft + ((m.offsetX / stack.scale) * stack.resolution.x);
