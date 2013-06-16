@@ -161,13 +161,15 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/swc$', 'catmaid.control.skeleton_swc'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/neuroml$', 'catmaid.control.skeleton_neuroml'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/json$', 'catmaid.control.skeleton_json'),
+    (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/compact-json$', 'catmaid.control.skeleton_for_3d_viewer'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/neurohdf$', 'catmaid.control.skeleton_neurohdf'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/review$', 'catmaid.control.export_review_skeleton'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/review/reset-all$', 'catmaid.control.reset_reviewer_ids'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/review/reset-own$', 'catmaid.control.reset_own_reviewer_ids'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/review/reset-others$', 'catmaid.control.reset_other_reviewer_ids'),
-    (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/info$', 'catmaid.control.skeleton_info_raw'),
+    (r'^(?P<project_id>\d+)/skeleton/connectivity$', 'catmaid.control.skeleton_info_raw'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/statistics$', 'catmaid.control.skeleton_statistics'),
+    (r'^(?P<project_id>\d+)/skeletons/measure$', 'catmaid.control.measure_skeletons'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/openleaf$', 'catmaid.control.last_openleaf'),
     (r'^(?P<project_id>\d+)/skeleton/split$', 'catmaid.control.split_skeleton'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/get-root$', 'catmaid.control.root_for_skeleton'),
@@ -244,6 +246,7 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/connector/table/list$', 'catmaid.control.list_connector'),
 
     (r'^(?P<project_id>\d+)/connector/list/graphedge$', 'catmaid.control.graphedge_list'),
+    (r'^(?P<project_id>\d+)/connector/list/one_to_many$', 'catmaid.control.one_to_many_synapses'),
 
     )
 
