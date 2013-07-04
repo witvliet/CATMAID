@@ -218,6 +218,8 @@ function handle_logout(status, text, xml) {
 		handle_profile_update(e);
 	}
 
+	updateProjects();
+
 	return;
 }
 
@@ -574,15 +576,13 @@ function handle_openProjectStack( status, text, xml )
 			// refresh the overview handler to also register the mouse events on the buttons
 			stack.overviewlayer.refresh();
 
-			if ( inittool === 'tracingtool' ) {
-				project.setTool( new TracingTool() );
-			} else if ( inittool === 'navigator' ) {
-				project.setTool( new Navigator() );
-			} else if ( inittool === 'canvastool' ) {
-				project.setTool( new CanvasTool() );
-			} else if ( inittool === 'segmentationtool' ) {
-				project.setTool( new SegmentationTool() );
-			}
+			var tools = {
+				navigator: Navigator,
+				canvastool: CanvasTool,
+				tracingtool: TracingTool,
+				segmentationtool: SegmentationTool,
+        classification_editor: null
+			};
 
 			//! if the stack was initialized by an URL query, move it to a given position
 			if ( pid == e.pid && sids.length > 0 )
@@ -597,8 +597,20 @@ function handle_openProjectStack( status, text, xml )
 							typeof yp == "number" &&
 							typeof xp == "number" )
 						{
-							project.moveTo( zp, yp, xp );
-							stack.moveToPixel( stack.z, stack.y, stack.x, ss[i] );
+							project.moveTo( zp, yp, xp, ss[i],
+									function() {
+										// Set the tool only after the move;
+										// otherwise, thousands of skeleton nodes may be fetched and painted
+										// unnecessarily.
+										var tool = tools[inittool];
+										if (tool) {
+											project.setTool(new tool());
+										}
+										if (init_active_node_id) {
+											// initialization hack
+											SkeletonAnnotations.init_active_node_id = init_active_node_id;
+										}
+									});
 
 							sids.splice( i, 1 );
 							ss.splice( i, 1 );
@@ -607,9 +619,11 @@ function handle_openProjectStack( status, text, xml )
 					}
 				}
 			}
-
-			if( init_active_skeleton || init_active_skeleton ) {
-				window.setTimeout("SkeletonAnnotations.staticSelectNode(init_active_node_id, init_active_skeleton)", 2000);
+			else if ( inittool )
+			{
+				var tool = tools[ inittool ];
+				if ( tool )
+					project.setTool( tool );
 			}
 
 			/* Update the projects "current project" menu. If there is more

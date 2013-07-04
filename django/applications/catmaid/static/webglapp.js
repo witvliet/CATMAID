@@ -431,8 +431,8 @@ var WebGLApp = (function() { return new function () {
   };
 
   // Mesh materials for spheres on nodes tagged with 'uncertain end', 'undertain continuation' or 'TODO'
-  var labelColors = {uncertain: new THREE.MeshBasicMaterial( { color: 0xff8000, opacity:0.6, transparent:true  } ),
-                     todo: new THREE.MeshBasicMaterial( { color: 0xff0000, opacity:0.6, transparent:true  } )};
+  var labelColors = {uncertain: new THREE.MeshBasicMaterial({color: 0xff8000, opacity:0.6, transparent: true}),
+                     todo: new THREE.MeshBasicMaterial({color: 0xff0000, opacity:0.6, transparent: true})};
 
 
   /** An object to represent a skeleton in the WebGL space.
@@ -489,7 +489,7 @@ var WebGLApp = (function() { return new function () {
         this.actor[connectivity_types[i]] = new THREE.Line( this.geometry[connectivity_types[i]],
           this.line_material[connectivity_types[i]], THREE.LinePieces );
       }
-      this.labelSphere = new Object();
+      this.specialTagSpheres = new Object();
       this.synapticSpheres = new Object();
       this.radiusSpheres = new Object();
       this.textlabels = new Object();
@@ -521,9 +521,9 @@ var WebGLApp = (function() { return new function () {
           }
         }
       }
-      for ( var k in this.labelSphere ) {
-        if( this.labelSphere.hasOwnProperty( k ) )
-          delete this.labelSphere[k];
+      for ( var k in this.specialTagSpheres ) {
+        if( this.specialTagSpheres.hasOwnProperty( k ) )
+          delete this.specialTagSpheres[k];
       }
       for ( var k in this.synapticSpheres ) {
         if( this.synapticSpheres.hasOwnProperty( k ) )
@@ -557,6 +557,11 @@ var WebGLApp = (function() { return new function () {
         if( this.radiusSpheres.hasOwnProperty( k ) )
           scene.remove( this.radiusSpheres[k] );
       }
+      for (var k in this.specialTagSpheres) {
+        if (this.specialTagSpheres.hasOwnProperty[k]) {
+          scene.remove(this.specialTagSpheres[k]);
+        }
+      }
       removeTextMeshes();
     };
 
@@ -564,14 +569,16 @@ var WebGLApp = (function() { return new function () {
     this.setActorVisibility = function( vis ) {
       self.visible = vis;
       self.visibilityCompositeActor( 'neurite', vis );
+      // The spheres where nodes have a radius larger than zero
       for( var idx in self.radiusSpheres ) {
         if( self.radiusSpheres.hasOwnProperty( idx )) {
           self.radiusSpheres[ idx ].visible = vis;
         }
       }
-      for( var idx in self.labelSphere ) {
-        if( self.labelSphere.hasOwnProperty( idx )) {
-          self.labelSphere[ idx ].visible = vis;
+      // The spheres at special tags like 'TODO', 'Uncertain end', etc.
+      for( var idx in self.specialTagSpheres ) {
+        if( self.specialTagSpheres.hasOwnProperty( idx )) {
+          self.specialTagSpheres[ idx ].visible = vis;
         }
       }
     };
@@ -643,38 +650,6 @@ var WebGLApp = (function() { return new function () {
           });
         }
       }
-
-      var createLabelSphere = function(nodeID, color) {
-        var node = self.nodeProps[nodeID];
-        var v = pixelSpaceVector(node[4], node[5], node[6]);
-        var mesh = new THREE.Mesh( labelspheregeometry, color );
-        mesh.position.set( v.x, v.y, v.z );
-        mesh.node_id = nodeID;
-        mesh.skeleton_id = self.id;
-        mesh.orig_coord = {x: node[4], y: node[5], z: node[6]};
-        self.labelSphere[nodeID] = mesh;
-        scene.add( mesh );
-      };
-
-      // Place spheres on nodes with special labels:
-      for (var tag in self.tags) {
-        if (self.tags.hasOwnProperty(tag)) {
-          var tagLC = tag.toLowerCase();
-          if (-1 !== tagLC.indexOf('todo')) {
-            self.tags[tag].forEach(function(nodeID) {
-              if (!self.labelSphere[nodeID]) {
-                createLabelSphere(nodeID, labelColors.todo);
-              }
-            });
-          } else if (-1 !== tagLC.indexOf('uncertain')) {
-            self.tags[tag].forEach(function(nodeID) {
-              if (!self.labelSphere[nodeID]) {
-                createLabelSphere(nodeID, labelColors.uncertain);
-              }
-            });
-          }
-        }
-      }
     };
 
     var removeTextMeshes = function() {
@@ -684,12 +659,6 @@ var WebGLApp = (function() { return new function () {
           scene.remove(self.textlabels[k]);
           releaseTagGeometry(tagString);
           delete self.textlabels[k];
-      }
-      for (var k in self.labelSphere) {
-        if (self.labelSphere.hasOwnProperty(k) ) {
-          scene.remove(self.labelSphere[k]);
-          delete self.labelSphere[k];
-        }
       }
     };
 
@@ -741,7 +710,9 @@ var WebGLApp = (function() { return new function () {
           } else if (NeuronStagingArea.skeletonsColorMethod === 'reviewer') {
             baseColor = User(vertex[3]).color; // vertex[3] is reviewer_id
           }
-          
+
+          if (!self.graph) self.createGraph();
+
           // Darken the color by the average weight of the vertex's edges.
           var weight = 0;
           var neighbors = self.graph.neighbors(vertexID);
@@ -862,6 +833,18 @@ var WebGLApp = (function() { return new function () {
     var synapticColors = [new THREE.MeshBasicMaterial( { color: 0xff0000, opacity:0.6, transparent:false  } ),
                           new THREE.MeshBasicMaterial( { color: 0x00f6ff, opacity:0.6, transparent:false  } )];
 
+    /** Place a colored sphere at the node. Used for highlighting special tags like 'uncertain end' and 'todo'. */
+    var createLabelSphere = function(nodeID, color) {
+      var node = self.nodeProps[nodeID];
+      var v = pixelSpaceVector(node[4], node[5], node[6]);
+      var mesh = new THREE.Mesh( labelspheregeometry, color );
+      mesh.position.set( v.x, v.y, v.z );
+      mesh.node_id = nodeID;
+      mesh.skeleton_id = self.id;
+      mesh.orig_coord = {x: node[4], y: node[5], z: node[6]};
+      self.specialTagSpheres[nodeID] = mesh;
+      scene.add( mesh );
+    };
 
     this.reinit_actor = function ( skeleton_data )
     {
@@ -873,9 +856,9 @@ var WebGLApp = (function() { return new function () {
 
       //var textlabel_visibility = $('#skeletontext-' + self.id).is(':checked');
       var colorkey;
-      
-      // Populate the graph for calculating the centrality-based shading
-      this.graph = jsnx.Graph();
+
+      // Graph for calculating the centrality-based shading will be created when needed
+      this.graph = null;
       this.betweenness = {};
       this.branchCentrality = {};
 
@@ -939,8 +922,6 @@ var WebGLApp = (function() { return new function () {
         var v; // for reuse in translating the sphere if any
         // If node has a parent
         if (node[1]) {
-          self.graph.add_edge(node[0], node[1]);
-      
           // indices 4,5,6 are x,y,z
           var p = nodeProps[node[1]];
           v = createEdge(node[0], node[4], node[5], node[6],
@@ -984,6 +965,25 @@ var WebGLApp = (function() { return new function () {
         }
       });
 
+      // Place spheres on nodes with special labels, if they don't have a sphere there already
+      for (var tag in self.tags) {
+        if (self.tags.hasOwnProperty(tag)) {
+          var tagLC = tag.toLowerCase();
+          if (-1 !== tagLC.indexOf('todo')) {
+            self.tags[tag].forEach(function(nodeID) {
+              if (!self.specialTagSpheres[nodeID]) {
+                createLabelSphere(nodeID, labelColors.todo);
+              }
+            });
+          } else if (-1 !== tagLC.indexOf('uncertain')) {
+            self.tags[tag].forEach(function(nodeID) {
+              if (!self.specialTagSpheres[nodeID]) {
+                createLabelSphere(nodeID, labelColors.uncertain);
+              }
+            });
+          }
+        }
+      }
 
       self.addCompositeActorToScene();
 
@@ -1004,6 +1004,19 @@ var WebGLApp = (function() { return new function () {
       self.shaderWorkers();
     };
 
+    this.createGraph = function() {
+      var nodeProps = this.nodeProps,
+          graph = jsnx.Graph();
+      for (var nodeID in nodeProps) {
+        var props = nodeProps[nodeID];
+        if (props[1]) {
+          // Edge from parent to child
+          graph.add_edge(props[1], nodeID);
+        }
+      }
+      this.graph = graph;
+    };
+
     /** Populate datastructures for skeleton shading methods, and trigger a render
      * when done and if appropriate. Does none of that and updates skeleton color
      * when the shading method is none, or the graph data structures are already
@@ -1015,6 +1028,8 @@ var WebGLApp = (function() { return new function () {
         WebGLApp.render();
         return;
       }
+
+      if (!this.graph) this.createGraph();
 
       if (typeof(Worker) !== "undefined")
       {
@@ -1217,23 +1232,27 @@ var WebGLApp = (function() { return new function () {
     }
   }
 
+  self.getActiveNode = function() {
+    return active_node;
+  };
+
   self.createActiveNode = function()
   {
     var sphere = new THREE.SphereGeometry( 160 * scale, 32, 32, 1 );
     active_node = new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0x00ff00, opacity:0.8, transparent:true } ) );
     active_node.position.set( 0,0,0 );
     scene.add( active_node );
-  }
+  };
 
   this.hideActiveNode = function() {
     if(active_node)
       active_node.visible = false;
-  }
+  };
 
   this.showActiveNode = function() {
     if(active_node)
       active_node.visible = true;
-  }
+  };
 
   this.updateActiveNodePosition = function()
   {
@@ -1250,7 +1269,7 @@ var WebGLApp = (function() { return new function () {
         active_node.position.set( co[0]*scale, co[1]*scale, co[2]*scale );
         self.render();
     }
-  }
+  };
 
   this.saveImage = function() {
       self.render();
@@ -1762,9 +1781,9 @@ var WebGLApp = (function() { return new function () {
         if( skeletons.hasOwnProperty( skeleton_id )) {
           if( !skeletons[skeleton_id].visible )
             continue;
-          for(var idx in skeletons[ skeleton_id ].labelSphere) {
-            if( skeletons[ skeleton_id ].labelSphere.hasOwnProperty( idx )) {
-              sphere_objects.push( skeletons[ skeleton_id ].labelSphere[ idx ] )
+          for(var idx in skeletons[ skeleton_id ].specialTagSpheres) {
+            if( skeletons[ skeleton_id ].specialTagSpheres.hasOwnProperty( idx )) {
+              sphere_objects.push( skeletons[ skeleton_id ].specialTagSpheres[ idx ] )
             }
           }
 
@@ -1780,7 +1799,7 @@ var WebGLApp = (function() { return new function () {
             for( var i = 0; i < sphere_objects.length; i++) {
               if( sphere_objects[i].id === intersects[0].object.id ) {
                   var jso = sphere_objects[i];
-                  project.moveTo(jso.orig_coord.z, jso.orig_coord.y, jso.orig_coord.x, undefined, function() { 
+                  SkeletonAnnotations.staticMoveTo(jso.orig_coord.z, jso.orig_coord.y, jso.orig_coord.x, function() { 
                     SkeletonAnnotations.staticSelectNode(parseInt(jso.node_id, 10), parseInt(jso.skeleton_id, 10)) });
               }
             }

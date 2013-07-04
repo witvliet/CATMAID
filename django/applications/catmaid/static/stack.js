@@ -238,6 +238,18 @@ function Stack(
 		}
 	}
 
+  /*
+   * Get the top and left coordinates in physical project coordinates of
+   * stack's window
+   */
+  this.getWorldTopLeft = function()
+  {
+    return {
+      worldTop : ( ( self.y - self.viewHeight / self.scale / 2 ) ) * self.resolution.y + self.translation.y,
+      worldLeft : ( ( self.x - self.viewWidth / self.scale / 2 ) ) * self.resolution.x + self.translation.x,
+      scale : self.scale
+    }
+  }
 
 	/**
 	 * Write the limiting coordinates of the current stack view's bounding box
