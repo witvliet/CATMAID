@@ -104,6 +104,7 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/graphexport/summary-statistics/csv$', 'catmaid.control.graphexport.summary_statistics' ),
     (r'^(?P<project_id>\d+)/graphexport/nx_json$', 'catmaid.control.graphexport.export_nxjsgraph' ),
     (r'^(?P<project_id>\d+)/graphexport/graphml$', 'catmaid.control.graphexport.export_graphml' ),
+    (r'^(?P<project_id>\d+)/neuroml/neuroml_level3_v181$', 'catmaid.control.skeletonexport.export_neuroml_level3_v181'),
         
 
     (r'^(?P<project_id>\d+)/skeletongroup/adjacency_matrix$', 'catmaid.control.adjacency_matrix'),
@@ -160,7 +161,7 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/neuronname$', 'catmaid.control.neuronname'),
     (r'^(?P<project_id>\d+)/skeleton/node/(?P<treenode_id>\d+)/node_count$', 'catmaid.control.node_count'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/swc$', 'catmaid.control.skeleton_swc'),
-    (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/neuroml$', 'catmaid.control.skeleton_neuroml'),
+    (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/neuroml$', 'catmaid.control.skeletons_neuroml'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/json$', 'catmaid.control.skeleton_json'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/compact-json$', 'catmaid.control.skeleton_for_3d_viewer'),
     (r'^(?P<project_id>\d+)/skeleton/(?P<skeleton_id>\d+)/neurohdf$', 'catmaid.control.skeleton_neurohdf'),
@@ -241,6 +242,7 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/treenode/info$', 'catmaid.control.treenode_info'),
     (r'^(?P<project_id>\d+)/treenode/table/list$', 'catmaid.control.list_treenode_table'),
     (r'^(?P<project_id>\d+)/treenode/table/update$', 'catmaid.control.update_treenode_table'),
+    (r'^(?P<project_id>\d+)/treenode/(?P<treenode_id>\d+)/radius$', 'catmaid.control.update_radius'),
 
     (r'^(?P<project_id>\d+)/connector/create$', 'catmaid.control.create_connector'),
     (r'^(?P<project_id>\d+)/connector/delete$', 'catmaid.control.delete_connector'),
@@ -279,6 +281,7 @@ urlpatterns += patterns('',
     (r'^dataviews/show/(?P<data_view_id>\d+)$', 'catmaid.control.get_data_view'),
     (r'^dataviews/show/default$', 'catmaid.control.get_default_data_view'),
     (r'^dataviews/type/comment$', 'catmaid.control.get_data_view_type_comment'),
+    (r'^dataviews/type/(?P<data_view_id>\d+)$', 'catmaid.control.get_data_view_type'),
     )
 
 # Ontologies
@@ -351,6 +354,8 @@ urlpatterns += patterns('',
         'catmaid.control.autofill_classification_graph', name='autofill_classification_graph'),
     url(r'^(?P<project_id>{0})/classification/(?P<workspace_pid>{0})/link$'.format(integer),
         'catmaid.control.link_classification_graph', name='link_classification_graph'),
+    url(r'^(?P<project_id>{0})/classification/(?P<workspace_pid>{0})/stack/(?P<stack_id>{0})/linkroi/(?P<ci_id>{0})/$'.format(integer),
+        'catmaid.control.link_roi_to_classification', name='link_roi_to_classification'),
     )
 
 # Notifications
@@ -360,7 +365,21 @@ urlpatterns += patterns('',
     (r'^(?P<project_id>\d+)/changerequest/reject$', 'catmaid.control.reject_change_request'),
     )
 
+# Regions of interest
+urlpatterns += patterns('',
+    url(r'^(?P<project_id>{0})/roi/(?P<roi_id>{0})/info$'.format(integer),
+        'catmaid.control.get_roi_info', name='get_roi_info'),
+    url(r'^(?P<project_id>{0})/roi/link/(?P<relation_id>{0})/stack/(?P<stack_id>{0})/ci/(?P<ci_id>{0})/$'.format(integer),
+        'catmaid.control.link_roi_to_class_instance', name='link_roi_to_class_instance'),
+    url(r'^(?P<project_id>{0})/roi/(?P<roi_id>{0})/remove$'.format(integer),
+        'catmaid.control.remove_roi_link', name='remove_roi_link'),
+    url(r'^(?P<project_id>{0})/roi/(?P<roi_id>{0})/image$'.format(integer),
+        'catmaid.control.get_roi_image', name='get_roi_image'),
+    )
+
 if settings.DEBUG:
     urlpatterns += patterns('',
         (r'^static/(?P<path>.*)$', 'django.views.static.serve', {'document_root': settings.STATIC_ROOT}),
+        (r'^%s(?P<path>.*)$' % settings.MEDIA_URL.replace(settings.CATMAID_URL, ''),
+            'django.views.static.serve', {'document_root': settings.MEDIA_ROOT}),
     )

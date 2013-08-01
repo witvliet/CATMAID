@@ -6,15 +6,18 @@ from django.http import HttpResponse
 from django.views.generic import TemplateView
 from django.shortcuts import get_object_or_404, render_to_response
 from django.template import RequestContext
+from django.db.models import Count
 
 from catmaid.control.common import get_class_to_id_map, get_relation_to_id_map
 from catmaid.control.common import insert_into_log
 from catmaid.control.ajax_templates import *
 from catmaid.control.ontology import get_class_links_qs
 from catmaid.models import Class, ClassClass, ClassInstance, ClassInstanceClassInstance
-from catmaid.models import Relation, UserRole, Project, Restriction
-from catmaid.models import CardinalityRestriction
+from catmaid.models import Relation, UserRole, Project, Restriction, Stack
+from catmaid.models import CardinalityRestriction, RegionOfInterest
+from catmaid.models import RegionOfInterestClassInstance
 from catmaid.control.authentication import requires_user_role
+from catmaid.control.roi import link_roi_to_class_instance
 
 # All needed classes by the classification system alongside their
 # descriptions.
@@ -28,7 +31,8 @@ needed_classes = {
 # descriptions.
 needed_relations = {
     'is_a': "A basic is_a relation",
-    'classified_by': "Link a classification to something"}
+    'classified_by': "Link a classification to something",
+    'linked_to': "Links a ROI to a class instance."}
 
 class ClassProxy(Class):
     """ A proxy class to allow custom labeling of class in model forms.
@@ -78,40 +82,45 @@ def get_root_classes_qs(workspace_pid):
     """
     return[ c.class_a.id for c in get_class_links_qs(workspace_pid, 'is_a', 'classification_root') ]
 
-def get_classification_links_qs( workspace_pid, project_id, inverse=False ):
-    """ Returns a list of CICI links that link a classification graph
-    with a project. The classification system uses a dummy project with
-    ID -1 to store its ontologies and class instances. Each project using
-    a particular classification graph instance creates a class instance
-    with its PID of class classification_project (which lives in dummy
-    project -1) and links to a classification root. A query set for those
-    links will be returned. If <inverse> is set to true, only those
-    classification graph links will be returned that *don't* belong to
-    the project with <project_id>.
+def get_classification_links_qs( workspace_pid, project_ids, inverse=False ):
+    """ Returns a list of CICI links that link a classification graph with a
+    project or a list/set of projects (project_ids can be int, list and set).
+    The classification system uses a dummy project (usually with ID -1) to
+    store its ontologies and class instances. Each project using a particular
+    classification graph instance creates a class instance with its PID of
+    class classification_project (which lives in dummy project -1) and links to
+    a classification root. A query set for those links will be returned. If
+    <inverse> is set to true, only those classification graph links will be
+    returned that *don't* belong to the project with <project_id>.
     """
+    # Make sure we deal with a list of project ids
+    if not isinstance(project_ids, list) and not isinstance(project_ids, set):
+        project_ids = [project_ids]
+
     # Expect the classification system to be set up and expect one
     # single 'classification_project' class.
     classification_project_c_q = Class.objects.filter(
         project_id = workspace_pid, class_name = 'classification_project')
-    # Return an empty list if there isn't a classification project class
-    if classification_project_c_q.count() == 0:
-        return []
+    # Return an empty query set if there isn't a classification project class
+    # len() is used on purpose, we need the object later anyway.
+    if len(classification_project_c_q) == 0:
+        return ClassInstanceClassInstance.objects.none()
     classification_project_c = classification_project_c_q[0]
 
     # Get the query set for the classification project instance to test
     # if there already is such an instance.
     if inverse:
-        classification_project_ci_q = ClassInstance.objects.filter(
-            class_column_id = classification_project_c.id).exclude(
-                project_id = project_id)
+        classification_project_cis_q = ClassInstance.objects.filter(
+            class_column_id=classification_project_c.id).exclude(
+                project_id__in=project_ids)
     else:
-        classification_project_ci_q = ClassInstance.objects.filter(
-            project_id = project_id, class_column_id = classification_project_c.id)
-    # Return an empty list if there isn't a classification project
-    # instance
-    if classification_project_ci_q.count() == 0:
-        return []
-    classification_project_ci = classification_project_ci_q[0]
+        classification_project_cis_q = ClassInstance.objects.filter(
+            project_id__in=project_ids,
+                class_column_id=classification_project_c.id)
+    # Return an empty query set if there aren't classification project
+    # instances available.
+    if classification_project_cis_q.count() == 0:
+        return ClassInstanceClassInstance.objects.none()
 
     # Get a list of all classification root classes and return an empty
     # list if teher are none
@@ -125,11 +134,11 @@ def get_classification_links_qs( workspace_pid, project_id, inverse=False ):
     # Query to get the 'classified_by' relation
     classified_by_rel = Relation.objects.filter(project_id=workspace_pid,
         relation_name='classified_by')
-    # Find all 'classification_project' class instances of the current
-    # project that link to those root nodes
+    # Find all 'classification_project' class instances of all requested
+    # projects that link to those root nodes
     cici_q = ClassInstanceClassInstance.objects.filter(project_id=workspace_pid,
         relation__in=classified_by_rel, class_instance_b__in=root_class_instances,
-        class_instance_a__in=classification_project_ci_q)
+        class_instance_a__in=classification_project_cis_q)
 
     return cici_q
 
@@ -843,15 +852,36 @@ def list_classification_graph(request, workspace_pid, project_id=None, link_id=N
             # Get child types
             child_types = get_child_classes( workspace_pid, parent_ci )
 
+            def make_roi_html(roi):
+                img_data = (roi.id, settings.STATIC_URL)
+                return "<img class='roiimage' roi_id='%s' " \
+                       "src='%s/widgets/themes/kde/camera.png' \>" % img_data
+
             child_data = []
             for child_link in child_links:
                 child = child_link.class_instance_a
+                # Find ROIs for this class instance
+                roi_links = RegionOfInterestClassInstance.objects.filter(
+                    class_instance=child)
+                roi_htmls = []
+                for roi_link in roi_links:
+                    roi_htmls.append( make_roi_html(roi_link.region_of_interest) )
+                roi_html = ''.join(roi_htmls)
+                roi_json = json.dumps( [r.id for r in roi_links] )
+                # Get sub-child information
                 subchild_types = get_child_classes( workspace_pid, child )
                 subchild_types_jstree = child_types_to_jstree_dict( subchild_types )
-                data = {'data': {'title': get_class_name(child.class_column)},
+                # Build title
+                if roi_html:
+                    title = "%s %s" % (get_class_name(child.class_column), roi_html)
+                else:
+                    title = get_class_name(child.class_column)
+                # Build JSTree data structure
+                data = {'data': {'title': title},
                     'attr': {'id': 'node_%s' % child.id,
                              'linkid': child_link.id,
                              'rel': 'element',
+                             'rois': roi_json,
                              'child_groups': json.dumps(subchild_types_jstree)}}
 
                 # Test if there are children links present and mark
@@ -1009,9 +1039,23 @@ def classification_instance_operation(request, workspace_pid=None, project_id=No
                 response = {'status': 1, 'message': 'Removed node %s successfully.' % params['id']}
                 return HttpResponse(json.dumps(response))
 
+    def rename_node():
+        """ Will rename a node.
+        """
+
+        nodes = ClassInstance.objects.filter(pk=params['id'])
+        if nodes.count() == 0:
+            raise Exception('Could not find any node with ID %s' % params['id'])
+        else:
+            node = nodes[0]
+            node.name = params['title']
+            node.save()
+            response = {'status': 1, 'message': 'Renamed node %s successfully.' % params['id']}
+            return HttpResponse(json.dumps(response))
+
     try:
         # Dispatch to operation
-        if params['operation'] not in ['create_node', 'remove_node']:
+        if params['operation'] not in ['create_node', 'remove_node', 'rename_node']:
             raise Exception('No operation called %s.' % params['operation'])
         return locals()[params['operation']]()
     except Exception as e:
@@ -1136,3 +1180,17 @@ def autofill_classification_graph(request, workspace_pid, project_id=None, link_
         return HttpResponse("Added nodes: %s" % ','.join(node_names))
     else:
         return HttpResponse("Couldn't infer any new class instances.")
+
+@requires_user_role([UserRole.Annotate, UserRole.Browse])
+def link_roi_to_classification(request, project_id=None, workspace_pid=None,
+        stack_id=None, ci_id=None):
+    """ With the help of this method one can link a region of interest
+    (ROI) to a class instance in a classification graph. The information
+    about the ROI is passed as POST variables.
+    """
+    # Find 'linked_to' relatios
+    rel = Relation.objects.get(project_id=workspace_pid,
+        relation_name="linked_to")
+
+    return link_roi_to_class_instance(request, project_id=project_id,
+        relation_id=rel.id, stack_id=stack_id, ci_id=ci_id)
