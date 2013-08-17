@@ -171,10 +171,10 @@ class Migration(SchemaMigration):
 
     def backwards(self, orm):
         # Deleting model 'SegmentsData'
-        db.delete_table('catmaid_segmentsdata')
+        # db.delete_table('catmaid_segmentsdata')
 
         # Deleting field 'SegmentVote.elapsed_time'
-        db.delete_column('catmaid_segmentvote', 'elapsed_time')
+        # db.delete_column('catmaid_segmentvote', 'elapsed_time')
 
         # Adding field 'Segments.aligned_set_difference_ratio'
         # db.add_column('catmaid_segments', 'aligned_set_difference_ratio',
