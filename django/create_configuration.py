@@ -41,7 +41,7 @@ o.close()
 alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
 catmaid_secret_key = ''.join([choice(alphabet) for i in range(50)])
 
-for f in ['', '_production']:
+for f in ['']:
     in_configfile = op.join('projects/mysite/settings{0}.py.example'.format(f))
     out_configfile = op.join('projects/mysite/settings{0}.py'.format(f))
     o = open( out_configfile ,'w')
@@ -69,7 +69,6 @@ for f in ['', '_production']:
     o.write( data )
     o.close()
 
-
 out = """
 Alias /{subdir} {cmpath}/django/projects/mysite/django.wsgi
 <Location /{subdir}>
@@ -93,3 +92,6 @@ out = re.sub('//', '/', out)
 print('Apache configuration settings')
 print('-----------------------------')
 print(out)
+
+print('-----------------------------')
+print('settings.py generated successfully.')
