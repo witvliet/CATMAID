@@ -170,6 +170,8 @@ class Migration(SchemaMigration):
 
 
     def backwards(self, orm):
+
+        pass
         # Deleting model 'SegmentsData'
         # db.delete_table('catmaid_segmentsdata')
 
