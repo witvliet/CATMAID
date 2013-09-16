@@ -4,17 +4,18 @@
 
 {% block content %}
 
-  <!-- <h2>{% trans "Welcome to NeuroCity!" %}</h2> -->
+  <h2>{% trans "Welcome to NeuroCity!" %}</h2>
   <table cellpadding="20">
   	<tr>
   		<td width="200px"><img src="{{ STATIC_URL }}neurocity/brain/neurocity2.png" width="300"></td>
   		<td>
-        <p class="lead">Join and help to reconstruct neurons by matching 2D slices between images!</p>
-<!--   	<p class="lead">Join the NeuroCity community to untangle the networks of the brain. As a <a href="http://en.wikipedia.org/wiki/Citizen_science">citizen scientist</a>, you can contribute to basic neuroscience research by helping to map individual neurons and their connections.<br />
-    Get started with an introduction of the scientific goals, the dataset and task. After a short tutorial, you will be ready to help map brain connectivity.</p>
-  	<br />
-  	<a href="{% url 'nc_learn' %}" class="btn btn-primary btn-medium btn-inverse">Get started &raquo;</a>
-    <a href="{% url 'nc_tutorial' %}" class="btn btn-primary btn-medium btn-inverse">Tutorial &raquo;</a>  -->
+        <p class="lead">
+        A <a href="http://en.wikipedia.org/wiki/Connectome" target="_new">connectome</a> is a map of all the neurons and their connections in the brain.<br />
+        <br />
+        Join the <strong>NeuroCity</strong> <a href="http://en.wikipedia.org/wiki/Citizen_science" target="_new">citizien science</a> project to map connectomes in various species to help advance neuroscience research.<br />
+        <br />
+        </p>
+    <!--  -->
   	<!-- TODO Example of a neuron reconstructed -->
   		</td>
   	</tr>

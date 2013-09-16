@@ -5,123 +5,96 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>NeuroCity - Mapping brain connectivity</title>
+    <title>Mapping connectomes</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="NeuroCity - Mapping brain connectivity, slice by slice">
+    <meta name="description" content="NeuroCity - Mapping connectomes, slice by slice">
     <meta name="author" content="Stephan Gerhard">
 
     <script src="{{ STATIC_URL }}libs/jquery/jquery.js"></script>
     <script src="{{ STATIC_URL }}neurocity/js/bootstrap.min.js"></script>
     <script src="{{ STATIC_URL }}neurocity/js/uni-form.jquery.js" type="text/javascript"></script>
-
-    <!-- Le styles -->
-    <link rel="stylesheet" href="{{ STATIC_URL }}neurocity/uni_form/uni-form.css" type="text/css" />
     
-    <link href="{{ STATIC_URL }}neurocity/css/bootstrap.css" rel="stylesheet">
-    <link href="{{ STATIC_URL }}neurocity/css/bootstrap-responsive.css" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}neurocity/css/style.css" title="home">
-
-
-    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
-    <!--[if lt IE 9]>
-      <script src="../assets/js/html5shiv.js"></script>
-    <![endif]-->
-
+    <link href="{{ STATIC_URL }}neurocity/uni_form/uni-form.css" type="text/css" rel="stylesheet" />
+    <link href="{{ STATIC_URL }}neurocity/css/bootstrap.css" type="text/css" rel="stylesheet">
+    <link href="{{ STATIC_URL }}neurocity/css/bootstrap-responsive.css" type="text/css" rel="stylesheet">
+    <link href="{{ STATIC_URL }}neurocity/css/bootstrap.icon-large.css" type="text/css" rel="stylesheet">
+    <style>
+      body {
+        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+        padding-bottom: 40px;
+      }
+    </style>
+    
+    <!-- <link href="{{ STATIC_URL }}neurocity/css/style.css" rel="stylesheet" type="text/css"> -->
     <!-- TODO: Fav and touch icons -->
     <!-- <link rel="shortcut icon" href="favicon.png"> -->
+
   </head>
-
   <body>
-
-        <div class="navbar navbar-inverse navbar-fixed-top">
-          <div class="navbar-inner">
-            <div class="container"> 
-            <!-- Responsive Navbar Part 1: Button for triggering responsive navbar (not covered in tutorial). Include responsive CSS to utilize. -->
-            <!-- <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-              <span class="icon-bar"></span>
-              <span class="icon-bar"></span>
-              <span class="icon-bar"></span>
-            </button> -->
-            <div class="span3">
-              <ul class="nav">
-                <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">NeuroCity BETA</a></li>
-              </ul>
-            </div>
-
-            <!-- <a class="brand" href="#">NeuroCity</a> -->
-            <!-- Responsive Navbar Part 2: Place all navbar contents you want collapsed withing .navbar-collapse.collapse. -->
-            <!-- <div class="nav-collapse collapse"> -->
-
-              <div id="header_menu" class="pull-right "> <!--  pull-right -->
-              <ul class="nav">
-                <!-- TODO active set  class="active" -->
-                <!-- <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}">Home</a></li> -->
-                <!-- <li class="{{ nc_learn_active }}"><a href="{% url 'nc_learn' %}">Get started</a></li> -->
-                <!-- <li class="{{ nc_tutorial_active }}"><a href="{% url 'nc_tutorial' %}">Tutorial</a></li> -->
-                <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}">Leaderboard</a>
-                <li class="{{ nc_match_active }}"><a href="{% url 'nc_match' %}">Match!</a></li>
-
-              <!-- </div> -->
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="#" style="">
+            <!-- <img class=".." src="..."> padding-top: 6px; padding-bottom: 0px; for style-->
+            NeuroCity
+          </a>
+          <ul class="nav">
+            <li class="divider-vertical"></li>
+            <li class="{{ nc_home_active }}"><a href="{% url 'nc_home' %}"><i class="icon-home"></i> Home</a></li>
+            <li class="divider-vertical"></li>
+            <li class="{{ nc_dashboard_active }}"><a href="{% url 'nc_dashboard' %}"><i class="icon-user"></i> Leaderboard</a>
+            <li class="divider-vertical"></li>
             {% if user.is_authenticated %}
+            <li class="{{ nc_match_active }}"><a href="{% url 'nc_match' %}"><i class="icon-more-windows"></i><i class="icon-align-right"></i> Match!</a></li>
+            <li class="divider-vertical"></li>
+            {% endif %}
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+              <i class="icon-chevron-right"></i>  About <b class="caret"></b></a>
 
-            <!-- <div class="navbar-form pull-right"> -->
-              <!-- <ul class="nav pull-right"> -->
-                <li class="dropdown">
+              <ul class="dropdown-menu pull-right" role="menu" aria-labelledby="dLabel">
+                <li><a href="{% url 'nc_about' %}">Team</a></li>
+                <li><a href="{% url 'nc_contact' %}">Contact</a></li>
+                <li><a href="{% url 'nc_terms' %}">Terms</a></li>
+              </ul>
+            </li> 
+            <li class="divider-vertical"></li>
+          </ul>
+
+          <ul class="nav pull-right">
+            {% if user.is_authenticated %}
+                <li class="dropdown ">
                   <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                    {% trans "Logged in as " %} {{ user.username }}</a>
+                    {{ user.first_name }} {{ user.last_name }} <b class="caret"></b></a>
                     
-                  <ul class="dropdown-menu">
+                  <ul class="dropdown-menu" align="right">
                     <li><a href="{% url 'nc_userstatistics' %}">Statistics</a></li>
                     <li class="divider"></li>
                     <li><a href="{% url 'nc_profile' %}">Profile</a></li>
                     <li><a href="{% url 'account_email' %}">E-Mail</a></li>
                     <li><a href="{% url 'account_change_password' %}">Password</a></li>
+                    <li><a href="{% url 'set_language' %}">Language</a></li>
                     <li class="divider"></li>
                     <li><a href="{% url 'account_logout' %}">Sign Out</a></li>
                   </ul>
                 </li> 
-
-              
             {% else %}
-                <!-- <ul class="nav pull-right"> -->
-                <!-- <div class="navbar-form pull-right"> -->
                 <li><a href="/accounts/signup">Sign up</a></li>
                 <li><a href="/accounts/login">Sign in</a></li>
-
             {% endif %}
+          </ul>
 
-                </ul>
-              </div>
 
-            <!-- </div> --><!--/.nav-collapse -->
-          </div><!-- /container -->
-          </div><!-- /.navbar-inner -->
-        </div><!-- /.navbar -->
-
-    <div id="wrap">
+        </div>
+      </div>
+    </div>
 
       <div class="container">
-
+    
           {% block content %}
           {% endblock %}
 
       </div>
-
-
-      <div id="push"></div>
-    </div>
-
-
-    <div id="footer" align="center">
-      <div class="container">
-        <p class="footerlinks">
-          <a href="{% url 'nc_about' %}">Credits</a> |
-          <!-- <a href="{% url 'nc_terms' %}">Terms</a> | -->
-          <a href="{% url 'nc_contact' %}">Contact</a> |
-          <a href="{% url 'set_language' %}">Language</a> |
-        </p>
-      </div>
-    </div>
 
 <script type="text/javascript">
 

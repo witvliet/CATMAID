@@ -2,25 +2,18 @@
 {% load i18n %}
 
 {% block content %}
- 
-<!-- Modal -->
-
-<div id="help" style="position:absolute; right:80px; top:100px">
-  <p align="right">
-    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttontoggle'>Toggle (T)</a><br />
-    {% if not nc_matchonly %}
-    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttonskip'>Bad match (Space)</a><br />
-    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttongeturl'>Share link</a><br />
-    {% endif %}
-  </p>
-</div>
 
 <div align="left">
+
+    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttontoggle'>Toggle (T)</a>
+  {% if not nc_matchonly %}
+    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttonskip'>Bad match (Space)</a>
+    <a class="btn btn-medium btn-primary btn-info" href="#" id='buttongeturl'>Share link</a>
+  {% endif %}
+  <br /><br />
   <table>
-    <tr id="origin_row">
-    </tr>
-    <tr id="target_row">
-    </tr>
+    <tr id="origin_row"></tr>
+    <tr id="target_row"></tr>
   </table>
 
   <!-- TODO: additional canvases with adjacent slices for more context -->
@@ -129,7 +122,7 @@
             }
 
            // create the origin canvas
-           $('#origin_row').append('<td><canvas id="o1" style="border:2px solid #aaa"></canvas></td>');
+           $('#origin_row').append('<td><canvas id="o1" style="border:0px solid #aaa;"></canvas></td>');
            origin_canvas = new fabric.Canvas('o1');
            origin_canvas.setWidth(data['totalbb']['width']+2*border);
            origin_canvas.setHeight(data['totalbb']['height']+2*border);
@@ -158,11 +151,11 @@
            // create the target canvases for each segment
            for(var idx=0; idx < data['target_segments'].length; idx++) {
              if( !is_interactive ) {
-               additional_information = data['target_segments'][idx]['cost'] +
-                " / " + data['target_segments'][idx]['primarykey'] +
-                " / " + data['target_segments'][idx]['segmenttype'];
+               additional_information = "cost: " + data['target_segments'][idx]['cost'] +
+                " / pkey: " + data['target_segments'][idx]['primarykey'] +
+                " / type: " + data['target_segments'][idx]['segmenttype'];
              }
-             $('#target_row').append('<td>'+additional_information+'<canvas id="t'+(idx+2)+'" style="border:2px solid #aaa"></canvas></td>');  
+             $('#target_row').append('<td>'+additional_information+'<canvas id="t'+(idx+2)+'" style="border:0px solid #aaa"></canvas></td>');  
                target_canvas = new fabric.Canvas('t'+(idx+2));
                target_canvas.setWidth(data['totalbb']['width']+2*border);
                target_canvas.setHeight(data['totalbb']['height']+2*border);
@@ -360,6 +353,10 @@
           }
       });      
     }
+
+    $('#buttontoggle').on('click', function() {
+      toggle_slice();
+    });
 
     $('#buttonskip').on('click', function() {
       skip_segment();
