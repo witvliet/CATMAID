@@ -44,3 +44,4 @@ from segment import *
 from sopnet import *
 from roi import *
 from tracing import *
+from clustering import *

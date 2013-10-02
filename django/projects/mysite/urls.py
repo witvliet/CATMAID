@@ -104,6 +104,7 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/graphexport/json$', 'catmaid.control.graphexport.export_jsongraph' ),
     (r'^(?P<project_id>\d+)/neuroml/neuroml_level3_v181$', 'catmaid.control.skeletonexport.export_neuroml_level3_v181'),
     (r'^(?P<project_id>\d+)/tracing/setup/rebuild$', 'catmaid.control.rebuild_tracing_setup_view'),
+    (r'^(?P<project_id>\d+)/tracing/setup/test$', 'catmaid.control.check_tracing_setup_view'),
 
 
     (r'^(?P<project_id>\d+)/skeletongroup/adjacency_matrix$', 'catmaid.control.adjacency_matrix'),
@@ -378,6 +379,15 @@ urlpatterns += patterns('',
         'catmaid.control.remove_roi_link', name='remove_roi_link'),
     url(r'^(?P<project_id>{0})/roi/(?P<roi_id>{0})/image$'.format(integer),
         'catmaid.control.get_roi_image', name='get_roi_image'),
+    )
+
+# Clustering
+urlpatterns += patterns('',
+    url(r'^clustering/(?P<workspace_pid>{0})/setup$'.format(integer),
+        'catmaid.control.setup_clustering', name="clustering_setup"),
+    url(r'^clustering/(?P<workspace_pid>{0})/show$'.format(integer),
+        TemplateView.as_view(template_name="catmaid/clustering/display.html"),
+        name="clustering_display"),
     )
 
 if settings.DEBUG:
