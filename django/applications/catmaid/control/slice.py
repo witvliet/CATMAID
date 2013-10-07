@@ -363,16 +363,21 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
     stack = get_object_or_404(Stack, pk=stack_id)
     slice_node_id = '{0}_{1}'.format( sectionindex, sliceid )
 
+    """
     ssm = SliceSegmentMap.objects.filter(
         ~Q(segmenttype = 1),
         slice_node_id = slice_node_id,
         direction = 0
         ).values('segment_id')
+    """
 
     segments_left = Segments.objects.filter(
         stack = stack,
         direction = False,
-        id__in = [s['segment_id'] for s in ssm ]
+        # id__in = [s['segment_id'] for s in ssm ]
+        origin_section = sectionindex,
+        origin_slice_id = sliceid,
+        # need direction
     ).values(
         'id',
         'segmentid',
@@ -392,6 +397,7 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
         'segmentsdata__aligned_overlap',
         'segmentsdata__aligned_overlap_ratio').order_by('cost')
 
+    """
     endssm = SliceSegmentMap.objects.filter(
         segmenttype = 1,
         slice_node_id = slice_node_id,
@@ -413,8 +419,11 @@ def segments_for_slice_left(request, project_id=None, stack_id=None):
     for d in endsegments_left:
         d['origin_section'] = d['sectionindex']
         d['target_section'] = d['sectionindex'] # pretend convention
-
+    
     return HttpResponse(JSONEncoder().encode(list(segments_left)+list(endsegments_left)), mimetype="text/json")
+    """
+    # TODO: force left segments to empty
+    return HttpResponse(JSONEncoder().encode([]), mimetype="text/json")
 
 def slice_contour(request, project_id=None, stack_id=None):
     
