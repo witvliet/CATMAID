@@ -11,6 +11,7 @@ var CompartmentGraphWidget = new function()
   var confidence_threshold = 0,
       synaptic_count_edge_filter = 0, // value equal or higher than this number or kept
       show_node_labels = true,
+      trim_node_labels = false;
       clustering_bandwidth = 0;
 
   this.toggle_show_node_labels = function() {
@@ -21,7 +22,7 @@ var CompartmentGraphWidget = new function()
       show_node_labels = true;
       cy.nodes().css('text-opacity', 1);
     }
-  }
+  };
 
   this.graph_properties = function() {
 
@@ -77,12 +78,20 @@ var CompartmentGraphWidget = new function()
     var rand = document.createElement('input');
     rand.setAttribute("type", "checkbox");
     rand.setAttribute("id", "show_node_labels");
-    rand.setAttribute("value", "Show node labels");
     if( show_node_labels )
       rand.setAttribute("checked", "true");
     rand.onclick = self.toggle_show_node_labels;
     dialog.appendChild(rand);
     dialog.appendChild( document.createElement("br"));
+
+    dialog.appendChild(document.createTextNode('Trim node labels:'));
+    var check = document.createElement('input');
+    check.setAttribute('type', 'checkbox');
+    check.setAttribute('id', 'graph_toggle_short_names');
+    if (trim_node_labels) check.setAttribute('checked', 'true');
+    check.onclick = self.toggleTrimmedNodeLabels;
+    dialog.appendChild(check);
+    dialog.appendChild(document.createElement("br"));
 
     $(dialog).dialog({
       height: 440,
@@ -136,7 +145,7 @@ var CompartmentGraphWidget = new function()
                 "content": "data(label)",
                 "shape": "data(shape)",
                 "border-width": 1,
-                "background-color": "data(color)", //#DDD",
+                "background-color": "data(color)",
                 "border-color": "#555",
                 "width": "mapData(node_count, 10, 2000, 30, 50)", //"data(node_count)",
                 "height": "mapData(node_count, 10, 2000, 30, 50)"   // "data(node_count)"
@@ -149,7 +158,6 @@ var CompartmentGraphWidget = new function()
                 // "source-arrow-shape": "circle",
                 "line-color": "data(color)",
                 "opacity": 0.4,
-                
               })
             .selector(":selected")
               .css({
@@ -208,23 +216,19 @@ var CompartmentGraphWidget = new function()
 
   };
 
-  this.updateLayout = function() {
+  this.updateLayout = function( layout ) {
+    var options;
 
-
-    var layout =  $('#compartment_layout :selected').attr("value");
-
-    if( layout == 1 ) {
-      var options = {
+    if ( 1 === layout ) {
+      options = {
         name: 'grid',
         fit: true, // whether to fit the viewport to the graph
         rows: undefined, // force num of rows in the grid
         columns: undefined, // force num of cols in the grid
         ready: undefined, // callback on layoutready
         stop: undefined // callback on layoutstop
-        };
-
-      cy.layout( options );
-    } else if ( layout == 2) {
+      };
+    } else if ( 0 === layout) {
       options = {
           name: 'arbor',
           liveUpdate: true, // whether to show the layout as it's running
@@ -257,19 +261,43 @@ var CompartmentGraphWidget = new function()
               return (e.max <= 0.5) || (e.mean <= 0.3);
           }
       };
-
-      cy.layout( options );
-
     }
 
-    
-  }
+    cy.layout( options );
+  };
 
 
   this.updateGraph = function( data ) {
 
-    for(var i = 0; i < data.nodes.length; i++) {
-      data.nodes[i]['data']['color'] = '#' + NeuronStagingArea.get_color_of_skeleton( parseInt(data.nodes[i]['data'].id) ).getHexString();
+    for (var i = 0; i < data.nodes.length; i++) {
+      data.nodes[i]['data']['color'] = '#' + NeuronStagingArea.getSkeletonColor( parseInt(data.nodes[i]['data'].id) ).getHexString();
+    }
+
+    var grey = [0, 0, 0.267]; // HSV for #444
+    var red = [0, 1, 1]; // HSV for #F00 
+    var max = 0.75;
+    var min = 0.0;
+
+    for (var i=0; i<data.edges.length; i++) {
+      var d = data.edges[i].data;
+      if (d.risk) {
+        /*
+        var hsv = [0,
+                   d.risk > 0.75 ? 0 : 1 - d.risk / 0.75,
+                   d.risk > 0.75 ? 0.267 : 1.267 - d.risk / 0.75]; 
+        */
+        // TODO how to convert HSV to RGB hex?
+        d.color = '#444';
+        d.label += ' (' + d.risk.toFixed(2) + ')';
+      } else {
+        d.color = '#444';
+      }
+      if (d.arrow === 'none') {
+        d.color = '#F00';
+      }
+      console.log(data.edges[i].data.source,
+                  data.edges[i].data.target,
+                  data.edges[i].data.risk);
     }
 
     // first remove all nodes
@@ -277,54 +305,26 @@ var CompartmentGraphWidget = new function()
 
     cy.add( data );
 
-    // force arbor, does not work
-    var options = {
-      name: 'arbor',
-      liveUpdate: true, // whether to show the layout as it's running
-      ready: undefined, // callback on layoutready 
-      stop: undefined, // callback on layoutstop
-      maxSimulationTime: 4000, // max length in ms to run the layout
-      fit: true, // fit to viewport
-      padding: [ 50, 50, 50, 50 ], // top, right, bottom, left
-      ungrabifyWhileSimulating: true, // so you can't drag nodes during layout
+    // Make branch nodes, if any, be smaller
+    cy.nodes().each(function(i, node) {
+      if (node.data().branch) {
+        node.css('height', 15);
+        node.css('width', 15);
+      }
+    });
 
-      // forces used by arbor (use arbor default on undefined)
-      repulsion: undefined,
-      stiffness: undefined,
-      friction: undefined,
-      gravity: true,
-      fps: undefined,
-      precision: undefined,
+    // If hide labels, hide them
+    if (!show_node_labels) {
+      cy.nodes().css('text-opacity', 0);
+    }
 
-      // static numbers or functions that dynamically return what these
-      // values should be for each element
-      nodeMass: undefined, 
-      edgeLength: undefined,
+    // if text is to be short, render as short
+    if (trim_node_labels || $('#graph_toggle_short_names').attr('checked')) {
+      delete this.originalNames;
+      this.toggleTrimmedNodeLabels();
+    }
 
-      stepSize: 1, // size of timestep in simulation
-
-      // function that returns true if the system is stable to indicate
-      // that the layout can be stopped
-      stableEnergy: function( energy ){
-          var e = energy; 
-          return (e.max <= 0.5) || (e.mean <= 0.3);
-      },
-      stop: function() {
-        console.log('layout stop');
-      },
-    };
-
-    // grid
-    var options = {
-      name: 'grid',
-      fit: true, // whether to fit the viewport to the graph
-      rows: undefined, // force num of rows in the grid
-      columns: undefined, // force num of cols in the grid
-      ready: undefined, // callback on layoutready
-      stop: undefined // callback on layoutstop
-      };
-
-    cy.layout( options );
+    this.updateLayout( 0 );
 
     // cy.nodes().bind("mouseover", function(e) {
     //   // console.log('node mouseover', e);
@@ -335,7 +335,7 @@ var CompartmentGraphWidget = new function()
       var splitname = node.id().split('_');
       if (evt.originalEvent.altKey) {
         // Toggle visibility in the 3d viewer
-        NeuronStagingArea.select_skeleton( splitname[0] );
+        NeuronStagingArea.selectSkeletonById( splitname[0] );
       } else if (evt.originalEvent.shiftKey) {
         // Select in the overlay
         TracingTool.goToNearestInNeuronOrSkeleton("skeleton", parseInt(splitname[0]));
@@ -346,20 +346,49 @@ var CompartmentGraphWidget = new function()
       var edge = this;
       var splitedge = edge.id().split('_');
       if (evt.originalEvent.shiftKey) {
-        ConnectorSelection.show_shared_connectors( splitedge[0], splitedge[2] );
+        ConnectorSelection.show_shared_connectors( splitedge[0], [splitedge[2]], "presynaptic_to" );
       }
     });
   };
 
+  this.toggleTrimmedNodeLabels = function() {
+    if (this.originalNames) {
+      trim_node_labels = false;
+      // Restore
+      var originalNames = this.originalNames;
+      cy.nodes().each(function(i, element) {
+        if (element.id() in originalNames) {
+          element.data('label', originalNames[element.id()]);
+        }
+      });
+      delete this.originalNames;
+    } else {
+      // Crop at semicolon
+      trim_node_labels = true;
+      this.originalNames = {};
+      var originalNames = this.originalNames;
+      cy.nodes().each(function(i, element) {
+        if (element.isNode()) {
+          var label = element.data().label;
+          originalNames[element.id()] = label;
+          var i_semicolon = label.indexOf(';');
+          if (i_semicolon > 0) {
+            element.data('label', label.substring(0, i_semicolon));
+          }
+        }
+      });
+    }
+  };
+
   this.updateConfidenceGraphFrom3DViewer = function() {
-    var skellist = NeuronStagingArea.get_selected_skeletons();
+    var skellist = NeuronStagingArea.getSelectedSkeletons();
     if( skellist.length == 0) {
       alert('Please add skeletons to the selection table before updating the graph.')
       return;
     }
     requestQueue.replace(django_url + project.id + "/skeletongroup/skeletonlist_confidence_compartment_subgraph",
         "POST",
-        { skeleton_list: NeuronStagingArea.get_selected_skeletons(),
+        { skeleton_list: skellist,
           confidence_threshold: confidence_threshold,
           bandwidth: clustering_bandwidth },
         function (status, text) {
