@@ -371,7 +371,7 @@ var segmentationWindowActions = [
     buttonID: "view_3d_webgl_button",
     buttonName: '3d-view-webgl',
     run: function (e) {
-      WindowMaker.show('3d-webgl-view');
+      WindowMaker.create('3d-webgl-view');
     }
   }),
 
@@ -475,7 +475,7 @@ var tracingWindowActions = [
       buttonID: "button_skeleton_analytics_widget",
       buttonName: 'skeleton_analytics_widget',
       run: function (e) {
-          WindowMaker.show('skeleton-analytics-widget');
+          WindowMaker.create('skeleton-analytics-widget');
           return true;
       }
   }),
@@ -485,7 +485,7 @@ var tracingWindowActions = [
       buttonID: "data_button_compartment_graph_widget",
       buttonName: 'graph_widget',
       run: function (e) {
-          WindowMaker.show('compartment-graph-widget');
+          WindowMaker.create('compartment-graph-widget');
           return true;
       }
   }),
@@ -495,9 +495,7 @@ var tracingWindowActions = [
       buttonID: "data_button_neuron_staging_area_widget",
       buttonName: 'neuron_staging',
       run: function (e) {
-          if( !NeuronStagingArea.is_widget_open() ) {
-            WindowMaker.show('neuron-staging-area');
-          }
+          WindowMaker.create('neuron-staging-area');
           return true;
       }
   }),
@@ -530,7 +528,7 @@ var tracingWindowActions = [
       buttonID: "view_3d_webgl_button",
       buttonName: '3d-view-webgl',
       run: function (e) {
-        WindowMaker.show('3d-webgl-view');
+        WindowMaker.create('3d-webgl-view');
       }
     }),
 

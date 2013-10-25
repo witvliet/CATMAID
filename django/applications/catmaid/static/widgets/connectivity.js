@@ -5,46 +5,167 @@
 
 var SkeletonConnectivity = function() {
   this.skeletons = {}; // skeletonID, skeletonTitle;
-  this.widgetid = SkeletonConnectivity.prototype.pid++;
+  this.widgetID = this.registerInstance();
+  this.registerSource();
 };
 
 SkeletonConnectivity.prototype = {};
+$.extend(SkeletonConnectivity.prototype, new InstanceRegistry());
+$.extend(SkeletonConnectivity.prototype, new SkeletonSource());
 
-SkeletonConnectivity.prototype.pid = 1;
+/** Appends only to the top list, that is, the set of seed skeletons
+ *  for which all pre- and postsynaptic partners are listed. */
+SkeletonConnectivity.prototype.append = function(models) {
+  var skeletons = this.skeletons,
+      count = 0,
+      widgetID = this.widgetID;
+  var new_skeletons = Object.keys(models).reduce(function(o, skid) {
+    if (skid in skeletons) {
+      $('#a-connectivity-table-' + widgetID + '-' + skid).html(models[skid].baseName + ' #' + skid);
+    } else {
+      o[skid] = models[skid].baseName;
+      ++count;
+    }
+    return o;
+  }, {});
+  if (0 === count) return;
+  // Update existing ones and add new ones
+  $.extend(this.skeletons, new_skeletons);
+  this.update();
+};
+
+SkeletonConnectivity.prototype.getName = function() {
+  return "Connectivity " + this.widgetID;
+};
 
 SkeletonConnectivity.prototype.destroy = function() {
-  SkeletonConnectivity.prototype.pid--;
+  this.unregisterInstance();
+  this.unregisterSource();
 };
 
-SkeletonConnectivity.prototype.fetchConnectivityForSkeleton = function() {
+SkeletonConnectivity.prototype.clear = function() {
   this.skeletons = {};
-  if ('Active neuron' === $('#connectivity_source' + this.widgetid).val()) {
-    var skid = SkeletonAnnotations.getActiveSkeletonId();
-    if (null === skid) {
-        growlAlert("Information", "Select a skeleton first!");
-        return;
-    }
-    this.skeletons[skid] = $('#neuronname' + SkeletonAnnotations.getActiveStackId()).text();
-  } else {
-    this.skeletons = NeuronStagingArea.getSelectedSkeletonNames();
-    if (0 === Object.keys(skeletons).length) {
-      growlAlert("Information", "Selection Table is empty!");
-      return;
-    }
-  }
-  this.refresh();
+  this.update();
 };
 
-SkeletonConnectivity.prototype.refresh = function() {
+SkeletonConnectivity.prototype.updateModel = function(model, source_chain) {
+  if (source_chain && (this in source_chain)) return; // break propagation loop
+  source_chain[this] = this;
+
+  console.log("Ignoring updateModel", model);
+};
+
+SkeletonConnectivity.prototype.highlight = function(skeleton_id) {
+  // TODO color the table row in green if present, clear all others
+};
+
+SkeletonConnectivity.prototype.getSelectedSkeletons = function() {
+  return Object.keys(this.skeletons).map(Number);
+};
+
+SkeletonConnectivity.prototype.getSkeletonModel = function(skeleton_id) {
+    var e_name = $('#a-connectivity-table-' + this.widgetID + '-' + skeleton_id);
+    if (0 === e_name.length) return null;
+    var name = e_name.text();
+    name = name.substring(0, name.lastIndexOf(' '));
+
+    var pre = $("#presynaptic_to-show-skeleton-" + this.widgetID + "-" + skeleton_id);
+    var post = $("#postsynaptic_to-show-skeleton-" + this.widgetID + "-" + skeleton_id);
+
+    var color = new THREE.Color();
+    if (pre.length > 0) {
+      if (post.length > 0) color.setRGB(0.8, 0.6, 1); // both
+      else color.setRGB(1, 0.4, 0.4); // pre
+    } else if (post.length > 0) color.setRGB(0.5, 1, 1); // post
+
+    var model = new SelectionTable.prototype.SkeletonModel(skeleton_id, name, color);
+    model.selected = pre.is(':checked') || post.is(':checked');
+    return model;
+};
+
+SkeletonConnectivity.prototype.getSelectedSkeletonModels = function() {
+  var skeletons = this.skeletons;
+  var models = Object.keys(this.skeletons).reduce(function(o, skid) {
+    var name = skeletons[skid];
+    name = name.substring(0, name.lastIndexOf(' '));
+    o[skid] = new SelectionTable.prototype.SkeletonModel(skid, skeletons[skid], new THREE.Color().setRGB(1, 1, 0));
+    return o;
+  }, {});
+
+  var widgetID = this.widgetID;
+  var colors = [new THREE.Color().setRGB(1, 0.4, 0.4),
+                new THREE.Color().setRGB(0.5, 1, 1),
+                new THREE.Color().setRGB(0.8, 0.6, 1)];
+  // Read out all skeletons
+  var sks = {};
+  ['presynaptic_to', 'postsynaptic_to'].forEach(function(relation, index) {
+    $("input[id^='" + relation + "-show-skeleton-" + widgetID + "-']").each(function(i, e) {
+      var skid = parseInt(e.value);
+      if (!(skid in sks)) sks[skid] = {};
+      sks[skid][index] = e.checked;
+    });
+  });
+  // Pick those for which at least one checkbox is checked (if they have more than one)
+  Object.keys(sks).forEach(function(skid) {
+    var sk = sks[skid];
+    if (true === sk[0] || true === sk[1]) {
+      var index = -1;
+      if (0 in sk) {
+        if (1 in sk) index = 2; // exists in both pre and post
+        else index = 0;
+      } else if (1 in sk) index = 1;
+      var name = $('#a-connectivity-table-' + widgetID + '-' + skid).text();
+      name = name.substring(0, name.lastIndexOf(' '));
+      models[skid] = new SelectionTable.prototype.SkeletonModel(skid, name, colors[index].clone());
+    }
+  });
+
+  return models;
+};
+
+SkeletonConnectivity.prototype._clearGUI = function() {
+  // Clear table and plots
+  ["_table", "_plot_Upstream", "_plot_Downstream"].forEach(function(name) {
+      var s = $('#connectivity' + name + this.widgetID);
+      if (s.length > 0) s.remove();
+  }, this);
+};
+
+SkeletonConnectivity.prototype.update = function() {
   var skids = Object.keys(this.skeletons);
-  if (0 === skids.length) { return };
+  if (0 === skids.length) {
+    this._clearGUI();
+    return;
+  };
+
+  // Record the state of checkboxes
+  var checkboxes = [{}, {}],
+      widgetID = this.widgetID,
+      relations = ['presynaptic_to', 'postsynaptic_to'];
+  relations.forEach(function(relation, index) {
+    $("[id^='" + relation + "-show-skeleton-" + widgetID + "-']").each(function(_, checkbox) {
+      checkboxes[index][checkbox.value] = checkbox.checked;
+    });
+  });
+
+  var createConnectivityTable = this.createConnectivityTable.bind(this);
+
   requestQueue.replace(
           django_url + project.id + '/skeleton/connectivity',
           'POST',
           {'source': skids,
-           'threshold': $('#connectivity_count_threshold' + this.widgetid).val(),
-           'boolean_op': $('#connectivity_operation' + this.widgetid).val()},
-          this.createConnectivityTable.bind(this),
+           'threshold': $('#connectivity_count_threshold' + this.widgetID).val(),
+           'boolean_op': $('#connectivity_operation' + this.widgetID).val()},
+          function(status, text) {
+            createConnectivityTable(status, text);
+            // Restore checkbox state
+            checkboxes.forEach(function(c, i) {
+              var relation = relations[i];
+              Object.keys(c).forEach(function(skeleton_id) {
+                $('#' + relation + '-show-skeleton-' + widgetID + '-' + skeleton_id).attr('checked', c[skeleton_id]);
+              });
+            });
+          },
           'update_connectivity_table');
 };
 
@@ -56,22 +177,21 @@ SkeletonConnectivity.prototype.createConnectivityTable = function(status, text) 
         return;
     }
 
-    var widgetid = this.widgetid;
+    var widgetID = this.widgetID;
+    var getLinkTarget = this.getLinkTarget.bind(this);
+    var getSkeletonModel = this.getSkeletonModel.bind(this);
 
     // Clear table and plots
-    ["_table", "_plot_Upstream", "_plot_Downstream"].forEach(function(name) {
-        var s = $('#connectivity' + name + widgetid);
-        if (s.length > 0) s.remove();
-    });
+    this._clearGUI();
 
-    var bigtable = $('<table />').attr('cellpadding', '0').attr('cellspacing', '0').attr('width', '100%').attr('id', 'connectivity_table' + widgetid).attr('border', '0');
+    var bigtable = $('<table />').attr('cellpadding', '0').attr('cellspacing', '0').attr('width', '100%').attr('id', 'connectivity_table' + widgetID).attr('border', '0');
     var row = $('<tr />')
     var incoming = $('<td />').attr('id', 'incoming_field').attr('valign', 'top');
     row.append( incoming );
     var outgoing = $('<td />').attr('id', 'outgoing_field').attr('valign', 'top');
     row.append( outgoing );
     bigtable.append( row );
-    $("#connectivity_widget" + widgetid).append( bigtable );
+    $("#connectivity_widget" + widgetID).append( bigtable );
 
     var synaptic_count = function(skids_dict) {
         return Object.keys(skids_dict).reduce(function(sum, skid) {
@@ -96,8 +216,9 @@ SkeletonConnectivity.prototype.createConnectivityTable = function(status, text) 
 
     var createNameElement = function(name, skeleton_id) {
         var a = document.createElement('a');
-        a.innerText = name;
+        a.innerText = name + ' #' + skeleton_id;
         a.setAttribute('href', '#');
+        a.setAttribute('id', 'a-connectivity-table-' + widgetID + '-' + skeleton_id);
         a.onclick = function() {
             TracingTool.goToNearestInNeuronOrSkeleton('skeleton', skeleton_id);
             return false;
@@ -107,15 +228,6 @@ SkeletonConnectivity.prototype.createConnectivityTable = function(status, text) 
         a.style.color = 'black';
         a.style.textDecoration = 'none';
         return a;
-    };
-
-    var add_to_selection_table = function(ev) {
-        var skelid = parseInt( ev.target.value );
-        if ($('#incoming-show-skeleton-' + skelid + '-' + widgetid).is(':checked')) {
-            NeuronStagingArea.addSkeletons( [skelid] );
-        } else {
-            NeuronStagingArea.removeSkeletons( [skelid] );
-        }
     };
 
     var getBackgroundColor = function(reviewed) {
@@ -129,7 +241,34 @@ SkeletonConnectivity.prototype.createConnectivityTable = function(status, text) 
     };
 
     var create_table = function(partners, title, relation) {
-        var table = $('<table />').attr('cellpadding', '3').attr('cellspacing', '0').attr('id', 'incoming_connectivity_table' + widgetid).attr('border', '1');
+
+      var set_as_selected = function(ev) {
+        var skelid = parseInt( ev.target.value );
+        var checked = $('#' + relation + '-show-skeleton-' + widgetID + '-' + skelid).is(':checked');
+        // Update the checkbox for the same skeleton on the other table, if any
+        var r = {presynaptic_to: 'postsynaptic_to',
+                 postsynaptic_to: 'presynaptic_to'}[relation];
+        $('#' + r + '-show-skeleton-' + widgetID + '-' + skelid).attr('checked', checked);
+
+        var linkTarget = getLinkTarget();
+        if (!linkTarget) return;
+
+        var model = linkTarget.getSkeletonModel(skelid);
+        if (checked) {
+          if (!model) model = getSkeletonModel(skelid);
+          model.selected = true;
+          var models = {};
+          models[skelid] = model;
+          linkTarget.append(models);
+        } else {
+          if (model) {
+            model.selected = false;
+            linkTarget.updateModel(model);
+          }
+        }
+      };
+
+        var table = $('<table />').attr('cellpadding', '3').attr('cellspacing', '0').attr('id', 'incoming_connectivity_table' + widgetID).attr('border', '1');
         // create header
         var thead = $('<thead />');
         table.append( thead );
@@ -146,7 +285,7 @@ SkeletonConnectivity.prototype.createConnectivityTable = function(status, text) 
         var average = (partners.reduce(function(sum, partner) { return sum + partner.reviewed; }, 0 ) / partners.length) | 0;
         row.append( $('<td />').text(average).css('background-color', getBackgroundColor(average)));
         row.append( $('<td />').text(partners.reduce(function(sum, partner) { return sum + partner.num_nodes; }, 0) ));
-        var el = $('<input type="checkbox" id="' + title.toLowerCase() + 'stream-selectall' +  widgetid + '" />');
+        var el = $('<input type="checkbox" id="' + title.toLowerCase() + 'stream-selectall' +  widgetID + '" />');
         row.append( $('<td />').append( el ) );
         thead.append( row );
         var tbody = $('<tbody />');
@@ -192,10 +331,10 @@ SkeletonConnectivity.prototype.createConnectivityTable = function(status, text) 
             // Cell with checkbox for adding to Selection Table
             var td = document.createElement('td');
             var input = document.createElement('input');
-            input.setAttribute('id', 'incoming-show-skeleton-' + partner.id + '-' + widgetid);
+            input.setAttribute('id', relation + '-show-skeleton-' + widgetID + '-' + partner.id);
             input.setAttribute('type', 'checkbox');
             input.setAttribute('value', partner.id);
-            input.onclick = add_to_selection_table;               
+            input.onclick = set_as_selected;
             td.appendChild(input);
             tr.appendChild(td);
         });
@@ -211,26 +350,43 @@ SkeletonConnectivity.prototype.createConnectivityTable = function(status, text) 
     outgoing.append(table_outgoing);
 
     var add_select_all_fn = function(name, table) {
-         $('#' + name + 'stream-selectall' + widgetid).click( function( event ) {
+         $('#' + name + 'stream-selectall' + widgetID).click( function( event ) {
              var rows = table[0].childNodes[1].childNodes; // all tr elements
+             var linkTarget = getLinkTarget();
 
-            if($('#' + name + 'stream-selectall' + widgetid).is(':checked') ) {
+            if($('#' + name + 'stream-selectall' + widgetID).is(':checked') ) {
                 var skids = [];
                 for (var i=rows.length-1; i > -1; --i) {
                     var checkbox = rows[i].childNodes[4].childNodes[0];
                     checkbox.checked = true;
                     skids.push(checkbox.value);
                 };
-                NeuronStagingArea.addSkeletons( skids );
+                if (linkTarget) {
+                  linkTarget.append(skids.reduce(function(o, skid) {
+                    // See if the target has the model and update only its selection state
+                    var model = linkTarget.getSkeletonModel(skid);
+                    if (model) model.selected = true;
+                    else model = getSkeletonModel(skid); // otherwise add new
+                    o[skid] = model;
+                    return o;
+                  }, {}));
+                }
             } else {
-                var open = NeuronStagingArea.is_widget_open();
                 var skids = [];
                 for (var i=rows.length-1; i > -1; --i) {
                     var checkbox = rows[i].childNodes[4].childNodes[0];
                     checkbox.checked = false;
-                    if (open) skids.push(checkbox.value);
+                    skids.push(checkbox.value);
                 };
-                if (open) NeuronStagingArea.removeSkeletons( skids );
+                if (linkTarget) {
+                  skids.forEach(function(skid) {
+                    var model = linkTarget.getSkeletonModel(skid);
+                    if (model) {
+                      model.selected = false;
+                      linkTarget.updateModel(model);
+                    }
+                  });
+                }
             }
         });
     };
@@ -239,14 +395,14 @@ SkeletonConnectivity.prototype.createConnectivityTable = function(status, text) 
     add_select_all_fn('down', table_outgoing);
 
     var neuronList = document.createElement("ul");
-    neuronList.setAttribute('id', 'connectivity_widget_name_list' + widgetid);
+    neuronList.setAttribute('id', 'connectivity_widget_name_list' + widgetID);
     Object.keys(this.skeletons).forEach(function(skid) {
         var li = document.createElement("li");
         li.appendChild(createNameElement(this.skeletons[skid], skid));
         neuronList.appendChild(li);
     }, this);
 
-    $("#connectivity_table" + widgetid).prepend(neuronList);
+    $("#connectivity_table" + widgetID).prepend(neuronList);
             
     this.createSynapseDistributionPlots(json);
 };
@@ -427,6 +583,6 @@ SkeletonConnectivity.prototype.createSynapseDistributionPlots = function(json) {
             .text(function(d) { return d; });
     };
 
-    makeMultipleBarChart(json.incoming, "#connectivity_widget" + this.widgetid, "Upstream" + this.widgetid);
-    makeMultipleBarChart(json.outgoing, "#connectivity_widget" + this.widgetid, "Downstream" + this.widgetid);
+    makeMultipleBarChart(json.incoming, "#connectivity_widget" + this.widgetID, "Upstream" + this.widgetID);
+    makeMultipleBarChart(json.outgoing, "#connectivity_widget" + this.widgetID, "Downstream" + this.widgetID);
 };
