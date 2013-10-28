@@ -254,19 +254,13 @@ var WindowMaker = new function()
     load.setAttribute("value", "Load list");
     load.onclick = ST.load_skeleton_list.bind(ST);
     buttons.appendChild(load);
-    
-    var colorLabel = document.createElement('div');
-    colorLabel.innerHTML = 'Color:';
-    colorLabel.style.display = 'inline';
-    colorLabel.style.marginLeft = '1em';
-    buttons.appendChild(colorLabel);
-    var colorMenu = document.createElement('select');
-    colorMenu.setAttribute("id", "skeletons_base_color" + ST.widgetID);
-    $('<option/>', {value : 'random', text: 'Random', selected: true}).appendTo(colorMenu);
-    $('<option/>', {value : 'manual', text: 'Manual'}).appendTo(colorMenu);
-    colorMenu.onchange = ST.set_skeletons_base_color.bind(ST);
-    buttons.appendChild(colorMenu);
 
+    var random = document.createElement('input');
+    random.setAttribute("type", "button");
+    random.setAttribute("value", "Randomize colors");
+    random.onclick = ST.randomizeColorsOfSelected.bind(ST);
+    buttons.appendChild(random);
+    
     var measure = document.createElement('input');
     measure.setAttribute('type', 'button');
     measure.setAttribute('value', 'Measure');
@@ -320,9 +314,9 @@ var WindowMaker = new function()
         '</thead>' +
         '<tbody>' +
           '<tr>' +
-            '<td><img src="' + STATIC_URL_JS + 'widgets/themes/kde/delete.png" id="webgl-rmall" title="Remove all"></td>' +
+            '<td><img src="' + STATIC_URL_JS + 'widgets/themes/kde/delete.png" id="selection-table-remove-all' + ST.widgetID + '" title="Remove all"></td>' +
             '<td></td>' +
-            '<td><input type="checkbox" id="webgl-show" checked /></td>' +
+            '<td><input type="checkbox" id="selection-table-show-all' + ST.widgetID + '" checked /></td>' +
             '<td></td>' +
             '<td></td>' +
             '<td></td>' +
@@ -425,7 +419,8 @@ var WindowMaker = new function()
     content.appendChild(container);
 
     buttons.appendChild(document.createTextNode('From'));
-    buttons.appendChild(SkeletonListSources.createSelect(WA));
+    var select_source = SkeletonListSources.createSelect(WA);
+    buttons.appendChild(select_source);
 
     var load = document.createElement('input');
     load.setAttribute("type", "button");
@@ -507,6 +502,7 @@ var WindowMaker = new function()
     var shadingMenu = document.createElement('select');
     shadingMenu.setAttribute("id", "skeletons_shading" + WA.widgetID);
     $('<option/>', {value : 'none', text: 'None', selected: true}).appendTo(shadingMenu);
+    $('<option/>', {value : 'active_node_split', text: 'Active node split'}).appendTo(shadingMenu);
     $('<option/>', {value : 'betweenness_centrality', text: 'Betweenness centrality'}).appendTo(shadingMenu);
     $('<option/>', {value : 'branch_centrality', text: 'Branch centrality'}).appendTo(shadingMenu);
     shadingMenu.onchange = WA.set_shading_method.bind(WA);
@@ -580,13 +576,18 @@ var WindowMaker = new function()
     // Create a Selection Table, preset as the sync target
     createStagingListWindow( win, WA.getName() );
 
-    // Fill in with a Raphael canvas, now that the window exists in the DOM:
-    // createWebGLViewerFromCATMAID(canvas.getAttribute("id"));
-
     WA.init( 800, 600, canvas.getAttribute("id") );
     win.callListeners( CMWWindow.RESIZE );
 
     SkeletonListSources.updateGUI();
+
+    // Now that a Selection Table exists, set it as the default pull source
+    for (var i=select_source.length; --i; ) {
+      if (0 === select_source.options[i].value.indexOf("Selection ")) {
+        select_source.selectedIndex = i;
+        break;
+      }
+    }
 
     return win;
   };
@@ -796,6 +797,20 @@ var WindowMaker = new function()
 
     contentbutton.appendChild(f("pre"));
     contentbutton.appendChild(f("post"));
+
+    contentbutton.appendChild(document.createTextNode(' - '));
+
+    var hide = document.createElement('input');
+    hide.setAttribute('type', 'button');
+    hide.setAttribute('value', 'Hide selected');
+    hide.onclick = CGW.hideSelected.bind(CGW);
+    contentbutton.appendChild(hide);
+
+    var show = document.createElement('input');
+    show.setAttribute('type', 'button');
+    show.setAttribute('value', 'Show hidden');
+    show.onclick = CGW.showHidden.bind(CGW);
+    contentbutton.appendChild(show);
 
     content.appendChild( contentbutton );
 

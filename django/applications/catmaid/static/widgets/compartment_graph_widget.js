@@ -56,19 +56,16 @@ CompartmentGraphWidget.prototype.destroy = function() {
   this.unregisterSource();
 };
 
-/** Reads only selection state and color. */
-CompartmentGraphWidget.prototype.updateModel = function(model, source_chain) {
-  if (source_chain && (this in source_chain)) return; // break propagation loop
-  source_chain[this] = this;
-
-  var nodes = this.getNodes(model.id);
-  if (model.selected) nodes.select();
-  else nodes.unselect();
-  nodes.data('color', '#' + model.color.getHexString());
+CompartmentGraphWidget.prototype.updateModels = function(models) {
+  this.append(models);
 };
 
 CompartmentGraphWidget.prototype.hasSkeleton = function(skeleton_id) {
   return this.getNodes(skeleton_id).length > 0;
+};
+
+CompartmentGraphWidget.prototype.createSkeletonModel = function(props) {
+  return new SelectionTable.prototype.SkeletonModel(props.skeleton_id, props.label, new THREE.Color().setHex(parseInt('0x' + props.color.substring(1))));
 };
 
 CompartmentGraphWidget.prototype.getSkeletonModel = function(skeleton_id) {
@@ -76,16 +73,16 @@ CompartmentGraphWidget.prototype.getSkeletonModel = function(skeleton_id) {
   if (0 === nodes.length) return null;
   var node = nodes[0],
       props = node.data(),
-      model = new SelectionTable.prototype.SkeletonModel(props.skeleton_id, props.label, new THREE.Color.setHex(parseInt('0x' + props.color.substring(1))));
-  model.selected = node.selected();
+      model = this.createSkeletonModel(props);
+  model.setVisible(node.selected());
   return model;
 };
 
 CompartmentGraphWidget.prototype.getSkeletonModels = function() {
   return this.cy.nodes().toArray().reduce(function(m, node) {
     var props = node.data(),
-        model = new SelectionTable.prototype.SkeletonModel(props.skeleton_id, props.label, new THREE.Color().setHex(parseInt('0x' + props.color.substring(1))));
-    model.selected = node.selected();
+        model = CompartmentGraphWidget.prototype.createSkeletonModel(props);
+    model.setVisible(node.selected());
     m[props.skeleton_id] = model;
     return m;
   }, {});
@@ -236,6 +233,7 @@ CompartmentGraphWidget.prototype.init = function() {
             // "source-arrow-shape": "circle",
             "line-color": "data(color)",
             "opacity": 0.4,
+            "text-opacity": 1.0
           })
         .selector(":selected")
           .css({
@@ -325,7 +323,7 @@ CompartmentGraphWidget.prototype.updateLayout = function( layout ) {
 CompartmentGraphWidget.prototype.updateGraph = function(data, models) {
   for (var i = 0; i < data.nodes.length; i++) {
     var model = models[data.nodes[i]['data'].skeleton_id];
-    data.nodes[i]['data']['color'] = model ? '#' + model.color.getHexString() : '#ffae56';
+    data.nodes[i]['data']['color'] = '#' + model.color.getHexString();
   }
 
   var grey = [0, 0, 0.267]; // HSV for #444
@@ -387,21 +385,16 @@ CompartmentGraphWidget.prototype.updateGraph = function(data, models) {
 
   this.cy.on('click', 'node', {}, function(evt){
     var node = this;
-    var splitname = node.id().split('_');
     if (evt.originalEvent.altKey) {
-      // Toggle visibility in all selection sources
-      // TODO should be only in the target source, if any
-      SkeletonListSources.setVisible([splitname[0]], true);
-    } else if (evt.originalEvent.shiftKey) {
       // Select in the overlay
-      TracingTool.goToNearestInNeuronOrSkeleton("skeleton", parseInt(splitname[0]));
+      TracingTool.goToNearestInNeuronOrSkeleton("skeleton", node.data('skeleton_id'));
     }
   });
 
   this.cy.on('click', 'edge', {}, function(evt){
     var edge = this;
-    var splitedge = edge.id().split('_');
-    if (evt.originalEvent.shiftKey) {
+    if (evt.originalEvent.altKey) {
+      var splitedge = edge.id().split('_');
       ConnectorSelection.show_shared_connectors( splitedge[0], [splitedge[2]], "presynaptic_to" );
     }
   });
@@ -449,13 +442,39 @@ CompartmentGraphWidget.prototype.removeSkeletons = function(skeleton_ids) {
 };
 
 CompartmentGraphWidget.prototype.append = function(models) {
-  var unique = this.getSkeletonModels();
-  // Add or update if there is a model
-  Object.keys(models).forEach(function(skid) {
-    if (models[skid]) unique[skid] = models[skid];
-    else unique[skid] = null;
+
+  var set = {};
+
+  this.cy.nodes().each(function(i, node) {
+    var skid = node.data('skeleton_id'),
+        model = models[skid];
+    if (skid in models) {
+      if (model.selected) {
+        node.data('label', model.baseName);
+        node.data('color', '#' + model.color.getHexString());
+        set[skid] = model;
+      } else {
+        node.remove();
+      }
+    } else {
+      set[skid] = CompartmentGraphWidget.prototype.createSkeletonModel(node.data());
+    }
   });
-  this.load(Object.keys(unique), unique);
+
+  var additions = 0;
+
+  Object.keys(models).forEach(function(skid) {
+    if (skid in set) return;
+    var model = models[skid];
+    if (model.selected) {
+      set[skid] = model;
+      ++additions;
+    }
+  });
+
+  if (0 === additions) return; // all updating and removing done above
+
+  this.load(Object.keys(set), set);
 };
 
 CompartmentGraphWidget.prototype.update = function() {
@@ -604,9 +623,39 @@ CompartmentGraphWidget.prototype.grow = function(subURL, minimum) {
           growlAlert("Information", "No further skeletons found, with parameters min_pre=" + min_pre + ", min_post=" + min_post);
           return;
         }
+        var pseudomodel = {selected: true, color: new THREE.Color().setHex(0xffae56)};
         self.append(json.reduce(function(m, skid) {
-          m[skid] = null;
+          m[skid] = pseudomodel;
           return m;
         }, {}));
       });
+};
+
+CompartmentGraphWidget.prototype.hideSelected = function() {
+  if (!this.cy) return;
+  this.cy.elements().each(function(i, e) {
+    if (e.selected()) {
+      e.hide(); // if it's a node, hides edges too
+      e.unselect();
+    }
+    /* doesn't work?
+    if (e.isNode()) {
+      e.edges().css('text-opacity', 0); // the edge label
+    }
+    */
+  });
+  // Work-around cytoscapejs bug
+  this.cy.edges().each(function(i, e) {
+    if (e.hidden()) e.css('text-opacity', 0);
+  });
+};
+
+CompartmentGraphWidget.prototype.showHidden = function() {
+  if (!this.cy) return;
+  this.cy.elements().show();
+  if (this.show_node_labels) {
+    this.cy.elements().css('text-opacity', 1);
+  } else {
+    this.cy.edges().css('text-opacity', 0);
+  }
 };
