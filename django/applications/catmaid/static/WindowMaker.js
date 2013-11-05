@@ -724,10 +724,17 @@ var WindowMaker = new function()
     show.onclick = CGW.update.bind(CGW);
     contentbutton.appendChild(show);
 
-    var layout = appendSelect(contentbutton, "compartment_layout", ["Force-directed", "Grid"]);
-    layout.onchange = function() {
-      CGW.updateLayout(layout.selectedIndex);
-    };
+    contentbutton.appendChild(document.createTextNode(' - '));
+
+    var layout = appendSelect(contentbutton, "compartment_layout", ["Force-directed", "Hierarchical", "Grid", "Circle", "Random"]);
+
+    var trigger = document.createElement('input');
+    trigger.setAttribute('type', 'button');
+    trigger.setAttribute('value', 'Re-layout');
+    trigger.onclick = CGW.updateLayout.bind(CGW, layout);
+    contentbutton.appendChild(trigger);
+
+    contentbutton.appendChild(document.createTextNode(' - '));
 
     var props = document.createElement('input');
     props.setAttribute("type", "button");
@@ -1419,8 +1426,8 @@ var WindowMaker = new function()
 
         var op = document.createElement('select');
         op.setAttribute('id', 'connectivity_operation' + widgetID);
-        op.appendChild(new Option('AND', 'logic-AND')); // added prefix, otherwise gets sent as nonsense
-        op.appendChild(new Option('OR', 'logic-OR'));
+        op.appendChild(new Option('All partners', 'logic-OR'));
+        op.appendChild(new Option('Common partners', 'logic-AND')); // added prefix, otherwise gets sent as nonsense
         contentbutton.appendChild(op);
 
         var add = document.createElement('input');
@@ -1728,11 +1735,25 @@ var WindowMaker = new function()
     var container = createContainer( "object_tree_widget" );
     content.appendChild( container );
 
-    container.innerHTML =
-      '<input type="button" id="refresh_object_tree" value="refresh" style="display:block; float:left;" />' +
-      '&nbsp; Synchronize <input type="checkbox" id="synchronize_object_tree" checked="yes" />' +
-      '<br clear="all" />' +
-      '<div id="tree_object"></div>';
+    var refresh = document.createElement('input');
+    refresh.setAttribute('type', 'button');
+    refresh.setAttribute('value', 'Refresh');
+    refresh.onclick = ObjectTree.refresh;
+    container.appendChild(refresh);
+
+    container.appendChild(document.createTextNode(' Synchronize '));
+
+    var sync = document.createElement('input');
+    sync.setAttribute('type', 'checkbox');
+    sync.checked = true;
+    container.appendChild(sync);
+
+    container.appendChild(document.createTextNode(' - Push to:'));
+    container.appendChild(SkeletonListSources.createPushSelect(ObjectTree, 'link'));
+
+    var div = document.createElement('div');
+    div.setAttribute('id', 'tree_object');
+    container.appendChild(div);
 
     addListener(win, container);
 
