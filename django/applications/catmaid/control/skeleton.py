@@ -33,7 +33,7 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
     if not stackinfo['tile_source_type'] in [5]:
         return HttpResponse(json.dumps({'error': 'No caching implemented for this tile source type!'}), mimetype='text/json')
 
-    tile_images = []
+    tile_images = set()
     for treenode in tn:
         if stackinfo['tile_source_type'] == 5:
             # return baseURL + zoom_level + "/" + baseName + "/" + row + "/" +  col + "." + fileExtension;
@@ -47,8 +47,7 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
             url += str( int( treenode.location.x / stackinfo['resolution']['x'] ) )
             url += '.'
             url += stackinfo['file_extension']
-
-        tile_images.append( url )
+        tile_images.add( url )
 
     return HttpResponse(json.dumps(
         {'image_base': stackinfo['image_base'], 'tiles': tile_images}), mimetype='text/json')
