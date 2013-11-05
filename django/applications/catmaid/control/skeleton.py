@@ -35,17 +35,26 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
     for treenode in tn:
         if stackinfo['tile_source_type'] == 5:
             # return baseURL + zoom_level + "/" + baseName + "/" + row + "/" +  col + "." + fileExtension;
-            url = ""
-            url += str( zoom_level )
-            url += '/'
-            url += str( int( treenode.location.z / stackinfo['resolution']['z'] ) )
-            url += '/'
-            url += str( int( treenode.location.y / stackinfo['resolution']['y'] / stackinfo['tile_height'] ) )
-            url += '/'
-            url += str( int( treenode.location.x / stackinfo['resolution']['x'] / stackinfo['tile_width'] ) )
-            url += '.'
-            url += stackinfo['file_extension']
-        tile_images.add( url )
+
+            row = int( treenode.location.y / stackinfo['resolution']['y'] / stackinfo['tile_height'] )
+            col = int( treenode.location.x / stackinfo['resolution']['x'] / stackinfo['tile_width'] )
+
+            # add neighbourhood tiles
+            for row in range(row-1, row+2):
+                for col in range(col-1, col+2):
+                    if row == -1 or col == -1:
+                        continue
+                    url = ""
+                    url += str( zoom_level )
+                    url += '/'
+                    url += str( int( treenode.location.z / stackinfo['resolution']['z'] ) )
+                    url += '/'
+                    url += str( row )
+                    url += '/'
+                    url += str( col )
+                    url += '.'
+                    url += stackinfo['file_extension']
+                    tile_images.add( url )
 
     return HttpResponse(json.dumps(
         {'image_base': stackinfo['image_base'], 'tiles': list(tile_images)}), mimetype='text/json')
