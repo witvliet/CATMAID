@@ -30,12 +30,12 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
 
     print stackinfo
 
-    if not stackinfo['tile_source_type'] in [5]:
+    if not stackinfo['tile_source_type'] in [1]:
         return HttpResponse(json.dumps({'error': 'No caching implemented for this tile source type!'}), mimetype='text/json')
 
     tile_images = set()
     for treenode in tn:
-        if stackinfo['tile_source_type'] == 5:
+        if stackinfo['tile_source_type'] == 1:
             # return baseURL + zoom_level + "/" + baseName + "/" + row + "/" +  col + "." + fileExtension;
             url = ""
             url += str( zoom_level )
@@ -50,7 +50,7 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
         tile_images.add( url )
 
     return HttpResponse(json.dumps(
-        {'image_base': stackinfo['image_base'], 'tiles': tile_images}), mimetype='text/json')
+        {'image_base': stackinfo['image_base'], 'tiles': list(tile_images)}), mimetype='text/json')
 
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
