@@ -13,6 +13,46 @@ import json
 from operator import itemgetter
 import networkx as nx
 from tree_util import reroot, edge_count_to_root
+from stack import get_stack_info
+
+@requires_user_role([UserRole.Annotate, UserRole.Browse])
+def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
+    p = get_object_or_404(Project, pk=project_id)
+    s = get_object_or_404(Stack, pk=stack_id)
+
+    tn = Treenode.objects.filter(
+        project=p,
+        skeleton_id=skeleton_id)
+
+    zoom_level = 0
+
+    stackinfo = get_stack_info(project_id, stack_id, request.user)
+
+    print stackinfo
+
+    if not stackinfo['tile_source_type'] in [5]:
+        return HttpResponse(json.dumps({'error': 'No caching implemented for this tile source type!'}), mimetype='text/json')
+
+    tile_images = []
+    for treenode in tn:
+        if stackinfo['tile_source_type'] == 5:
+            # return baseURL + zoom_level + "/" + baseName + "/" + row + "/" +  col + "." + fileExtension;
+            url = ""
+            url += str( zoom_level )
+            url += '/'
+            url += str( int( treenode.location.z / stackinfo['resolution']['z'] ) )
+            url += '/'
+            url += str( int( treenode.location.y / stackinfo['resolution']['y'] ) )
+            url += '/'
+            url += str( int( treenode.location.x / stackinfo['resolution']['x'] ) )
+            url += '.'
+            url += stackinfo['file_extension']
+
+        tile_images.append( url )
+
+    return HttpResponse(json.dumps(
+        {'image_base': stackinfo['image_base'], 'tiles': tile_images}), mimetype='text/json')
+
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def last_openleaf(request, project_id=None, skeleton_id=None):

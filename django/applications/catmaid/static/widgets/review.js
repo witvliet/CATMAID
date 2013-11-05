@@ -309,4 +309,24 @@ var ReviewSystem = new function()
     this.resetRevisionsByOthers = function() {
         resetFn("reset-others");
     };
+
+    var loadAllEvent = function() {
+        $.unblockUI();
+    }
+
+    this.cacheImages = function() {
+        if (!checkSkeletonID()) {
+            return;
+        }
+        submit(django_url+projectID+'/stack/' + project.focusedStack.id+"/skeleton/" + skeletonID + "/cache", {},
+            function(json) {
+                var s = [];
+                for(var i = 0; i < json.tiles.length; i++) {
+                    s.push( json.image_base + json.tiles[i]);
+                }
+                $.blockUI({message: '<img src="' + STATIC_URL_JS + 'widgets/busy.gif" /> <h2>Caching images ...</h2>'});
+                imageCache.pushArray(s, null, loadAllEvent);
+            });
+    }
+
 };
