@@ -22,22 +22,23 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
 
     tn = Treenode.objects.filter(
         project=p,
-        skeleton_id=skeleton_id)
+        skeleton_id=skeleton_id).extra(select={'sectionindex': ' (location).z'}).order_by('sectionindex')
 
     zoom_level = 0
     tile_images = set()
 
     stackinfo = get_stack_info(project_id, stack_id, request.user)
 
-    if not stackinfo['tile_source_type'] in [5]:
+    if not stackinfo['tile_source_type'] in [1,5]:
         return HttpResponse(json.dumps({'error': 'No caching implemented for this tile source type!'}), mimetype='text/json')
 
     for treenode in tn:
+        row = int( treenode.location.y / stackinfo['resolution']['y'] / stackinfo['tile_height'] )
+        col = int( treenode.location.x / stackinfo['resolution']['x'] / stackinfo['tile_width'] )
+        sectionindex = int( treenode.location.z / stackinfo['resolution']['z'] )
+
         if stackinfo['tile_source_type'] == 5:
             # return baseURL + zoom_level + "/" + baseName + "/" + row + "/" +  col + "." + fileExtension;
-
-            row = int( treenode.location.y / stackinfo['resolution']['y'] / stackinfo['tile_height'] )
-            col = int( treenode.location.x / stackinfo['resolution']['x'] / stackinfo['tile_width'] )
 
             # add neighbourhood tiles
             for row in range(row-1, row+2):
@@ -47,11 +48,30 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
                     url = ""
                     url += str( zoom_level )
                     url += '/'
-                    url += str( int( treenode.location.z / stackinfo['resolution']['z'] ) )
+                    url += str( sectionindex )
                     url += '/'
                     url += str( row )
                     url += '/'
                     url += str( col )
+                    url += '.'
+                    url += stackinfo['file_extension']
+                    tile_images.add( url )
+
+        elif stackinfo['tile_source_type'] == 1:
+            # return baseURL + baseName + row + "_" + col + "_" + zoom_level + "." + fileExtension;
+            # add neighbourhood tiles
+            for row in range(row-1, row+2):
+                for col in range(col-1, col+2):
+                    if row == -1 or col == -1:
+                        continue
+                    url = ""
+                    url += str( sectionindex )
+                    url += '/'
+                    url += str( row )
+                    url += '_'
+                    url += str( col )
+                    url += '_'
+                    url += str( zoom_level )
                     url += '.'
                     url += stackinfo['file_extension']
                     tile_images.add( url )

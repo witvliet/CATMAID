@@ -8,7 +8,7 @@ var ReviewSystem = new function()
     self.skeleton_segments = null;
     self.current_segment = null;
     self.current_segment_index = 0;
-    self.tile_image_counter = 0;
+    var tile_image_counter = 0;
 
     this.init = function() {
         projectID = project.id;
@@ -313,12 +313,12 @@ var ReviewSystem = new function()
 
     var loadAllEvent = function() {
         $.unblockUI();
-        self.tile_image_counter = 0;
+        tile_image_counter = 0;
     }
 
     var loadEvent = function() {
-        self.tile_image_counter += 1;
-        $('#counting-loaded-tiles').text( self.tile_image_counter );
+        tile_image_counter += 1;
+        $('#counting-loaded-tiles').text( tile_image_counter );
     }
 
     this.cacheImages = function() {
@@ -331,6 +331,7 @@ var ReviewSystem = new function()
                 for(var i = 0; i < json.tiles.length; i++) {
                     s.push( json.image_base + json.tiles[i]);
                 }
+                console.log('cache the following image tiles', json.tiles );
                 $.blockUI({message: '<img src="' + STATIC_URL_JS + 'widgets/busy.gif" /> <h2>Caching images ...<br /><div id="counting-loaded-tiles">0</div> / ' + json.tiles.length + '</h2>'});
                 imageCache.pushArray(s, loadEvent, loadAllEvent);
             });
