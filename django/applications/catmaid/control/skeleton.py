@@ -43,19 +43,19 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
             # return baseURL + zoom_level + "/" + baseName + "/" + row + "/" +  col + "." + fileExtension;
 
             # add neighbourhood tiles
-            for row in range(row-1, row+2):
-                for col in range(col-1, col+2):
+            for rowidx in range(row-1, row+2):
+                for colidx in range(col-1, col+2):
                     
-                    if row == -1 or col == -1 or row >= maxrow or col >= maxcol:
+                    if rowidx == -1 or colidx == -1 or rowidx >= maxrow or colidx >= maxcol:
                         continue
                     url = ""
                     url += str( zoom_level )
                     url += '/'
                     url += str( sectionindex )
                     url += '/'
-                    url += str( row )
+                    url += str( rowidx )
                     url += '/'
-                    url += str( col )
+                    url += str( colidx )
                     url += '.'
                     url += stackinfo['file_extension']
                     tile_images.add( url )
@@ -63,16 +63,16 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
         elif stackinfo['tile_source_type'] == 1:
             # return baseURL + baseName + row + "_" + col + "_" + zoom_level + "." + fileExtension;
             # add neighbourhood tiles
-            for row in range(row-1, row+2):
-                for col in range(col-1, col+2):
-                    if row == -1 or col == -1 or row >= maxrow or col >= maxcol:
+            for rowidx in range(row-1, row+2):
+                for colidx in range(col-1, col+2):
+                    if rowidx == -1 or colidx == -1 or rowidx >= maxrow or colidx >= maxcol:
                         continue
                     url = ""
                     url += str( sectionindex )
                     url += '/'
-                    url += str( row )
+                    url += str( rowidx )
                     url += '_'
-                    url += str( col )
+                    url += str( colidx )
                     url += '_'
                     url += str( zoom_level )
                     url += '.'
@@ -80,7 +80,7 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
                     tile_images.add( url )
 
     return HttpResponse(json.dumps(
-        {'image_base': stackinfo['image_base'], 'tiles': list(tile_images)}), mimetype='text/json')
+        {'image_base': stackinfo['image_base'], 'tiles': sorted(list(tile_images))}), mimetype='text/json')
 
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
