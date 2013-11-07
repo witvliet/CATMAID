@@ -321,12 +321,17 @@ var ReviewSystem = new function()
                 for(var i = 0; i < json.tiles.length; i++) {
                     s.push( json.image_base + json.tiles[i]);
                 }
+                tile_image_counter = 0;
                 total_count = s.length;
                 $('#counting-cache').text( tile_image_counter + '/' + total_count );
-                imageCache.pushArray(s, function() {
+                imageCache.pushArray(s, function(src) {
                     tile_image_counter += 1;
+                    if( tile_image_counter % 100 == 0 ) {
+                        console.log(tile_image_counter, ':', src)
+                    }
                     $('#counting-cache').text( tile_image_counter + '/' + total_count );
                 }, function() {
+                    $('#counting-cache').text( tile_image_counter + '/' + total_count + ' DONE! ' );
                     tile_image_counter = 0;
                     total_count = 0;
                 });
