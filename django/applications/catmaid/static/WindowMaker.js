@@ -1407,6 +1407,10 @@ var WindowMaker = new function()
         cacheImages.onclick = ReviewSystem.cacheImages;
         contentbutton.appendChild(cacheImages);
 
+        var cacheCounter = document.createElement('div');
+        cacheCounter.setAttribute("id", "counting-cache");
+        contentbutton.appendChild(cacheCounter);
+
         addListener(win, container, 'review_window_buttons');
 
         addLogic(win);

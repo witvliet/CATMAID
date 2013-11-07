@@ -33,7 +33,7 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
 
     maxcol = stackinfo['dimension']['x'] / stackinfo['tile_width']
     maxrow = stackinfo['dimension']['y'] / stackinfo['tile_height']
-
+    print 'max', maxcol,maxrow
     for treenode in tn:
         row = int( treenode.location.y / stackinfo['resolution']['y'] / stackinfo['tile_height'] )
         col = int( treenode.location.x / stackinfo['resolution']['x'] / stackinfo['tile_width'] )

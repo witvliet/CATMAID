@@ -8,7 +8,7 @@ var ReviewSystem = new function()
     self.skeleton_segments = null;
     self.current_segment = null;
     self.current_segment_index = 0;
-    var tile_image_counter = 0;
+    var tile_image_counter = 0, total_count = 0;
 
     this.init = function() {
         projectID = project.id;
@@ -321,14 +321,14 @@ var ReviewSystem = new function()
                 for(var i = 0; i < json.tiles.length; i++) {
                     s.push( json.image_base + json.tiles[i]);
                 }
-                console.log('nr', json.tiles.length, 'generated', s.length, 'cache the following image tiles', s );
-                $.blockUI({message: '<img src="' + STATIC_URL_JS + 'widgets/busy.gif" /> <h2>Caching images ...<br /><div id="counting-loaded-tiles">0</div> / ' + json.tiles.length + '</h2>'});
+                total_count = s.length;
+                $('#counting-cache').text( tile_image_counter + '/' + total_count );
                 imageCache.pushArray(s, function() {
                     tile_image_counter += 1;
-                    $('#counting-loaded-tiles').text( tile_image_counter );
+                    $('#counting-cache').text( tile_image_counter + '/' + total_count );
                 }, function() {
-                    $.unblockUI();
                     tile_image_counter = 0;
+                    total_count = 0;
                 });
         });
     }
