@@ -28,9 +28,11 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
     tile_images = set()
 
     stackinfo = get_stack_info(project_id, stack_id, request.user)
-
     if not stackinfo['tile_source_type'] in [1,5]:
         return HttpResponse(json.dumps({'error': 'No caching implemented for this tile source type!'}), mimetype='text/json')
+
+    maxcol = stackinfo['dimension']['x'] / stackinfo['tile_width']
+    maxrow = stackinfo['dimension']['y'] / stackinfo['tile_height']
 
     for treenode in tn:
         row = int( treenode.location.y / stackinfo['resolution']['y'] / stackinfo['tile_height'] )
@@ -43,7 +45,8 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
             # add neighbourhood tiles
             for row in range(row-1, row+2):
                 for col in range(col-1, col+2):
-                    if row == -1 or col == -1:
+                    
+                    if row == -1 or col == -1 or row >= maxrow or col >= maxcol:
                         continue
                     url = ""
                     url += str( zoom_level )
@@ -62,7 +65,7 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
             # add neighbourhood tiles
             for row in range(row-1, row+2):
                 for col in range(col-1, col+2):
-                    if row == -1 or col == -1:
+                    if row == -1 or col == -1 or row >= maxrow or col >= maxcol:
                         continue
                     url = ""
                     url += str( sectionindex )
