@@ -25,9 +25,7 @@ var imageCache = new function () {
 		for (var i=0; i<arrayLength; i++) {
 			me.push(array[i], function (e) {
 				if (imageLoadEvent) {
-					setTimeout(function () {
-						imageLoadEvent(e);
-					}, 10)
+					imageLoadEvent(e);
 				}
 				numLoaded++;
 				if (numLoaded == arrayLength) {
