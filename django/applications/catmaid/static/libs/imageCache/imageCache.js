@@ -8,15 +8,22 @@
 
 var imageCache = new function () {
 	var me = this;
-		
+	     
+    var cache = {};
+
 	me.push = function (src, loadEvent) {
 		var item = new Image();
-		if (loadEvent) {
-			item.onload = loadEvent;
-			item.onerror = function(e) {
-				console.log('error loading', src);
-			};
-		}
+		if (cache[src] && loadEvent) {
+        	loadEvent(src);
+        } else {
+			if (loadEvent) {
+				item.onload = loadEvent;
+				/*item.onerror = function(e) {
+					console.log('error loading', src);
+				};*/
+			}
+			cache[src]=item;
+        }
 		item.src =  src;
 	}
 	me.pushArray = function (array, imageLoadEvent, imagesLoadEvent) {
