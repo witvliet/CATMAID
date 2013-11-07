@@ -311,16 +311,6 @@ var ReviewSystem = new function()
         resetFn("reset-others");
     };
 
-    var loadAllEvent = function() {
-        $.unblockUI();
-        tile_image_counter = 0;
-    }
-
-    var loadEvent = function() {
-        tile_image_counter += 1;
-        $('#counting-loaded-tiles').text( tile_image_counter );
-    }
-
     this.cacheImages = function() {
         if (!checkSkeletonID()) {
             return;
@@ -331,10 +321,15 @@ var ReviewSystem = new function()
                 for(var i = 0; i < json.tiles.length; i++) {
                     s.push( json.image_base + json.tiles[i]);
                 }
-                console.log('cache the following image tiles', json.tiles );
+                console.log('nr', json.tiles.length, 'generated', s.length, 'cache the following image tiles', s );
                 $.blockUI({message: '<img src="' + STATIC_URL_JS + 'widgets/busy.gif" /> <h2>Caching images ...<br /><div id="counting-loaded-tiles">0</div> / ' + json.tiles.length + '</h2>'});
-                imageCache.pushArray(s, loadEvent, loadAllEvent);
-            });
+                imageCache.pushArray(s, function() {
+                    tile_image_counter += 1;
+                    $('#counting-loaded-tiles').text( tile_image_counter );
+                }, function() {
+                    $.unblockUI();
+                    tile_image_counter = 0;
+                });
     }
 
 };

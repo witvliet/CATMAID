@@ -14,6 +14,7 @@ var imageCache = new function () {
 	me.push = function (src, loadEvent) {
 		var item = new Image();
 		if (cache[src] && loadEvent) {
+			console.log('already in cache only execute loadevent');
         	loadEvent(src);
         } else {
 			if (loadEvent) {
@@ -31,6 +32,7 @@ var imageCache = new function () {
 		var arrayLength = array.length;
 		for (var i=0; i<arrayLength; i++) {
 			me.push(array[i], function (e) {
+				console.log('numloaded', numLoaded, 'with src', e);
 				if (imageLoadEvent) {
 					imageLoadEvent(e);
 				}
