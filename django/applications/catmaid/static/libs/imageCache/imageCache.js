@@ -17,7 +17,7 @@ var imageCache = new function () {
         	loadEvent(src);
         } else {
 			if (loadEvent) {
-				item.onload = loadEvent(src);
+				item.onload = loadEvent;
 				/*item.onerror = function(e) {
 					console.log('error loading', src);
 				};*/

@@ -251,6 +251,8 @@ var ReviewSystem = new function()
         if (!checkSkeletonID()) {
             return;
         }
+        // empty caching text
+        $('#counting-cache').text('');
 
         requestQueue.replace(
             django_url+projectID+"/skeleton/" + skeletonID + "/review",
@@ -324,10 +326,10 @@ var ReviewSystem = new function()
                 tile_image_counter = 0;
                 total_count = s.length;
                 $('#counting-cache').text( tile_image_counter + '/' + total_count );
-                imageCache.pushArray(s, function(src) {
+                imageCache.pushArray(s, function() {
                     tile_image_counter += 1;
-                    if( tile_image_counter % 100 == 0 ) {
-                        console.log(tile_image_counter, ':', src)
+                    if( tile_image_counter % 5000 == 0 ) {
+                        console.log(tile_image_counter, ' done ...')
                     }
                     $('#counting-cache').text( tile_image_counter + '/' + total_count );
                 }, function() {
