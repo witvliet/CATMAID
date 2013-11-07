@@ -330,6 +330,7 @@ var ReviewSystem = new function()
                     $.unblockUI();
                     tile_image_counter = 0;
                 });
+        });
     }
 
 };
