@@ -319,10 +319,14 @@ var ReviewSystem = new function()
         }
         submit(django_url+projectID+'/stack/' + project.focusedStack.id+"/skeleton/" + skeletonID + "/cache", {},
             function(json) {
-                var s = [];
-                for(var i = 0; i < json.tiles.length; i++) {
-                    s.push( json.image_base + json.tiles[i]);
+                // var s = [];
+                var tilelength = json.tiles.length;
+                for(var i = 0; i < tilelength; i++) {
+                    // s.push( json.image_base + json.tiles[i]);
+                    var image = $('#hiddenimage').attr('src', json.image_base + json.tiles[i]);
+                    $('#counting-cache').text( i + 1 + '/' + tilelength );
                 }
+                /*
                 tile_image_counter = 0;
                 total_count = s.length;
                 $('#counting-cache').text( tile_image_counter + '/' + total_count );
@@ -337,6 +341,8 @@ var ReviewSystem = new function()
                     tile_image_counter = 0;
                     total_count = 0;
                 });
+
+                */
         });
     }
 
