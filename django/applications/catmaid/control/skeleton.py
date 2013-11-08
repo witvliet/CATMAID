@@ -22,6 +22,7 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
 
     tn = Treenode.objects.filter(
         project=p,
+        reviewer_id=-1,
         skeleton_id=skeleton_id).extra(select={'sectionindex': ' (location).z'}).order_by('sectionindex')
 
     zoom_level = 0
