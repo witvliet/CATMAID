@@ -313,19 +313,34 @@ var ReviewSystem = new function()
         resetFn("reset-others");
     };
 
+    var loadImageCallback = function( imageArray ) {
+        if( imageArray.length == 0 )
+            return;
+        var src = imageArray.pop();
+        var image = new Image();
+        image.src = src;
+        image.onload = function(e) {
+            $('#counting-cache').text( total_count - imageArray.length + '/' + total_count );
+            loadImageCallback( imageArray );
+        };
+
+    }
+
+
     this.cacheImages = function() {
         if (!checkSkeletonID()) {
             return;
         }
         submit(django_url+projectID+'/stack/' + project.focusedStack.id+"/skeleton/" + skeletonID + "/cache", {},
             function(json) {
-                // var s = [];
+                var s = [];
                 var tilelength = json.tiles.length;
                 for(var i = 0; i < tilelength; i++) {
-                    // s.push( json.image_base + json.tiles[i]);
-                    var image = $('#hiddenimage').attr('src', json.image_base + json.tiles[i]);
-                    $('#counting-cache').text( i + 1 + '/' + tilelength );
+                    s.push( json.image_base + json.tiles[i]);
                 }
+                total_count = s.length;
+                // tile_image_counter = 0;
+                loadImageCallback( s );
                 /*
                 tile_image_counter = 0;
                 total_count = s.length;

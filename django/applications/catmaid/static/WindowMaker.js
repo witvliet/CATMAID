@@ -1411,12 +1411,6 @@ var WindowMaker = new function()
         cacheCounter.setAttribute("id", "counting-cache");
         contentbutton.appendChild(cacheCounter);
 
-        var hiddenimage = document.createElement('img');
-        hiddenimage.setAttribute("id", 'hiddenimage');
-        hiddenimage.style.visibility = 'hidden';
-        content.appendChild( hiddenimage );
-
-
         addListener(win, container, 'review_window_buttons');
 
         addLogic(win);
