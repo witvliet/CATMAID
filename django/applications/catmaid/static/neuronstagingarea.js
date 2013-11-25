@@ -26,7 +26,8 @@ SelectionTable.prototype.getName = function() {
 };
 
 SelectionTable.prototype.destroy = function() {
-  this.clear();
+  delete this.linkTarget;
+  this.clear(); // clear after clearing linkTarget, so it doesn't get cleared
   this.unregisterInstance();
   this.unregisterSource();
 };
@@ -232,27 +233,13 @@ SelectionTable.prototype.toggleSelectAllSkeletons = function() {
 
 /** setup button handlers */
 SelectionTable.prototype.init = function() {
-  // Set the default source at the 'Active skeleton'
-  var select = $('#' + SkeletonListSources.createSelectID(this))[0];
-  for (var i=0; i<select.options.length; ++i) {
-    if ('Active skeleton' === select.options[i].value) {
-      select.selectedIndex = i;
-      break;
+  $('#selection-table-remove-all' + this.widgetID).click((function() {
+    if (confirm("Remove selected from table?")) {
+      this.removeSkeletons(this.getSelectedSkeletons());
     }
-  }
-  // Load the default source (should at least be the 'Active skeleton')
-  this.loadSource();
+  }).bind(this));
 
-  var clear = this.clear.bind(this),
-      toggleSelectAllSkeletons = this.toggleSelectAllSkeletons.bind(this);
-
-  $('#selection-table-remove-all' + this.widgetID).click(function() {
-    if (confirm("Empty selection table?")) {
-      clear();
-    }
-  });
-
-  $('#selection-table-show-all' + this.widgetID).click(toggleSelectAllSkeletons);
+  $('#selection-table-show-all' + this.widgetID).click(this.toggleSelectAllSkeletons.bind(this));
 
   // TODO add similar buttons and handlers for pre and post
 };

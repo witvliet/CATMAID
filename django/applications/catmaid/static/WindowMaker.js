@@ -22,7 +22,7 @@ var WindowMaker = new function()
     return container;
   };
 
-  var addListener = function(win, container, button_bar, destroy) {
+  var addListener = function(win, container, button_bar, destroy, resize) {
     win.addListener(
       function(callingWindow, signal) {
         switch (signal) {
@@ -54,6 +54,10 @@ var WindowMaker = new function()
                 container.style.height = ( win.getContentHeight() ) + "px";
             }
             container.style.width = ( win.getAvailableWidth() + "px" );
+
+            if (typeof(resize) === "function") {
+              resize();
+            }
 
             break;
         }
@@ -192,10 +196,10 @@ var WindowMaker = new function()
     var content = win.getFrame();
     content.style.backgroundColor = "#ffffff";
 
-    var container = createContainer("neuron_staging_table");
-    
+    var container = createContainer("neuron_staging_table" + ST.widgetID);
+
     var buttons = document.createElement("div");
-    buttons.id = "selection-table-buttons-div";
+    buttons.setAttribute('id', 'ST_button_bar' + ST.widgetID);
 
     buttons.appendChild(document.createTextNode('From'));
     buttons.appendChild(SkeletonListSources.createSelect(ST));
@@ -504,7 +508,9 @@ var WindowMaker = new function()
     $('<option/>', {value : 'none', text: 'None', selected: true}).appendTo(shadingMenu);
     $('<option/>', {value : 'active_node_split', text: 'Active node split'}).appendTo(shadingMenu);
     $('<option/>', {value : 'betweenness_centrality', text: 'Betweenness centrality'}).appendTo(shadingMenu);
-    $('<option/>', {value : 'branch_centrality', text: 'Branch centrality'}).appendTo(shadingMenu);
+    $('<option/>', {value : 'slab_centrality', text: 'Slab centrality'}).appendTo(shadingMenu);
+    $('<option/>', {value : 'distance_to_root', text: 'Distance to root'}).appendTo(shadingMenu);
+    $('<option/>', {value : 'partitions', text: 'Principal branch length'}).appendTo(shadingMenu);
     shadingMenu.onchange = WA.set_shading_method.bind(WA);
     buttons.appendChild(shadingMenu);
 
@@ -724,6 +730,12 @@ var WindowMaker = new function()
     show.onclick = CGW.update.bind(CGW);
     contentbutton.appendChild(show);
 
+    var props = document.createElement('input');
+    props.setAttribute("type", "button");
+    props.setAttribute("value", "Properties");
+    props.onclick = CGW.graph_properties.bind(CGW);
+    contentbutton.appendChild(props);
+
     contentbutton.appendChild(document.createTextNode(' - '));
 
     var layout = appendSelect(contentbutton, "compartment_layout", ["Force-directed", "Hierarchical", "Grid", "Circle", "Random"]);
@@ -733,20 +745,6 @@ var WindowMaker = new function()
     trigger.setAttribute('value', 'Re-layout');
     trigger.onclick = CGW.updateLayout.bind(CGW, layout);
     contentbutton.appendChild(trigger);
-
-    contentbutton.appendChild(document.createTextNode(' - '));
-
-    var props = document.createElement('input');
-    props.setAttribute("type", "button");
-    props.setAttribute("value", "Properties");
-    props.onclick = CGW.graph_properties.bind(CGW);
-    contentbutton.appendChild(props);
-
-    var gml = document.createElement('input');
-    gml.setAttribute("type", "button");
-    gml.setAttribute("value", "Export GML");
-    gml.onclick = CGW.exportGML.bind(CGW);
-    contentbutton.appendChild(gml);
 
     contentbutton.appendChild(document.createElement('br'));
 
@@ -815,9 +813,44 @@ var WindowMaker = new function()
 
     var show = document.createElement('input');
     show.setAttribute('type', 'button');
+    show.setAttribute('id', 'graph_show_hidden' + CGW.widgetID);
     show.setAttribute('value', 'Show hidden');
+    show.setAttribute('disabled', true);
     show.onclick = CGW.showHidden.bind(CGW);
     contentbutton.appendChild(show);
+
+    contentbutton.appendChild(document.createElement('br'));
+
+    contentbutton.appendChild(document.createTextNode('Color:'));
+    var color = document.createElement('select');
+    color.setAttribute('id', 'graph_color_choice' + CGW.widgetID);
+    color.options.add(new Option('source', 'source'));
+    color.options.add(new Option('review status', 'review'));
+    color.options.add(new Option('input/output', 'I/O'));
+    color.options.add(new Option('betweenness centrality', 'betweenness_centrality'));
+    color.options.add(new Option('circles of hell', 'circles_of_hell')); // inspired by Tom Jessell's comment
+    color.onchange = CGW._colorize.bind(CGW, color);
+    contentbutton.appendChild(color);
+
+    contentbutton.appendChild(document.createTextNode(' - '));
+
+    var gml = document.createElement('input');
+    gml.setAttribute("type", "button");
+    gml.setAttribute("value", "Export GML");
+    gml.onclick = CGW.exportGML.bind(CGW);
+    contentbutton.appendChild(gml);
+
+    var adj = document.createElement('input');
+    adj.setAttribute("type", "button");
+    adj.setAttribute("value", "Export Adjacency Matrix");
+    adj.onclick = CGW.exportAdjacencyMatrix.bind(CGW);
+    contentbutton.appendChild(adj);
+
+    var plot = document.createElement('input');
+    plot.setAttribute("type", "button");
+    plot.setAttribute("value", "Open plot");
+    plot.onclick = CGW.openPlot.bind(CGW);
+    contentbutton.appendChild(plot);
 
     content.appendChild( contentbutton );
 
@@ -841,6 +874,85 @@ var WindowMaker = new function()
 
     return win;
   };
+
+  var createCircuitGraphPlot = function() {
+
+    var GP = new CircuitGraphPlot();
+
+    var win = new CMWWindow(GP.getName());
+    var content = win.getFrame();
+    content.style.backgroundColor = "#ffffff";
+
+    var buttons = document.createElement('div');
+    buttons.setAttribute('id', 'circuit_graph_plot_buttons' + GP.widgetID);
+
+    buttons.appendChild(document.createTextNode('From'));
+    buttons.appendChild(SkeletonListSources.createSelect(GP));
+
+    var add = document.createElement('input');
+    add.setAttribute("type", "button");
+    add.setAttribute("value", "Append");
+    add.onclick = GP.loadSource.bind(GP);
+    buttons.appendChild(add);
+
+    var clear = document.createElement('input');
+    clear.setAttribute("type", "button");
+    clear.setAttribute("value", "Clear");
+    clear.onclick = GP.clear.bind(GP);
+    buttons.appendChild(clear);
+
+    var update = document.createElement('input');
+    update.setAttribute("type", "button");
+    update.setAttribute("value", "Refresh");
+    update.onclick = GP.update.bind(GP);
+    buttons.appendChild(update);
+
+    buttons.appendChild(document.createTextNode(' - X:'));
+
+    var axisX = document.createElement('select');
+    axisX.setAttribute('id', 'circuit_graph_plot_X_' + GP.widgetID);
+    buttons.appendChild(axisX);
+
+    buttons.appendChild(document.createTextNode(' Y:'));
+
+    var axisY = document.createElement('select');
+    axisY.setAttribute('id', 'circuit_graph_plot_Y_' + GP.widgetID);
+    buttons.appendChild(axisY);
+
+    var redraw = document.createElement('input');
+    redraw.setAttribute("type", "button");
+    redraw.setAttribute("value", "Draw");
+    redraw.onclick = GP.redraw.bind(GP);
+    buttons.appendChild(redraw);
+
+    buttons.appendChild(document.createTextNode(" Names:"));
+    var toggle = document.createElement('input');
+    toggle.setAttribute("type", "checkbox");
+    toggle.checked = true;
+    toggle.onclick = GP.toggleNamesVisible.bind(GP, toggle);
+    buttons.appendChild(toggle);
+
+    content.appendChild(buttons);
+
+    var container = createContainer('circuit_graph_plot_div' + GP.widgetID);
+    content.appendChild(container);
+
+    var plot = document.createElement('div');
+    plot.setAttribute('id', 'circuit_graph_plot' + GP.widgetID);
+    plot.style.width = "100%";
+    plot.style.height = "100%";
+    plot.style.backgroundColor = "#FFFFF0";
+    container.appendChild(plot);
+
+    addListener(win, container, 'circuit_graph_plot_buttons' + GP.widgetID, GP.destroy.bind(GP), GP.resize.bind(GP));
+
+    addLogic(win);
+
+    SkeletonListSources.updateGUI();
+
+    return win;
+  };
+
 
   var createAssemblyGraphWindow = function()
   {
@@ -975,22 +1087,13 @@ var WindowMaker = new function()
     refresh.onclick = TreenodeTable.refresh; // function declared in table_treenode.js
     contentbutton.appendChild(refresh);
 
-    var sync = document.createElement('input');
-    sync.setAttribute("type", "checkbox");
-    sync.setAttribute("id", "synchronize_treenodetable");
-    sync.setAttribute("label", "Synchronize");
-    contentbutton.appendChild(sync);
-
-    var label = document.createTextNode('Synchronize');
-    contentbutton.appendChild(label);
-
-    var sync = document.createElement('select');
-    sync.setAttribute("id", "treenodetable_lastskeletons");
+    var last = document.createElement('select');
+    last.setAttribute("id", "treenodetable_lastskeletons");
     var option = document.createElement("option");
     option.text = "None";
     option.value = -1;
-    sync.appendChild(option);
-    contentbutton.appendChild(sync);
+    last.appendChild(option);
+    contentbutton.appendChild(last);
 
     content.appendChild( contentbutton );
 
@@ -1074,34 +1177,26 @@ var WindowMaker = new function()
     add.onclick = ConnectorTable.refreshConnectorTable;
     contentbutton.appendChild(add);
 
-    var sync = document.createElement('select');
-    sync.setAttribute("id", "connector_relation_type");
+    var direction = document.createElement('select');
+    direction.setAttribute("id", "connector_relation_type");
     var objOption = document.createElement("option");
     objOption.innerHTML = "Incoming connectors";
     objOption.value = "0";
-    sync.appendChild(objOption);
+    direction.appendChild(objOption);
     var objOption2 = document.createElement("option");
     objOption2.innerHTML = "Outgoing connectors";
     objOption2.value = "1";
     objOption2.selected = "selected";
-    sync.appendChild(objOption2);
-    contentbutton.appendChild(sync);
+    direction.appendChild(objOption2);
+    contentbutton.appendChild(direction);
 
-    var rand = document.createTextNode('Synchronize');
-    contentbutton.appendChild(rand);
-    var sync = document.createElement('input');
-    sync.setAttribute("type", "checkbox");
-    sync.setAttribute("id", "synchronize_connectortable");
-    sync.setAttribute("label", "Synchronize");
-    contentbutton.appendChild(sync);
-
-    var sync = document.createElement('select');
-    sync.setAttribute("id", "connectortable_lastskeletons");
+    var last = document.createElement('select');
+    last.setAttribute("id", "connectortable_lastskeletons");
     var option = document.createElement("option");
     option.text = "None";
     option.value = -1;
-    sync.appendChild(option);
-    contentbutton.appendChild(sync);
+    last.appendChild(option);
+    contentbutton.appendChild(last);
 
     content.appendChild( contentbutton );
 
@@ -1749,7 +1844,7 @@ var WindowMaker = new function()
     var refresh = document.createElement('input');
     refresh.setAttribute('type', 'button');
     refresh.setAttribute('value', 'Refresh');
-    refresh.onclick = ObjectTree.refresh;
+    refresh.onclick = ObjectTree.refresh.bind(ObjectTree);
     container.appendChild(refresh);
 
     container.appendChild(document.createTextNode(' Synchronize '));
@@ -1767,7 +1862,7 @@ var WindowMaker = new function()
     div.setAttribute('id', 'tree_object');
     container.appendChild(div);
 
-    addListener(win, container);
+    addListener(win, container, undefined, ObjectTree.destroy.bind(ObjectTree));
 
     addLogic(win);
 
@@ -1911,6 +2006,7 @@ var WindowMaker = new function()
     "classification-editor": createClassificationWidget,
     "notifications": createNotificationsWindow,
     "clustering-widget": createClusteringWidget,
+    "circuit-graph-plot": createCircuitGraphPlot,
   };
 
   /** If the window for the given name is already showing, just focus it.

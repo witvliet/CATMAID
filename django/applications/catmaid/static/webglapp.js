@@ -23,6 +23,7 @@ WebGLApplication.prototype.init = function(canvasWidth, canvasHeight, divID) {
   this.submit = new submitterFn();
 	this.options = new WebGLApplication.prototype.OPTIONS.clone();
 	this.space = new this.Space(canvasWidth, canvasHeight, this.container, this.stack, this.scale);
+  this.updateActiveNodePosition();
 };
 
 WebGLApplication.prototype.getName = function() {
@@ -289,29 +290,35 @@ WebGLApplication.prototype.refreshRestrictedConnectors = function() {
 };
 
 WebGLApplication.prototype.set_shading_method = function() {
-	// Set the shading of all skeletons based on the state of the "Shading" pop-up menu.
-	this.options.shading_method = $('#skeletons_shading' + this.widgetID + ' :selected').attr("value");
+  // Set the shading of all skeletons based on the state of the "Shading" pop-up menu.
+  this.options.shading_method = $('#skeletons_shading' + this.widgetID + ' :selected').attr("value");
 
-	var skeletons = this.space.content.skeletons;
-	for (var skeleton_id in skeletons) {
-		if (skeletons.hasOwnProperty(skeleton_id)) {
-			skeletons[skeleton_id].shaderWorkers(this.options);
-		}
-	}
+  var skeletons = this.space.content.skeletons;
+  try {
+    $.blockUI();
+    Object.keys(skeletons).forEach(function(skid) {
+      skeletons[skid].updateSkeletonColor(this.options);
+    }, this);
+  } catch (e) {
+    console.log(e, e.stack);
+    alert(e);
+  }
+  $.unblockUI();
 
-  // Won't be superfluous if shaderWorkers already run once
   this.space.render();
 };
 
 WebGLApplication.prototype.look_at_active_node = function() {
-	this.updateActiveNodePosition();
+	this.space.content.active_node.updatePosition(this.space, this.options);
 	this.space.view.controls.target = this.space.content.active_node.mesh.position.clone();
 	this.space.render();
 };
 
 WebGLApplication.prototype.updateActiveNodePosition = function() {
-	this.space.content.active_node.updatePosition(this.space);
-  this.space.render();
+	this.space.content.active_node.updatePosition(this.space, this.options);
+  if (this.space.content.active_node.mesh.visible) {
+    this.space.render();
+  }
 };
 
 WebGLApplication.prototype.staticUpdateActiveNodePosition = function() {
@@ -319,7 +326,6 @@ WebGLApplication.prototype.staticUpdateActiveNodePosition = function() {
     instance.updateActiveNodePosition();
   });
 };
-
 
 WebGLApplication.prototype.has_skeleton = function(skeleton_id) {
 	return this.space.content.skeletons.hasOwnProperty(skeleton_id);
@@ -489,7 +495,7 @@ WebGLApplication.prototype.addActiveObjectToStagingArea = function() {
 };
 
 WebGLApplication.prototype.showActiveNode = function() {
-	this.space.content.active_node.visible = true;
+	this.space.content.active_node.setVisible(true);
 };
 
 
@@ -688,7 +694,6 @@ WebGLApplication.prototype.Space = function( w, h, container, stack, scale ) {
 	this.scene.add(this.staticContent.floor);
 
 	this.content = new this.Content(scale);
-  this.content.active_node.updatePosition(this);
 	this.scene.add(this.content.active_node.mesh);
 };
 
@@ -811,6 +816,15 @@ WebGLApplication.prototype.Space.prototype.removeSkeleton = function(skeleton_id
 		this.content.skeletons[skeleton_id].destroy();
 		delete this.content.skeletons[skeleton_id];
 	}
+};
+
+WebGLApplication.prototype.Space.prototype.updateSplitShading = function(old_skeleton_id, new_skeleton_id, options) {
+  if ('active_node_split' === options.shading_method) {
+    if (old_skeleton_id !== new_skeleton_id) {
+      if (old_skeleton_id && old_skeleton_id in this.content.skeletons) this.content.skeletons[old_skeleton_id].updateSkeletonColor(options);
+    }
+    if (new_skeleton_id && new_skeleton_id in this.content.skeletons) this.content.skeletons[new_skeleton_id].updateSkeletonColor(options);
+  }
 };
 
 
@@ -1114,26 +1128,19 @@ WebGLApplication.prototype.Space.prototype.View.prototype.init = function() {
 
 	this.controls = this.createControls();
 
-  this.mouse = {position: new THREE.Vector2(),
-                is_mouse_down: false};
-  this.mouseControls = {mousewheel: new this.MouseWheel(this.space),
-                        mousemove: new this.MouseMove(this.space, this.mouse),
-                        mouseup: new this.MouseUp(this.space, this.mouse, this.controls),
-                        mousedown: new this.MouseDown(this.space, this.mouse, this.projector, this.camera)};
-
   this.space.container.appendChild(this.renderer.domElement);
 
-  Object.keys(this.mouseControls).forEach(function(m) {
-    this.renderer.domElement.addEventListener(m, this.mouseControls[m], false);
-  }, this);
+  this.mouse = {position: new THREE.Vector2(),
+                is_mouse_down: false};
+
+  this.mouseControls = new this.MouseControls();
+  this.mouseControls.attach(this, this.renderer.domElement);
 };
 
 
 WebGLApplication.prototype.Space.prototype.View.prototype.destroy = function() {
-  Object.keys(this.mouseControls).forEach(function(m) {
-    this.renderer.domElement.removeEventListener(m, this.mouseControls[m], false);
-    this.mouseControls[m].destroy();
-  }, this);
+  this.controls.removeListeners();
+  this.mouseControls.detach(this.renderer.domElement);
   this.space.container.removeChild(this.renderer.domElement);
   Object.keys(this).forEach(function(key) { delete this[key]; }, this);
 };
@@ -1201,74 +1208,71 @@ WebGLApplication.prototype.Space.prototype.View.prototype.ZX = function() {
 };
 
 /** Construct mouse controls as objects, so that no context is retained. */
-(function(p) {
-  p.MouseWheel = function(space) {
-    this.space = space;
-  };
-  p.MouseWheel.prototype = {};
-  p.MouseWheel.prototype.handleEvent = function(ev) {
-    this.space.render();
-  };
-  p.MouseWheel.prototype.destroy = function(ev) {
-    delete this.space;
+WebGLApplication.prototype.Space.prototype.View.prototype.MouseControls = function() {
+
+  this.attach = function(view, domElement) {
+    domElement.CATMAID_view = view;
+  
+    domElement.addEventListener('mousewheel', this.MouseWheel, false);
+    domElement.addEventListener('mousemove', this.MouseMove, false);
+    domElement.addEventListener('mouseup', this.MouseUp, false);
+    domElement.addEventListener('mousedown', this.MouseDown, false);
   };
 
-  p.MouseMove = function(space, mouse) {
-    this.space = space;
-    this.mouse = mouse;
-  };
-  p.MouseMove.prototype = {};
-  p.MouseMove.prototype.handleEvent = function(ev) {
-    this.mouse.position.x =  ( ev.offsetX / this.space.canvasWidth  ) * 2 -1;
-    this.mouse.position.y = -( ev.offsetY / this.space.canvasHeight ) * 2 +1;
+  this.detach = function(domElement) {
+    domElement.CATMAID_view = null;
+    delete domElement.CATMAID_view;
 
-    if (this.mouse.is_mouse_down) {
-      this.space.render();
+    domElement.removeEventListener('mousewheel', this.MouseWheel, false);
+    domElement.removeEventListener('mousemove', this.MouseMove, false);
+    domElement.removeEventListener('mouseup', this.MouseUp, false);
+    domElement.removeEventListener('mousedown', this.MouseDown, false);
+
+    Object.keys(this).forEach(function(key) { delete this[key]; }, this);
+  };
+
+  this.MouseWheel = function(ev) {
+    this.CATMAID_view.space.render();
+  };
+
+  this.MouseMove = function(ev) {
+    var mouse = this.CATMAID_view.mouse,
+        space = this.CATMAID_view.space;
+    mouse.position.x =  ( ev.offsetX / space.canvasWidth  ) * 2 -1;
+    mouse.position.y = -( ev.offsetY / space.canvasHeight ) * 2 +1;
+
+    if (mouse.is_mouse_down) {
+      space.render();
     }
 
-    this.space.container.style.cursor = 'pointer';
-  };
-  p.MouseMove.prototype.destroy = function() {
-    delete this.space;
-    delete this.mouse;
+    space.container.style.cursor = 'pointer';
   };
 
-  p.MouseUp = function(space, mouse, controls) {
-    this.space = space;
-    this.mouse = mouse;
-    this.controls = controls;
-  };
-  p.MouseUp.prototype = {};
-  p.MouseUp.prototype.handleEvent = function(ev) {
-		this.mouse.is_mouse_down = false;
-    this.controls.enabled = true;
-    this.space.render(); // May need another render on occasions
-  };
-  p.MouseUp.prototype.destroy = function() {
-    delete this.space;
-    delete this.mouse;
-    delete this.controls;
+  this.MouseUp = function(ev) {
+    var mouse = this.CATMAID_view.mouse,
+        controls = this.CATMAID_view.controls,
+        space = this.CATMAID_view.space;
+		mouse.is_mouse_down = false;
+    controls.enabled = true;
+    space.render(); // May need another render on occasions
   };
 
-  p.MouseDown = function(space, mouse, projector, camera) {
-    this.space = space;
-    this.mouse = mouse;
-    this.projector = projector;
-    this.camera = camera;
-  };
-  p.MouseDown.prototype = {};
-  p.MouseDown.prototype.handleEvent = function(ev) {
-    this.mouse.is_mouse_down = true;
+  this.MouseDown = function(ev) {
+    var mouse = this.CATMAID_view.mouse,
+        space = this.CATMAID_view.space,
+        camera = this.CATMAID_view.camera,
+        projector = this.CATMAID_view.projector;
+    mouse.is_mouse_down = true;
 		if (!ev.shiftKey) return;
 
 		// Find object under the mouse
-		var vector = new THREE.Vector3(this.mouse.position.x, this.mouse.position.y, 0.5);
-		this.projector.unprojectVector(vector, this.camera);
-		var raycaster = new THREE.Raycaster(this.camera.position, vector.sub(this.camera.position).normalize());
+		var vector = new THREE.Vector3(mouse.position.x, mouse.position.y, 0.5);
+		projector.unprojectVector(vector, camera);
+		var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
 
 		// Attempt to intersect visible skeleton spheres, stopping at the first found
 		var fields = ['specialTagSpheres', 'synapticSpheres', 'radiusVolumes'];
-    var skeletons = this.space.content.skeletons;
+    var skeletons = space.content.skeletons;
 		if (Object.keys(skeletons).some(function(skeleton_id) {
 			var skeleton = skeletons[skeleton_id];
 			if (!skeleton.visible) return false;
@@ -1294,16 +1298,11 @@ WebGLApplication.prototype.Space.prototype.View.prototype.ZX = function() {
 
 		growlAlert("Oops", "Couldn't find any intersectable object under the mouse.");
   };
-  p.MouseDown.prototype.destroy = function() {
-    delete this.space;
-    delete this.mouse;
-    delete this.projector;
-    delete this.camera;
-  };
-}(WebGLApplication.prototype.Space.prototype.View.prototype));
+};
 
 
 WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode = function(scale) {
+  this.skeleton_id = null;
   this.mesh = new THREE.Mesh( new THREE.IcosahedronGeometry(1, 2), new THREE.MeshBasicMaterial( { color: 0x00ff00, opacity:0.8, transparent:true } ) );
   this.mesh.scale.x = this.mesh.scale.y = this.mesh.scale.z = 160 * scale;
 };
@@ -1314,9 +1313,17 @@ WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode.prototyp
 	this.mesh.visible = visible ? true : false;
 };
 
-WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode.prototype.updatePosition = function(space) {
+WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode.prototype.updatePosition = function(space, options) {
 	var pos = SkeletonAnnotations.getActiveNodePosition();
-	if (!pos) return;
+	if (!pos) {
+    space.updateSplitShading(this.skeleton_id, null, options);
+    this.skeleton_id = null;
+    return;
+  }
+
+  var skeleton_id = SkeletonAnnotations.getActiveSkeletonId();
+  space.updateSplitShading(this.skeleton_id, skeleton_id, options);
+  this.skeleton_id = skeleton_id;
 
 	var stack = space.stack,
       t = stack.translation,
@@ -1328,7 +1335,6 @@ WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode.prototyp
 	space.toSpace(c);
 
 	this.mesh.position.set(c.x, c.y, c.z);
-	this.setVisible(true);
 };
 
 WebGLApplication.prototype.Space.prototype.updateSkeleton = function(skeletonmodel, json) {
@@ -1558,43 +1564,98 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.translate = functi
 */
 
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.updateSkeletonColor = function(options) {
-	if ('creator' === options.color_method
-	 || 'reviewer' === options.color_method
-	 || ('active_node_split' === options.shading_method && SkeletonAnnotations.getActiveSkeletonId() === this.id))
-	{
-		// The skeleton colors need to be set per-vertex.
-		this.line_material.vertexColors = THREE.VertexColors;
-		this.line_material.needsUpdate = true;
-		this.geometry['neurite'].colors = [];
-		var edgeWeights = {};
-		if ('betweenness_centrality' === options.shading_method) {
-			// Darken the skeleton based on the betweenness calculation.
-			edgeWeights = this.betweenness;
-		} else if ('branch_centrality' === options.shading_method) {
-			// Darken the skeleton based on the branch calculation.
-			edgeWeights = this.branchCentrality;
-		} else if ('active_node_split' === options.shading_method) {
-      var atn_id = SkeletonAnnotations.getActiveNodeId();
-      var graph = this.createGraph();
-      graph.remove_edge(atn_id, graph.neighbors(atn_id)[0]);
-      // jsnetworkx is not complete. Must manually find the connected component subgraphs
+  var node_weights;
 
-      // Edges on the side of the active node get a weight of 0.5
-      // All other edges at 1.0 by default, in absence.
+  if ('none' === options.shading_method) {
+    node_weights = null;
+  } else {
+    var arbor =  new Arbor().addEdges(this.geometry['neurite'].vertices,
+                                      function(v) { return v.node_id; });
+    if (-1 !== options.shading_method.lastIndexOf('centrality')) {
+      // Darken the skeleton based on the betweenness calculation.
+      var c = (0 === options.shading_method.indexOf('betweenness')) ?
+          arbor.betweennessCentrality(true) // betweenness_centrality
+        : arbor.slabCentrality(true); // branch_centrality
 
-      var open = [atn_id];
-      while (open.length > 0) {
-        var node = open.pop(),
-            neighbors = graph.neighbors(node);
-        for (var i=neighbors.length-1; i>-1; --i) {
-          var neighbor = neighbors[i],
-              edge = [node, neighbor].sort();
-          if (edge in edgeWeights) continue;
-          open.push(neighbor);
-          edgeWeights[edge] = 0.5;
-        }
+      var node_ids = Object.keys(c),
+          max = node_ids.reduce(function(a, node_id) {
+            return Math.max(a, c[node_id]);
+          }, 0);
+
+      // Normalize c in place
+      node_ids.forEach(function(node_id) {
+        c[node_id] = c[node_id] / max;
+      });
+
+      node_weights = c;
+
+    } else if ('distance_to_root' === options.shading_method) {
+      var locations = this.geometry['neurite'].vertices.reduce(function(vs, v) {
+        vs[v.node_id] = v;
+        return vs;
+      }, {});
+
+      var distanceFn = (function(child, paren) {
+        return this[child].distanceTo(this[paren]);
+      }).bind(locations);
+
+      var dr = arbor.nodesDistanceTo(arbor.root, distanceFn),
+          distances = dr.distances,
+          max = dr.max;
+
+      // Normalize by max in place
+      Object.keys(distances).forEach(function(node) {
+        distances[node] = 1 - (distances[node] / max);
+      });
+
+      node_weights = distances;
+
+    } else if ('active_node_split' === options.shading_method) {
+      var atn = SkeletonAnnotations.getActiveNodeId();
+      if (arbor.contains(atn)) {
+        node_weights = arbor.subArbor(atn)
+          .nodesArray().reduce(function(o, node) {
+            o[node] = 0.5;
+            return o;
+          }, {});
+      } else {
+        // Don't shade any
+        node_weights = {};
       }
+
+    } else if ('partitions' === options.shading_method) {
+      // Shade by euclidian length, relative to the longest branch
+      var locations = this.geometry['neurite'].vertices.reduce(function(vs, v) {
+        vs[v.node_id] = v;
+        return vs;
+      }, {});
+      var partitions = arbor.partitionSorted();
+      node_weights = partitions.reduce(function(o, seq, i) {
+        var loc1 = locations[seq[0]],
+            loc2,
+            plen = 0;
+        for (var i=1, len=seq.length; i<len; ++i) {
+          loc2 = locations[seq[i]];
+          plen += loc1.distanceTo(loc2);
+          loc1 = loc2;
+        }
+        return seq.reduce(function(o, node) {
+          o[node] = plen;
+          return o;
+        }, o);
+      }, {});
+      // Normalize by the length of the longest partition, which ends at root
+      var max_length = node_weights[arbor.root];
+      Object.keys(node_weights).forEach(function(node) {
+        node_weights[node] /= max_length;
+      });
     }
+  }
+
+  if (node_weights || 'none' !== options.color_method) {
+    // The skeleton colors need to be set per-vertex.
+    this.line_material.vertexColors = THREE.VertexColors;
+    this.line_material.needsUpdate = true;
 
     var pickColor;
     var actorColor = this.actorColor;
@@ -1606,53 +1667,61 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.updateSkeletonColo
       pickColor = function() { return actorColor; };
     }
 
-		this.geometry['neurite'].vertices.forEach(function(vertex) {
-			// Determine the base color of the vertex.
-			var baseColor = pickColor(vertex);
+    // When not using shading, but using creator or reviewer:
+    if (!node_weights) node_weights = {}
 
-			if (!this.graph) this.graph = this.createGraph();
+    var seen = {};
+    this.geometry['neurite'].colors = this.geometry['neurite'].vertices.map(function(vertex) {
+      var node_id = vertex.node_id,
+          color = seen[node_id];
+      if (color) return color;
 
-			// Darken the color by the average weight of the vertex's edges.
-			var weight = 0;
-			var neighbors = this.graph.neighbors(vertex.node_id);
-			neighbors.forEach(function(neighbor) {
-				var edge = [vertex.node_id, neighbor].sort();
-				weight += (edge in edgeWeights ? edgeWeights[edge] : 1.0);
-			});
-			weight = (weight / neighbors.length) * 0.75 + 0.25;
-			var color = new THREE.Color().setRGB(baseColor.r * weight, baseColor.g * weight, baseColor.b * weight);
-			this.geometry['neurite'].colors.push(color);
+      var weight = node_weights[node_id];
+      weight = undefined === weight? 1.0 : weight * 0.9 + 0.1;
 
-			if (vertex.node_id in this.radiusVolumes) {
-				var mesh = this.radiusVolumes[vertex.node_id];
-				var material = mesh.material.clone();
-				material.color = color;
-				mesh.setMaterial(material);
-			}
-		}, this);
-		this.geometry['neurite'].colorsNeedUpdate = true;
+      var baseColor = pickColor(vertex);
+      color = new THREE.Color().setRGB(baseColor.r * weight,
+                                           baseColor.g * weight,
+                                           baseColor.b * weight);
 
-		this.actor['neurite'].material.color = new THREE.Color().setHex(0xffffff);
-		this.actor['neurite'].material.needsUpdate = true;
-	} else {
-		// Display the entire skeleton with a single color.
-		this.line_material.vertexColors = THREE.NoColors;
-		this.line_material.needsUpdate = true;
-		
-		this.actor['neurite'].material.color = this.actorColor;
-		this.actor['neurite'].material.needsUpdate = true;
+      seen[node_id] = color;
 
-		var material = new THREE.MeshBasicMaterial({color: this.actorColor, opacity:1.0, transparent:false});
+      // Side effect: color a volume at the node, if any
+      var mesh = this.radiusVolumes[node_id];
+      if (mesh) {
+        var material = mesh.material.clone();
+        material.color = color;
+        mesh.setMaterial(material);
+      }
 
-		for ( var k in this.radiusVolumes ) {
-			this.radiusVolumes[k].setMaterial(material);
-		}
-	}
+      return color;
+    }, this);
+
+    this.geometry['neurite'].colorsNeedUpdate = true;
+    this.actor['neurite'].material.color = new THREE.Color().setHex(0xffffff);
+    this.actor['neurite'].material.needsUpdate = true;
+
+  } else {
+    // Display the entire skeleton with a single color.
+    this.line_material.vertexColors = THREE.NoColors;
+    this.line_material.needsUpdate = true;
+    
+    this.actor['neurite'].material.color = this.actorColor;
+    this.actor['neurite'].material.needsUpdate = true;
+
+    var material = new THREE.MeshBasicMaterial({color: this.actorColor, opacity:1.0, transparent:false});
+
+    for (var k in this.radiusVolumes) {
+      if (this.radiusVolumes.hasOwnProperty(k)) {
+        this.radiusVolumes[k].setMaterial(material);
+      }
+    }
+  }
 };
 
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.changeColor = function(color, options) {
 	this.actorColor = color;
-	if (options.color_method === 'random' || options.color_method === 'manual') {
+	if (options.color_method === 'manual') {
 		this.updateSkeletonColor(options);
 	}
 };
@@ -1714,6 +1783,10 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.create_connector_s
 
 /** Place a colored sphere at the node. Used for highlighting special tags like 'uncertain end' and 'todo'. */
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createLabelSphere = function(v, material) {
+  if (this.specialTagSpheres.hasOwnProperty(v.node_id)) {
+    // There already is a tag sphere at the node
+    return;
+  }
 	var mesh = new THREE.Mesh( this.space.staticContent.labelspheregeometry, material );
 	mesh.position.set( v.x, v.y, v.z );
 	mesh.node_id = v.node_id;
@@ -1731,6 +1804,10 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createEdge = funct
 };
 
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createNodeSphere = function(v, radius, material) {
+  if (this.radiusVolumes.hasOwnProperty(v.node_id)) {
+    // There already is a sphere or cylinder at the node
+    return;
+  }
 	// Reuse geometry: an icoSphere of radius 1.0
 	var mesh = new THREE.Mesh(this.space.staticContent.icoSphere, material);
 	// Scale the mesh to bring about the correct radius
@@ -1742,6 +1819,10 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createNodeSphere =
 };
 
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createCylinder = function(v1, v2, radius, material) {
+  if (this.radiusVolumes.hasOwnProperty(v1.node_id)) {
+    // There already is a sphere or cylinder at the node
+    return;
+  }
 	var mesh = new THREE.Mesh(this.space.staticContent.cylinder, material);
 
 	// BE CAREFUL with side effects: all functions on a Vector3 alter the vector and return it (rather than returning an altered copy)
@@ -1763,6 +1844,10 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createCylinder = f
 
 /* The itype is 0 (pre) or 1 (post), and chooses from the two arrays: synapticTypes and synapticColors. */
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createSynapticSphere = function(v, itype) {
+  if (this.synapticSpheres.hasOwnProperty(v.node_id)) {
+    // There already is a synaptic sphere at the node
+    return;
+  }
 	var mesh = new THREE.Mesh( this.space.staticContent.radiusSphere, this.synapticColors[itype] );
 	mesh.position.set( v.x, v.y, v.z );
 	mesh.node_id = v.node_id;
@@ -1778,11 +1863,6 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
 	}
   this.skeletonmodel = skeletonmodel; // updating properties
 	this.initialize_objects();
-
-	// Graph for calculating the centrality-based shading will be created when needed
-	this.graph = null;
-	this.betweenness = {};
-	this.branchCentrality = {};
 
 	var nodes = skeleton_data[1];
 	var tags = skeleton_data[2];
@@ -1862,6 +1942,12 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
         vs[node[0]] = v1;
       }
       if (node[7] > 0) {
+        // Clear the slot for a sphere at the root
+        var mesh = this.radiusVolumes[v1.node_id];
+        if (mesh) {
+          this.space.remove(mesh);
+          delete this.radiusVolumes[v1.node_id];
+        }
 			  this.createNodeSphere(v1, node[7] * scale, material);
       }
 		}
@@ -1884,9 +1970,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
     v1.node_id = con[1];
 		var v2 = vs[con[0]];
 		this.createEdge(v1, v2, this.synapticTypes[con[2]]);
-		if (!this.synapticSpheres.hasOwnProperty(v2.node_id)) {
-			this.createSynapticSphere(v2, con[2]);
-		}
+		this.createSynapticSphere(v2, con[2]);
 	}, this);
 
 	// Place spheres on nodes with special labels, if they don't have a sphere there already
@@ -1926,152 +2010,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.show = function(op
 
 	this.setTextVisibility( this.skeletonmodel.text_visible ); // the text labels
 
-  if ('none' !== options.shading_method && 0 === Object.keys(this.betweenness).length) {
-    this.shaderWorkers(options);
-  } else {
-    this.updateSkeletonColor(options);
-  }
-};
-
-WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createGraph = function() {
-  // Every consecutive pair of nodes represents an edge, and with the node id, one can recreate the graph easily.
-  var nodes = this.geometry['neurite'].vertices,
-			graph = jsnx.Graph();
-  for (var i=0; i<nodes.length; i+=2) {
-    graph.add_edge(nodes[i].node_id, nodes[i+1].node_id);
-  }
-	return graph;
-};
-
-/** Populate datastructures for skeleton shading methods, and trigger a render
- * when done and if appropriate. Does none of that and updates skeleton color
- * when the shading method is none, or the graph data structures are already
- * populated. */
-WebGLApplication.prototype.Space.prototype.Skeleton.prototype.shaderWorkers = function(options) {
-	// Update color and return if calculations were already done or are not requested
-	if ('none' === options.shading_method
-      || 'active_node_split' === options.shading_method
-      || Object.keys(this.betweenness).length > 0) {
-    // The first two don't need background threads, and the centrality-based coloring don't either if betweenness has already been computed and cached
-		this.updateSkeletonColor(options);
-		return;
-	}
-
-	if (typeof(Worker) === "undefined") {
-		growlAlert("Warning", "Cannot calculate graph centrality, your browser does not support Web Workers");
-		return;
-	}
-
-  // TODO these functions work on graph without directional edges and potentially with loops. Instead, they should work assuming a tree, which has directional edges and lacks loops. The 'edgeWeights' should be instread node weights, reducing storage requirements and simplifying look up.
-
-	if (!this.graph) this.graph = this.createGraph();
-
-	// Put up some kind of indicator that calculations are underway.
-	$.blockUI({message: '<h2><img src="' + STATIC_URL_JS + 'widgets/busy.gif" /> Computing... just a moment...</h2>'});
-
-	// Calculate the betweenness centrality of the graph in another thread.
-	// (This will run once the simplified graph has been created by w3 below.)
-	var w1 = new Worker(STATIC_URL_JS + "graph_worker.js");
-	var self = this;
-	w1.onmessage = function (event) {
-		// Map the betweenness values back to the original graph.
-		for (var simplifiedEdge in event.data) {
-			if (event.data.hasOwnProperty(simplifiedEdge)) {
-				// Assign the value to all edges in the original graph that map to the edge in the simplified graph.
-				var value = event.data[simplifiedEdge];
-				simplifiedEdge = simplifiedEdge.split(',');
-				var edgeData = self.simplifiedGraph.get_edge_data(simplifiedEdge[0], simplifiedEdge[1]);
-				if (!('map' in edgeData)) {
-					edgeData.map = [simplifiedEdge];
-				}
-				edgeData.map.forEach(function(originalEdge) {
-					self.betweenness[originalEdge.sort()] = value;
-				});
-				}
-			}
-			if (options.shading_method === 'betweenness_centrality') {
-				$.unblockUI();
-				self.updateSkeletonColor(options);
-				self.space.render();
-			}
-		};
-
-	// Calculate the branch centrality of the graph in another thread.
-	// (This will run once the simplified graph has been created by w3 below.)
-	var w2 = new Worker(STATIC_URL_JS + "graph_worker.js");
-	w2.onmessage = function (event) {
-		// Map the centrality values back to the original graph.
-		for (var simplifiedEdge in event.data) {
-			if (event.data.hasOwnProperty(simplifiedEdge)) {
-				// Assign the value to all edges in the original graph that map to the edge in the simplified graph.
-				var value = event.data[simplifiedEdge];
-				simplifiedEdge = simplifiedEdge.split(',');
-				var edgeData = self.simplifiedGraph.get_edge_data(simplifiedEdge[0], simplifiedEdge[1]);
-				if (!('map' in edgeData)) {
-					edgeData.map = [simplifiedEdge];
-				}
-					
-//               // Label each segment with it's value.
-//               if( !self.textlabels.hasOwnProperty( simplifiedEdge )) {
-//                 var text3d = new THREE.TextGeometry( parseInt(value * self.simplifiedGraph.number_of_edges()), {
-//                   size: 100 * scale,
-//                   height: 20 * scale,
-//                   curveSegments: 1,
-//                   font: "helvetiker"
-//                 });
-//                 text3d.computeBoundingBox();
-//                 var centerOffset = -0.5 * ( text3d.boundingBox.max.x - text3d.boundingBox.min.x );
-//                 
-//                 var originalEdge = edgeData.map[0];
-//                 var fv = transform_coordinates([self.original_vertices[originalEdge[0]].x, self.original_vertices[originalEdge[0]].y, self.original_vertices[originalEdge[0]].z]);
-//                 var from_vector = new THREE.Vector3(fv[0], fv[1], fv[2] );
-//                 from_vector.multiplyScalar( scale );
-//                 var tv = transform_coordinates([self.original_vertices[originalEdge[1]].x, self.original_vertices[originalEdge[1]].y, self.original_vertices[originalEdge[1]].z]);
-//                 var to_vector = new THREE.Vector3(tv[0], tv[1], tv[2] );
-//                 to_vector.multiplyScalar( scale );
-//                 
-//                 var textMaterial = new THREE.MeshNormalMaterial( { color: 0xffffff, overdraw: true } );
-//                 var text = new THREE.Mesh( text3d, textMaterial );
-//                 text.position.x = (from_vector.x + to_vector.x) / 2.0;
-//                 text.position.y = (from_vector.y + to_vector.y) / 2.0;
-//                 text.position.z = (from_vector.z + to_vector.z) / 2.0;
-//                 text.visible = textlabel_visibility;
-//                 
-//                 self.textlabels[ simplifiedEdge ] = text;
-//                 scene.add( text );
-//               }
-					
-				edgeData.map.forEach(function(originalEdge) {
-					self.branchCentrality[originalEdge.sort()] = value;
-				});
-			}
-		}
-		if (options.shading_method === 'branch_centrality') {
-			$.unblockUI();
-			self.updateSkeletonColor(options);
-			self.space.render();
-		}
-	};
-
-	// Make a simplified version of the graph that combines all nodes between branches and leaves.
-	var w3 = new Worker(STATIC_URL_JS + "graph_worker.js");
-	w3.onmessage = function (event) {
-		self.simplifiedGraph = jsnx.convert.to_networkx_graph(event.data);
-
-		// Export the simplified graph to GraphViz DOT format:
-//           var dot = 'graph {\n';
-//           self.simplifiedGraph.edges().forEach(function(edge) {
-//             var edgeData = self.simplifiedGraph.get_edge_data(edge[0], edge[1]);
-//             dot += edge[0] + '--' + edge[1] + ' [ label="' + ('map' in edgeData ? edgeData.map.length : 1) + '" ];\n';
-//           });
-//           dot += '}\n';
-//           console.log(dot);
-
-		// Calculate the betweenness and branch centralities of the simplified graph.
-		w1.postMessage({graph: event.data, action:'edge_betweenness_centrality'});
-		w2.postMessage({graph: event.data, action:'branch_centrality'});
-	};
-	w3.postMessage({graph: jsnx.convert.to_edgelist(self.graph), action:'simplify'});
+  this.updateSkeletonColor(options);
 };
 
 WebGLApplication.prototype.usercolormap_dialog = function() {
