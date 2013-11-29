@@ -184,6 +184,7 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/skeleton/join_interpolated$', 'catmaid.control.join_skeletons_interpolated'),
     (r'^(?P<project_id>\d+)/skeleton/reroot$', 'catmaid.control.reroot_skeleton'),
     (r'^(?P<project_id>\d+)/skeleton/analytics$', 'catmaid.control.analyze_skeletons'),
+    (r'^(?P<project_id>\d+)/skeleton/connectors-by-partner$', 'catmaid.control.skeleton_connectors_by_partner'),
     (r'^(?P<project_id>\d+)/stack/(?P<stack_id>\d+)/skeleton/(?P<skeleton_id>\d+)/cache$', 'catmaid.control.cache_image'),
 
     (r'^(?P<project_id>\d+)/neuron/(?P<neuron_id>\d+)/get-all-skeletons$', 'catmaid.control.get_all_skeletons_of_neuron'),
@@ -213,6 +214,7 @@ urlpatterns += patterns(
     (r'^(?P<project_id>\d+)/object-tree/instance-operation$', 'catmaid.control.instance_operation'),
     (r'^(?P<project_id>\d+)/object-tree/group/(?P<group_id>\d+)/remove-empty-neurons$', 'catmaid.control.remove_empty_neurons'),
     (r'^(?P<project_id>\d+)/object-tree/(?P<node_id>\d+)/(?P<node_type>\w+)/send-to-fragments-group', 'catmaid.control.send_to_fragments_group'),
+    (r'^(?P<project_id>\d+)/object-tree/send-small-to-fragments', 'catmaid.control.cleanup_fragments'),
 
     (r'^(?P<project_id>\d+)/link/create$', 'catmaid.control.create_link'),
     (r'^(?P<project_id>\d+)/link/delete$', 'catmaid.control.delete_link'),

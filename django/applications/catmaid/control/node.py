@@ -35,6 +35,7 @@ def node_list_tuples(request, project_id=None):
     statements without modifying the accesses to said data both in this function
     and in the client that consumes it.
     '''
+    project_id = int(project_id) # sanitize
     params = {}
     # z: the section index in calibrated units.
     # width: the width of the field of view in calibrated units.
@@ -49,10 +50,14 @@ def node_list_tuples(request, project_id=None):
     params['limit'] = 5000  # Limit the number of retrieved treenodes within the section
     params['project_id'] = project_id
 
-    relation_map = get_relation_to_id_map(project_id)
-
     try:
         cursor = connection.cursor()
+
+        cursor.execute('''
+        SELECT relation_name, id FROM relation WHERE project_id=%s
+        ''' % project_id)
+        relation_map = dict(cursor.fetchall())
+
         response_on_error = 'Failed to query treenodes'
 
         is_superuser = request.user.is_superuser
@@ -133,36 +138,37 @@ def node_list_tuples(request, project_id=None):
         if treenode_ids:
             response_on_error = 'Failed to query connector locations.'
             cursor.execute('''
-            SELECT connector.id AS id,
-                (connector.location).x AS x,
-                (connector.location).y AS y,
-                (connector.location).z AS z,
-                connector.confidence AS confidence,
-                treenode_connector.relation_id AS treenode_relation_id,
-                treenode_connector.treenode_id AS tnid,
-                treenode_connector.confidence AS tc_confidence,
-                connector.user_id AS user_id
-            FROM treenode
-                 INNER JOIN treenode_connector ON treenode.id = treenode_connector.treenode_id
-                 INNER JOIN connector ON treenode_connector.connector_id = connector.id
-            WHERE treenode.id IN (%s)''' % ','.join(str(x) for x in treenode_ids))
+            SELECT connector.id,
+                (connector.location).x,
+                (connector.location).y,
+                (connector.location).z,
+                connector.confidence,
+                treenode_connector.relation_id,
+                treenode_connector.treenode_id,
+                treenode_connector.confidence,
+                connector.user_id
+            FROM treenode_connector,
+                 connector
+            WHERE treenode_connector.treenode_id IN (%s)
+              AND treenode_connector.connector_id = connector.id
+            ''' % ','.join(str(x) for x in treenode_ids))
 
-            for row in cursor.fetchall():
-                crows.append(row)
-        
+            crows = list(cursor.fetchall())
+
         # Obtain connectors within the field of view that were not captured above.
         # Uses a LEFT OUTER JOIN to include disconnected connectors,
         # that is, connectors that aren't referenced from treenode_connector.
+
         cursor.execute('''
-        SELECT connector.id AS id,
-            (connector.location).x AS x,
-            (connector.location).y AS y,
-            (connector.location).z AS z,
-            connector.confidence AS confidence,
-            treenode_connector.relation_id AS treenode_relation_id,
-            treenode_connector.treenode_id AS tnid,
-            treenode_connector.confidence AS tc_confidence,
-            connector.user_id AS user_id
+        SELECT connector.id,
+            (connector.location).x,
+            (connector.location).y,
+            (connector.location).z,
+            connector.confidence,
+            treenode_connector.relation_id,
+            treenode_connector.treenode_id,
+            treenode_connector.confidence,
+            connector.user_id
         FROM connector LEFT OUTER JOIN treenode_connector
                        ON connector.id = treenode_connector.connector_id
         WHERE connector.project_id = %(project_id)s
@@ -173,8 +179,7 @@ def node_list_tuples(request, project_id=None):
           AND (connector.location).y < %(bottom)s
         ''', params)
 
-        for row in cursor.fetchall():
-            crows.append(row)
+        crows.extend(cursor.fetchall())
 
         connectors = []
         # A set of missing treenode IDs
@@ -240,9 +245,9 @@ def node_list_tuples(request, project_id=None):
             cursor.execute('''
             SELECT id,
                 parent_id,
-                (location).x AS x,
-                (location).y AS y,
-                (location).z AS z,
+                (location).x,
+                (location).y,
+                (location).z,
                 confidence,
                 radius,
                 skeleton_id,
@@ -262,13 +267,12 @@ def node_list_tuples(request, project_id=None):
             if visible:
                 cursor.execute('''
                 SELECT treenode.id, class_instance.name
-                FROM treenode, class_instance, treenode_class_instance, relation
-                WHERE relation.id = treenode_class_instance.relation_id
-                  AND relation.relation_name = 'labeled_as'
+                FROM treenode, class_instance, treenode_class_instance
+                WHERE treenode_class_instance.relation_id = %s
+                  AND treenode.id IN (%s)
                   AND treenode_class_instance.treenode_id = treenode.id
                   AND class_instance.id = treenode_class_instance.class_instance_id
-                  AND treenode.id IN (%s)
-                ''' % visible)
+                ''' % (relation_map['labeled_as'], visible))
                 for row in cursor.fetchall():
                     labels[row[0]].append(row[1])
 
@@ -277,13 +281,12 @@ def node_list_tuples(request, project_id=None):
             if visible:
                 cursor.execute('''
                 SELECT connector.id, class_instance.name
-                FROM connector, class_instance, connector_class_instance, relation
-                WHERE relation.id = connector_class_instance.relation_id
-                  AND relation.relation_name = 'labeled_as'
+                FROM connector, class_instance, connector_class_instance
+                WHERE connector_class_instance.relation_id = %s
+                  AND connector.id IN (%s)
                   AND connector_class_instance.connector_id = connector.id
                   AND class_instance.id = connector_class_instance.class_instance_id
-                  AND connector.id IN (%s)
-                ''' % visible)
+                ''' % (relation_map['labeled_as'], visible))
                 for row in cursor.fetchall():
                     labels[row[0]].append(row[1])
 

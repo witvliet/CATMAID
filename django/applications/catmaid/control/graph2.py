@@ -184,7 +184,9 @@ def dual_split_graph(project_id, skeleton_ids, confidence_threshold, bandwidth, 
     # All nodes of the graph (with or without edges. Includes those representing synapse domains)
     nodeIDs = []
 
-    if confidence_threshold > 0:
+    not_to_expand = skeleton_ids - expand
+
+    if confidence_threshold > 0 and not_to_expand:
         # Now fetch all treenodes of only skeletons in skeleton_ids (the ones not to expand)
         cursor.execute('''
         SELECT skeleton_id, id, parent_id, confidence
@@ -192,7 +194,7 @@ def dual_split_graph(project_id, skeleton_ids, confidence_threshold, bandwidth, 
         WHERE project_id = %s
           AND skeleton_id IN (%s)
         ORDER BY skeleton_id
-        ''' % (project_id, ",".join(str(int(skid)) for skid in (skeleton_ids - expand))))
+        ''' % (project_id, ",".join(str(int(skid)) for skid in not_to_expand)))
 
         # Read out into memory only one skeleton at a time
         current_skid = None
@@ -218,7 +220,7 @@ def dual_split_graph(project_id, skeleton_ids, confidence_threshold, bandwidth, 
     else:
         # No need to split.
         # Populate connectors from the connections among them
-        for skid in (skeleton_ids - expand):
+        for skid in not_to_expand:
             nodeIDs.append(skid)
             for c in stc[skid]:
                 connectors[c[1]][c[2]].append(skid)
@@ -226,7 +228,7 @@ def dual_split_graph(project_id, skeleton_ids, confidence_threshold, bandwidth, 
 
     # Now fetch all treenodes of all skeletons to expand
     cursor.execute('''
-    SELECT skeleton_id, id, parent_id, confidence, location
+    SELECT skeleton_id, id, parent_id, confidence, (location).x, (location).y, (location).z
     FROM treenode
     WHERE project_id = %s
       AND skeleton_id IN (%s)
@@ -246,7 +248,7 @@ def dual_split_graph(project_id, skeleton_ids, confidence_threshold, bandwidth, 
     for row in cursor.fetchall():
         if row[0] == current_skid:
             # Build the tree, breaking it at the low-confidence edges
-            locations[row[1]] = tuple(imap(float, row[4][1:-1].split(',')))
+            locations[row[1]] = row[4:]
             if row[2] and row[3] >= confidence_threshold:
                     tree.add_edge(row[2], row[1])
             continue
@@ -260,7 +262,7 @@ def dual_split_graph(project_id, skeleton_ids, confidence_threshold, bandwidth, 
         current_skid = row[0]
         tree = nx.DiGraph()
         locations = {}
-        locations[row[1]] = tuple(imap(float, row[4][1:-1].split(',')))
+        locations[row[1]] = row[4:]
         if row[2] and row[3] > confidence_threshold:
             tree.add_edge(row[2], row[1])
 
@@ -322,9 +324,14 @@ def split_by_both(skeleton_id, digraph, locations, bandwidth, cs, connectors, in
         for parent, child in chunk.edges_iter():
             chunk[parent][child]['weight'] = norm(subtract(locations[child], locations[parent]))
 
-        treenode_ids, connector_ids, relation_ids = zip(*(c for c in cs if c[0] in chunk))
-
         # Check if need to expand at all
+        blob = tuple(c for c in cs if c[0] in chunk)
+        if 0 == len(blob):
+            nodes.append(chunkID)
+            continue
+
+        treenode_ids, connector_ids, relation_ids = zip(*blob)
+
         if 0 == len(connector_ids):
             nodes.append(chunkID)
             continue
