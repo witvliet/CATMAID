@@ -35,7 +35,7 @@ def cache_image(request, project_id=None, stack_id=None, skeleton_id=None):
             if node['rid'] == -1:
                 treenode_accumulator.append( node['id'] )
         endsegment = i
-        if len(treenode_accumulator) > 2000:
+        if len(treenode_accumulator) > 500:
             break
 
     tn = Treenode.objects.filter(
