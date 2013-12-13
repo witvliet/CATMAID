@@ -8,7 +8,9 @@ var ReviewSystem = new function()
     self.skeleton_segments = null;
     self.current_segment = null;
     self.current_segment_index = 0;
-    var tile_image_counter = 0, total_count = 0, end_puffer_count = 0;
+    var tile_image_counter = 0,
+        total_count = 0,
+        end_puffer_count = 0;
 
     this.init = function() {
         projectID = project.id;
@@ -81,21 +83,28 @@ var ReviewSystem = new function()
         if (self.skeleton_segments===null)
             return;
         if( self.current_segment_index === self.current_segment['sequence'].length - 1  ) {
-            self.markAsReviewed( self.current_segment['sequence'][self.current_segment_index] );
-            end_puffer_count += 1;
-            // do not directly jump to the next segment to review
-            if( end_puffer_count < 3) {
-                growlAlert('DONE', 'Segment fully reviewed: ' + self.current_segment['nr_nodes'] + ' nodes');
+            if( $('#remote_review_skeleton').attr('checked') ) {
+                self.markAsReviewed( self.current_segment['sequence'][self.current_segment_index] );
+                end_puffer_count += 1;
+                // do not directly jump to the next segment to review
+                if( end_puffer_count < 3) {
+                    growlAlert('DONE', 'Segment fully reviewed: ' + self.current_segment['nr_nodes'] + ' nodes');
+                    return;
+                }
+                // Segment fully reviewed, go to next without refreshing table
+                // much faster for smaller fragments
+                // growlAlert('DONE', 'Segment fully reviewed: ' + self.current_segment['nr_nodes'] + ' nodes');
+                var cell = $('#rev-status-cell-' + self.current_segment['id']);
+                cell.text('100.00%');
+                cell.css('background-color', '#6fff5c');
+                self.current_segment['status'] = '100.00';
+                self.selectNextSegment();
                 return;
+            } else {
+                self.markAsReviewed( self.current_segment['sequence'][self.current_segment_index] );
+                self.startSkeletonToReview(skeletonID);
+                return;                
             }
-            // Segment fully reviewed, go to next without refreshing table
-            // much faster for smaller fragments
-            // growlAlert('DONE', 'Segment fully reviewed: ' + self.current_segment['nr_nodes'] + ' nodes');
-            var cell = $('#rev-status-cell-' + self.current_segment['id']);
-            cell.text('100.00%');
-            cell.css('background-color', '#6fff5c');
-            self.selectNextSegment();
-            return;
         }
 
         self.markAsReviewed( self.current_segment['sequence'][self.current_segment_index] );
@@ -130,6 +139,7 @@ var ReviewSystem = new function()
                 var cell = $('#rev-status-cell-' + self.current_segment['id']);
                 cell.text('100.00%');
                 cell.css('background-color', '#6fff5c');
+                self.current_segment['status'] = '100.00';
                 // Don't startSkeletonToReview, because self.current_segment_index
                 // would be lost, losing state for q/w navigation.
             }
@@ -265,37 +275,13 @@ var ReviewSystem = new function()
         // empty caching text
         $('#counting-cache').text('');
 
-        requestQueue.replace(
-            django_url+projectID+"/skeleton/" + skeletonID + "/review",
-            "POST",
-            {},
-            function (status, text) {
-                if (200 !== status) { return; }
-                var skeleton_data = $.parseJSON(text);
-                if (skeleton_data.error) {
-                    if ("REPLACED" === skeleton_data.error) { return; }
-                    alert( skeleton_data.error );
-                } else {
-                    requestQueue.register(django_url + "accounts/catmaid/" + projectID + "/all-usernames", "POST", {},
-                        function(status, text) {
-                            if (200 !== status) { return; }
-                            var usernames = $.parseJSON(text);
-                            if (usernames.error) {
-                                alert(usernames.error);
-                            } else {
-                                self.createReviewSkeletonTable( skeleton_data, usernames );
-                            }
-                        });
-                }
-            },
-            "start_review_skeleton");
-        // submit(django_url + "accounts/" + projectID + "/all-usernames", {},
-        //     function(usernames) {
-        //         submit(django_url + projectID + "/skeleton/" + skeletonID + "/review", {},
-        //             function(skeleton_data) {
-        //                     self.createReviewSkeletonTable( skeleton_data, usernames );
-        //             });
-        //     });
+        submit(django_url + "accounts/" + projectID + "/all-usernames", {},
+            function(usernames) {
+                submit(django_url + projectID + "/skeleton/" + skeletonID + "/review", {},
+                    function(skeleton_data) {
+                            self.createReviewSkeletonTable( skeleton_data, usernames );
+                    });
+            });
 
     };
 
@@ -346,7 +332,7 @@ var ReviewSystem = new function()
             tileHeight = tilelayer.getTileHeight(),
             max_column = parseInt( stack.dimension.x / tileWidth ),
             max_row = parseInt( stack.dimension.y / tileHeight )
-            startsegment = -1, endsegment = 0; node_counter = 0;
+            startsegment = -1, endsegment = 0; tile_counter = 0;
         var s = [];
         for(var idx in self.skeleton_segments) {
             if( self.skeleton_segments[idx]['status'] !== "100.00" ) {
@@ -355,7 +341,6 @@ var ReviewSystem = new function()
                 var seq = self.skeleton_segments[idx]['sequence'];
                 for(var i = 0; i < self.skeleton_segments[idx]['nr_nodes']; i++ ) {
                     if( seq[i]['rid'] == -1 ) {
-                        node_counter++;
                         var c = parseInt( seq[i].x / stack.resolution.x / tileWidth),
                             r = parseInt( seq[i].y / stack.resolution.y / tileHeight );
                         for( var rowidx = r-1; rowidx <= r+1; rowidx++ ) {
@@ -364,13 +349,14 @@ var ReviewSystem = new function()
                                     continue;
                                 var tileBaseName = getTileBaseName( [ seq[i].x, seq[i].y, parseInt( seq[i].z / stack.resolution.z ) ] );
                                 s.push( tilelayer.tileSource.getTileURL( project, stack, tileBaseName, tileWidth, tileHeight, colidx, rowidx, 0) );                                
+                                tile_counter++;
                             }
                         }
                     }
                 }
                 endsegment = idx;
             }
-            if(node_counter > 800)
+            if(tile_counter > 3000)
                 break;
         }
         total_count = s.length;

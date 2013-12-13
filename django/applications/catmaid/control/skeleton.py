@@ -12,6 +12,7 @@ from operator import itemgetter
 import networkx as nx
 from tree_util import reroot, edge_count_to_root
 
+
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def last_openleaf(request, project_id=None, skeleton_id=None):
     """ Return the ID of the nearest node (or itself), and its location string;
