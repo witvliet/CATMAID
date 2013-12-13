@@ -84,7 +84,7 @@ urlpatterns += patterns(
     
     (r'^accounts/catmaid/login$', 'catmaid.control.login_user' ),
     (r'^accounts/catmaid/logout$', 'catmaid.control.logout_user'),
-    (r'^accounts/catmaid/(?P<project_id>\d+)/all-usernames$', 'catmaid.control.all_usernames'),
+    (r'^accounts/(?P<project_id>\d+)/all-usernames$', 'catmaid.control.all_usernames'),
 
     (r'^projects$', 'catmaid.control.projects'),
     (r'^user-list$', 'catmaid.control.user_list'),
