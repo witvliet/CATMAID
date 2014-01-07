@@ -1,5 +1,7 @@
 import json
 
+from __future__ import print_function
+
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
@@ -14,7 +16,7 @@ from tree_util import edge_count_to_root
 try:
     from exportneuroml import neuroml_single_cell, neuroml_network
 except ImportError:
-    print "NeuroML is not loading"
+    print("NeuroML is not loading")
 
 from itertools import imap
 from functools import partial
@@ -345,11 +347,11 @@ def generate_extended_skeleton_data( project_id=None, skeleton_id=None ):
         skeleton__in=[skeleton_id]
     ).select_related('treenode', 'connector', 'relation')
 
-    #print >> sys.stderr, 'vertices, connectivity', vertices, connectivity
+    #print('vertices, connectivity', vertices, connectivity, file=sys.stderr)
 
     for tc in qs_tc:
-        #print >> sys.stderr, 'vertex, connector', tc.treenode_id, tc.connector_id
-        #print >> sys.stderr, 'relation name', tc.relation.relation_name
+        #print('vertex, connector', tc.treenode_id, tc.connector_id, file=sys.stderr)
+        #print('relation name', tc.relation.relation_name, file=sys.stderr)
 
         if tc.treenode_id in labels:
             lab1 = labels[tc.treenode_id]
@@ -380,13 +382,13 @@ def generate_extended_skeleton_data( project_id=None, skeleton_id=None ):
             connectivity[tc.treenode_id] = {}
 
         if connectivity[tc.treenode_id].has_key(tc.connector_id):
-            # print >> sys.stderr, 'only for postsynaptic to the same skeleton multiple times'
-            # print >> sys.stderr, 'for connector', tc.connector_id
+            # print('only for postsynaptic to the same skeleton multiple times', file=sys.stderr)
+            # print('for connector', tc.connector_id, file=sys.stderr)
             connectivity[tc.treenode_id][tc.connector_id] = {
                 'type': tc.relation.relation_name
             }
         else:
-            # print >> sys.stderr, 'does not have key', tc.connector_id, connectivity[tc.treenode_id]
+            # print('does not have key', tc.connector_id, connectivity[tc.treenode_id], file=sys.stderr)
             connectivity[tc.treenode_id][tc.connector_id] = {
                 'type': tc.relation.relation_name
             }

@@ -12,6 +12,8 @@ from catmaid.objects import *
 from catmaid.control.authentication import *
 from catmaid.control.common import *
 
+from __future__ import print_function
+
 try:
     from PIL import Image
 except:
@@ -42,7 +44,7 @@ def get_slices_tiles(request, project_id=None, stack_id=None):
     # sliceinfo = StackSliceInfo.objects.get(stack=stack)
     data = np.zeros( (height, width), dtype = np.uint8 )
     for slice in slices:
-        # print >> sys.stderr, 'slice', slice['slice_id']
+        # print('slice', slice['slice_id'], file=sys.stderr)
         data[slice['min_y']-y:slice['max_y']-y, slice['min_x']-x:slice['max_x']-x] = 255
         #pic = Image.open(os.path.join(sliceinfo.slice_base_path, '0', '1.png'))
         #arr = np.array( pic.getdata() ).reshape(pic.size[0], pic.size[1], 2)

@@ -8,7 +8,7 @@ from collections import defaultdict
 try:
     from neuroml import Cell, Segment, SegmentParent, Morphology, NeuroMLDocument, Point3DWithDiam
 except ImportError:
-    print "NeuroML module could not be loaded."
+    print("NeuroML module could not be loaded.")
 
 
 def neuroml_single_cell(skeleton_id, nodes, pre, post):

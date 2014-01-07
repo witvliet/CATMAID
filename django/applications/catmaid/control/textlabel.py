@@ -7,6 +7,8 @@ from catmaid.fields import Double3D
 from catmaid.control.authentication import *
 from catmaid.control.common import *
 
+from __future__ import print_function
+
 @requires_user_role(UserRole.Annotate)
 def update_textlabel(request, project_id=None):
     params = {}
@@ -79,7 +81,7 @@ def delete_textlabel(request, project_id=None):
 
 @requires_user_role(UserRole.Annotate)
 def create_textlabel(request, project_id=None):
-    print >> sys.stderr, 'creating text label'
+    print('creating text label', file=sys.stderr)
     params = {}
     param_defaults = {
         'x': 0,

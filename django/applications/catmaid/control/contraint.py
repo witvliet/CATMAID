@@ -10,6 +10,8 @@ from catmaid.control.authentication import *
 from catmaid.control.common import *
 import sys
 
+from __future__ import print_function
+
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def constraintset_for_segment(request, project_id=None, stack_id=None):
     stack = get_object_or_404(Stack, pk=stack_id)
@@ -24,7 +26,7 @@ def constraintset_for_segment(request, project_id=None, stack_id=None):
     ).select_related().all()
     result = []
     for constraintmap in scm:
-        # print >> sys.stderr, constraintmap.constraint.segments, , constraintmap.constraint.target_section
+        # print(constraintmap.constraint.segments, constraintmap.constraint.target_section, file=sys.stderr)
         result.append( constraintmap.constraint.segments )
         origin_section = constraintmap.constraint.origin_section
         target_section = constraintmap.constraint.target_section

@@ -23,6 +23,8 @@ from south.db import db
 
 from control.user import distinct_user_color
 
+from __future__ import print_function
+
 CELL_BODY_CHOICES = (
     ('u', 'Unknown'),
     ('l', 'Local'),
@@ -374,10 +376,10 @@ class UserFocusedManager(models.Manager):
         else:
             # Get the projects that the user can see.
             adminProjects = get_objects_for_user(user, 'can_administer', Project)
-            print >> sys.stderr, 'user is admin for ', str(adminProjects)
+            print('user is admin for ', str(adminProjects), file=sys.stderr)
             otherProjects = get_objects_for_user(user, ['can_annotate', 'can_browse'], Project, any_perm = True)
             otherProjects = [a for a in otherProjects if a not in adminProjects]
-            print >> sys.stderr, 'user has access to ', str(otherProjects)
+            print('user has access to ', str(otherProjects), file=sys.stderr)
             
             # Now filter to the data to which the user has access.
             return fullSet.filter(Q(project__in = adminProjects) | (Q(project__in = otherProjects) & Q(user = user)))
@@ -1048,4 +1050,4 @@ def notify_user(user, title, message):
     try:
         user.email_user('[CATMAID] ' + title, message)
     except Exception as e:
-        print >> sys.stderr, 'Failed to send e-mail (', str(e), ')'
+        print('Failed to send e-mail (', str(e), ')', file=sys.stderr)

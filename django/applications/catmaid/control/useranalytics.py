@@ -10,6 +10,8 @@ from datetime import timedelta, time
 import numpy as np
 import copy
 
+from __future__ import print_function
+
 try:
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
@@ -25,7 +27,7 @@ def plot_useranalytics(request):
     start_date = request.GET.get('start')
     end_date = request.GET.get('end')
 
-    print userid, start_date, end_date
+    print(userid, start_date, end_date)
 
     if request.user.is_superuser:
         end = _parse_date(end_date) if end_date else datetime.now()
@@ -131,7 +133,7 @@ def singleDayEvents( alltimes, start_hour, end_hour ):
     
 def singleDayActiveness( activebouts, increment, start_hour, end_hour ):
     if np.mod(60,increment)>0:
-        print 'Increments must divide 60 evenly'
+        print('Increments must divide 60 evenly')
         return
     starttime = datetime.now()
     starttime.replace(hour=start_hour,minute=0,second=0,microsecond=0)
@@ -159,7 +161,7 @@ def singleDayActiveness( activebouts, increment, start_hour, end_hour ):
                     
 def splitBout(bout,increment):
     if np.mod(60,increment)>0:
-        print 'Increments must divide 60 evenly'
+        print('Increments must divide 60 evenly')
         return
     
     boutListOut = []

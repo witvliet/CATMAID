@@ -2,6 +2,8 @@ from django.db import connection
 from collections import defaultdict
 from itertools import chain
 
+from __future__ import print_function
+
 def find_empty_neurons():
     """ Returns a set of empty neurons. Also prints the total
     number of neurons and the total number of neurons for which
@@ -40,9 +42,9 @@ def find_empty_neurons():
     modeled_neuron_ids = set(row[0] for row in cursor.fetchall())
 
     empty_neuron_ids = neuron_ids - modeled_neuron_ids
-    print "Total neurons:", len(neuron_ids)
-    print "Neurons with at least one skeleton:", len(modeled_neuron_ids)
-    print "Empty neurons:", len(empty_neuron_ids)
+    print("Total neurons:", len(neuron_ids))
+    print("Neurons with at least one skeleton:", len(modeled_neuron_ids))
+    print("Empty neurons:", len(empty_neuron_ids))
     return empty_neuron_ids
 
 
