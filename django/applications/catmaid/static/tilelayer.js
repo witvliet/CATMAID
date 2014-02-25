@@ -225,6 +225,9 @@ function TileLayer(
 		var t = top;
 		var l = left;
 
+		// A temporary variable for the tile source
+		var src;
+
 		// update the images sources
 		for ( var i = 0; i < tiles.length; ++i )
 		{
@@ -247,8 +250,16 @@ function TileLayer(
 				else
 				{
 					tiles[ i ][ j ].alt = "";
-					tiles[ i ][ j ].src = self.tileSource.getTileURL( project, stack,
-						tileBaseName, tileWidth, tileHeight, c, r, zoom);
+					// Generate tile source dependent image source URL
+					src = self.tileSource.getTileURL(project, stack, tileBaseName,
+							tileWidth, tileHeight, c, r, zoom)
+					// Add the image source first as a data attribute. Browsers will load
+					// all images that have the src atribute set. So only add the image
+					// source as actual src attribute, if this layer is visible.
+					$(tiles[ i ][ j ]).data('src', src);
+					if (this.visible) {
+						tiles[ i ][ j ].src = src;
+					}
 
           // prefetch tiles
           // TODO: fetch information in stack table: -2, -1, 1, 2
@@ -331,36 +342,38 @@ function TileLayer(
 	/* Set opacity in the range from 0 to 1 */
 	this.setOpacity = function( val )
 	{
-		tilesContainer.style.opacity = val+"";
 		self.opacity = val;
+		tilesContainer.style.opacity = val+"";
 		if(val < 0.02) {
-			if(self.visible)
-				self.isolateTileLayer();
+			if(self.visible) {
+				this.visible = false;
+				tilesContainer.style.visibility = 'hidden';
+				/* If this layer was visible before, unset all image src attributes.
+				 * This prevents the browser from loading images that haven't been
+				 * loaded, yet. The actual URL is sill stored as data property.
+				 */
+				$('img', tilesContainer).each(function() {
+					this.src = "";
+				});
+			}
 		} else {
-			if(!self.visible)
-				self.reattachTileLayer();
-		}
-	}
+			if(!self.visible) {
+				this.visible = true;
+				tilesContainer.style.visibility = 'visible';
+				/* (Re-)set the image's src attribute from the stored data property.
+				 * This will allow the browser to load these URLs.
+				 */
+				$('img', tilesContainer).each(function() {
+					this.src = $(this).data('src');
+				});
 
-	this.updateOpacity = function() {
-		self.setOpacity( opacity );
+			}
+		}
 	}
 
 	this.getOpacity = function()
 	{
 		return self.opacity;
-	}
-
-	this.isolateTileLayer = function()
-	{	
-		stack.getView().removeChild( tilesContainer );
-		self.visible = false;
-	}
-
-	this.reattachTileLayer = function()
-	{
-		stack.getView().appendChild( tilesContainer );
-		self.visible = true;
 	}
 
 	// initialise
@@ -375,9 +388,7 @@ function TileLayer(
 	
 	var tilesContainer = document.createElement( "div" );
 	tilesContainer.className = "sliceTiles";
-
-	if( self.visible )
-		stack.getView().appendChild( tilesContainer );
+	stack.getView().appendChild( tilesContainer );
 	
 	var LAST_XT = Math.floor( ( stack.dimension.x * stack.scale - 1 ) / tileWidth );
 	var LAST_YT = Math.floor( ( stack.dimension.y * stack.scale - 1 ) / tileHeight );
