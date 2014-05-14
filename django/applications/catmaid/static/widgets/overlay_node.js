@@ -89,9 +89,9 @@ var SkeletonElements = function(paper)
    * See "newNode" for explanations. */
   this.newConnectorNode = function(
     id,         // unique id for the node from the database
-    x,          // the x coordinate in pixel coordinates
-    y,          // y coordinates
-    z,          // z coordinates
+    x,          // x coordinate in scaled stack coordinates
+    y,          // y coordinates in scaled stack coordinates
+    z,          // z coordinates in not-scaled stack coordinates
     zdiff,      // the different from the current slices
     confidence,
     can_edit)   // a boolean combining (is_superuser or user owns the node)
