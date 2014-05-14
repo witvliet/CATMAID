@@ -986,9 +986,9 @@ SkeletonAnnotations.SVGOverlay.prototype.updateNodeCoordinatesinDB = function (c
 /** Recreate all nodes (or reuse existing ones if possible).
  *
  * @param jso is an array of JSON objects, where each object may specify a Node or a ConnectorNode
- * @param pz is the z of the section in calibrated coordinates
+ * @param stack_z is the z of the section in stack coordinates
  */
-SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso, pz) {
+SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso, stack_z) {
   // Reset nodes and labels
   this.nodes = {};
   // remove labels, but do not hide them
@@ -1001,12 +1001,13 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso,
   jso[0].forEach(function(a, index, array) {
     // a[0]: ID, a[1]: parent ID, a[2]: x, a[3]: y, a[4]: z, a[5]: confidence
     // a[8]: user_id, a[6]: radius, a[7]: skeleton_id, a[8]: user can edit or not
+    var z = this.phys2pixZ(a[2], a[3], a[4]);
     this.nodes[a[0]] = this.graphics.newNode(
       a[0], null, a[1], a[6],
       this.phys2pixX(a[2], a[3], a[4]),
       this.phys2pixY(a[2], a[3], a[4]),
-      this.phys2pixZ(a[2], a[3], a[4]),
-      (a[4] - pz) / this.stack.resolution.z, a[5], a[7], a[8]);
+      z,
+      z - stack_z, a[5], a[7], a[8]);
   }, this);
 
   // Populate ConnectorNodes
@@ -1015,12 +1016,13 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso,
     // a[5]: presynaptic nodes as array of arrays with treenode id
     // and confidence, a[6]: postsynaptic nodes as array of arrays with treenode id
     // and confidence, a[7]: whether the user can edit the connector
+    var z = this.phys2pixZ(a[1], a[2], a[3]);
     this.nodes[a[0]] = this.graphics.newConnectorNode(
       a[0],
       this.phys2pixX(a[1], a[2], a[3]),
       this.phys2pixY(a[1], a[2], a[3]),
-      this.phys2pixZ(a[1], a[2], a[3]),
-      (a[3] - pz) / this.stack.resolution.z, a[4], a[7]);
+      z,
+      z - stack_z, a[4], a[7]);
   }, this);
 
   // Disable any unused instances
@@ -1327,38 +1329,53 @@ SkeletonAnnotations.SVGOverlay.prototype.updateNodes = function (callback,
     self.old_x = stack.x;
     self.old_y = stack.y;
 
-    var pz = stack.z * stack.resolution.z + stack.translation.z;
+    // (stack.y - (stack.viewHeight / 2) / stack.scale) * stack.resolution.y + stack.translation.y
+
+    var halfWidth =  (stack.viewWidth  / 2) / stack.scale,
+        halfHeight = (stack.viewHeight / 2) / stack.scale;
+
+    var x0 = stack.x - halfWidth,
+        y0 = stack.y - halfHeight,
+        z0 = stack.z;
+
+    var x1 = stack.x + halfWidth,
+        y1 = stack.y + halfHeight,
+        z1 = stack.z + 1; // stack.z is always in discreet units
+
+    var wx0 = stack.stackToProjectX(z0, y0, x0),
+        wy0 = stack.stackToProjectY(z0, y0, x0),
+        wz0 = stack.stackToProjectZ(z0, y0, x0);
+
+    var wx1 = stack.stackToProjectX(z1, y1, x1),
+        wy1 = stack.stackToProjectY(z1, y1, x1),
+        wz1 = stack.stackToProjectZ(z1, y1, x1);
+
+    var post = {pid: stack.getProject().id,
+       left: wx0,
+        top: wy0,
+         z1: wz0,
+        right: wx1,
+       bottom: wy1,
+           z2: wz1,
+       atnid: atnid,
+       labels: self.getLabelStatus()};
 
     self.submit(
       django_url + project.id + '/node/list',
-      {pid: stack.getProject().id,
-       sid: stack.getId(),
-       z: pz,
-       top: (stack.y - (stack.viewHeight / 2) / stack.scale) * stack.resolution.y + stack.translation.y,
-       left: (stack.x - (stack.viewWidth / 2) / stack.scale) * stack.resolution.x + stack.translation.x,
-       width: (stack.viewWidth / stack.scale) * stack.resolution.x,
-       height: (stack.viewHeight / stack.scale) * stack.resolution.y,
-       zres: stack.resolution.z,
-       atnid: atnid,
-       labels: self.getLabelStatus()},
+      post,
       function(json) {
-        if (json.needs_setup) {
-            display_tracing_setup_dialog(project.id, json.has_needed_permissions,
-                json.missing_classes, json.missing_relations,
-                json.missing_classinstances);
-        } else {
-          self.refreshNodesFromTuples(json, pz);
+        self.refreshNodesFromTuples(json, stack.z);
 
-          // initialization hack for "URL to this view"
-          if (SkeletonAnnotations.hasOwnProperty('init_active_node_id')) {
-            self.activateNode(self.nodes[SkeletonAnnotations.init_active_node_id]);
-            delete SkeletonAnnotations.init_active_node_id;
-          }
+        // initialization hack for "URL to this view"
+        if (SkeletonAnnotations.hasOwnProperty('init_active_node_id')) {
+          self.activateNode(self.nodes[SkeletonAnnotations.init_active_node_id]);
+          delete SkeletonAnnotations.init_active_node_id;
+        }
 
-          stack.redraw();
-          if (typeof callback !== "undefined") {
-            callback();
-          }
+        stack.redraw();
+
+        if (typeof callback !== "undefined") {
+          callback();
         }
       },
       false,
