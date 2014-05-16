@@ -193,7 +193,7 @@ SkeletonAnnotations.SVGOverlay = function(stack) {
   this.switchingConnectorID = null;
   this.switchingTreenodeID = null;
 
-  /* lastX, lastY: in unscaled stack coordinates, for the 'z' key to know where was the mouse. */
+  /* lastX, lastY: in scaled stack coordinates, for the 'z' and 'g' keys to know where was the mouse. */
   this.coords = {lastX: null, lastY: null};
 
   /* padding beyond screen borders for fetching data and updating nodes */
@@ -334,8 +334,8 @@ SkeletonAnnotations.SVGOverlay.prototype.createViewMouseMoveFn = function(stack,
     var m = ui.getMouse(e, stack.getView(), true);
     if (m) {
       var screenPosition = stack.screenPosition();
-      coords.lastX = screenPosition.left + m.offsetX * stack.scale;
-      coords.lastY = screenPosition.top  + m.offsetY * stack.scale;
+      coords.lastX = screenPosition.left * stack.scale + m.offsetX;
+      coords.lastY = screenPosition.top  * stack.scale + m.offsetY;
     }
   };
 };
