@@ -1119,19 +1119,6 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso)
    completionCallback.  Otherwise, just fire the
    completionCallback at the end of this method. */
 SkeletonAnnotations.SVGOverlay.prototype.redraw = function( stack, completionCallback ) {
-  var wc = this.stack.getWorldTopLeft();
-  var pl = wc.worldLeft,
-      pt = wc.worldTop,
-      new_scale = wc.scale;
-  
-  // TODO: this should also check for the size of the containing
-  // div having changed.  You can see this problem if you have
-  // another window open beside one with the tracing overlay -
-  // when you close the window, the tracing overlay window is
-  // enlarged but will have extra nodes fetched for the exposed
-  // area.
-
-  var stack = this.stack;
 
   var doNotUpdate = stack.old_z == stack.z && stack.old_s == stack.s;
   if ( doNotUpdate )
@@ -1151,10 +1138,11 @@ SkeletonAnnotations.SVGOverlay.prototype.redraw = function( stack, completionCal
     this.updateNodes(completionCallback);
   }
 
-  this.view.style.left = Math.floor((-pl / stack.resolution.x) * new_scale) + "px";
-  this.view.style.top = Math.floor((-pt / stack.resolution.y) * new_scale) + "px";
+  this.view.style.left = stack.viewWidth  / 2 - stack.x * stack.scale + "px";
+  this.view.style.top  = stack.viewHeight / 2 - stack.y * stack.scale + "px";
 
   this.updatePaperDimensions(stack);
+
   if (doNotUpdate) {
     if (typeof completionCallback !== "undefined") {
       completionCallback();
