@@ -127,14 +127,6 @@ SkeletonAnnotations.getActiveStackId = function() {
   return this.atn.stack_id;
 };
 
-/**
- * Open the skeleton node in the Object Tree if the Object Tree is visible
- * and if the Object Tree synchronize_object_tree checkbox is checked.
- */
-SkeletonAnnotations.maybeOpenSkeletonNodeInObjectTree = function(node) {
-  if (node) ObjectTree.maybeOpenTreePath(node.skeleton_id);
-};
-
 SkeletonAnnotations.exportSWC = function() {
   if (!this.atn.id || !this.atn.skeleton_id) {
     alert('Need to activate a treenode before exporting to SWC!');
@@ -428,9 +420,7 @@ SkeletonAnnotations.SVGOverlay.prototype.activateNode = function(node) {
       statusBar.replaceLast("Activated treenode with id " + node.id + " and skeleton id " + node.skeleton_id);
       // If changing skeletons:
       if (atn.skeleton_id !== node.skeleton_id) {
-        // 1. Open the object tree node if synchronizing:
-        SkeletonAnnotations.maybeOpenSkeletonNodeInObjectTree(node);
-        // 2. Update the status with the ancestry of that skeleton:
+        // Update the status with the ancestry of that skeleton:
         var stackID = this.stack.getId();
         this.submit(
             django_url + project.id + '/skeleton/ancestry',
@@ -598,12 +588,11 @@ SkeletonAnnotations.SVGOverlay.prototype.splitSkeleton = function(nodeID) {
           django_url + project.id + '/skeleton/split',
           {
             treenode_id: nodeID,
-            upstream_annotation_set: upstream_set,
-            downstream_annotation_set: downstream_set,
+            upstream_annotation_map: JSON.stringify(upstream_set),
+            downstream_annotation_map: JSON.stringify(downstream_set),
           },
           function () {
             self.updateNodes();
-            ObjectTree.refresh();
             self.selectNode(nodeID);
           },
           true); // block UI
@@ -637,11 +626,10 @@ SkeletonAnnotations.SVGOverlay.prototype.createTreenodeLink = function (fromid, 
               {
                 from_id: fromid,
                 to_id: toid,
-                annotation_set: annotation_set,
+                annotation_set: JSON.stringify(annotation_set),
               },
               function (json) {
                 self.updateNodes(function() {
-                  ObjectTree.refresh();
                   self.selectNode(toid);
                 });
               },
@@ -881,7 +869,7 @@ SkeletonAnnotations.SVGOverlay.prototype.createInterpolatedNodeFn = function () 
                 phys_y: phys_y,
                 phys_z: phys_z,
                 nearestnode_id: nearestnode_id,
-                annotation_set: annotation_set,
+                annotation_set: JSON.stringify(annotation_set),
                 self: this});
 
     if (queue.length > 1) {
@@ -1187,7 +1175,6 @@ SkeletonAnnotations.SVGOverlay.prototype.whenclicked = function (e) {
       statusBar.replaceLast("Deactivated node #" + atn.id);
     }
     $('#neuronName').text('');
-    ObjectTree.deselectAll();
     this.activateNode(null);
     if (!e.shiftKey) {
       e.stopPropagation();
@@ -1858,8 +1845,6 @@ SkeletonAnnotations.SVGOverlay.prototype.deleteTreenode = function (node, wasAct
             } else {
               self.activateNode(null);
             }
-            // Refresh object tree as well, given that the node had no parent and therefore the deletion of its skeleton perhaps was triggered
-            ObjectTree.refresh();
           }
         }
         // capture ID prior to refreshing nodes and connectors
@@ -2217,6 +2202,7 @@ SplitMergeDialog.prototype.populate = function(extension) {
               cb.checked = checked;
               cb.setAttribute('class', 'split_skeleton_annotation');
               cb.setAttribute('annotation', a_info.name);
+              cb.setAttribute('annotator', a_info.users[0].id);
               cb.setAttribute('type', 'checkbox');
               cb_label.appendChild(cb);
               // There should only be one user who has used this annotation
@@ -2370,9 +2356,13 @@ SplitMergeDialog.prototype.get_annotation_set = function(over) {
   var over_checkboxes = $(this.dialog).find('#split_merge_dialog_' +
       tag + '_annotations input[type=checkbox]').toArray();
   var annotations = over_checkboxes.reduce(function(o, cb) {
-    if (cb.checked) o.push($(cb).attr('annotation'));
+    // Create a list of objects, containing each the annotation an its
+    // annotator ID.
+    if (cb.checked) {
+      o[$(cb).attr('annotation')] = parseInt($(cb).attr('annotator'));
+    }
     return o;
-  }, []);
+  }, {});
 
   return annotations;
 }
@@ -2391,11 +2381,12 @@ SplitMergeDialog.prototype.get_combined_annotation_set = function() {
   var under_set = this.get_under_annotation_set();
   // Combine both, avoid duplicates
   var combined_set = over_set;
-  under_set.forEach(function(a) {
-    if (combined_set.indexOf(a) === -1) {
-      combined_set.push(a);
+  for (var a in under_set) {
+    if (combined_set.hasOwnProperty(a)) {
+      continue;
     }
-  });
+    combined_set[a] = under_set[a];
+  }
 
   return combined_set;
 }

@@ -366,7 +366,8 @@ NeuronAnnotations.prototype.query = function(initialize)
           o[e.name] = annotations.getID(e.value);
         } else if (0 === e.name.indexOf('neuron_query_include_subannotation')) {
           // Expect the annotation field to be read out before this
-          var ann_input_name = e.name.replace(new RegExp(e.name),
+          var ann_input_name = e.name.replace(
+              new RegExp('neuron_query_include_subannotation'),
               'neuron_query_by_annotation');
           o[e.name] = o[ann_input_name];
         } else {
@@ -387,8 +388,11 @@ NeuronAnnotations.prototype.query = function(initialize)
         empty_val = '-2';
       }
       if (form_data[field] && form_data[field] != empty_val) {
+        // We found at least one constraint
         has_constraints = true;
-        break;
+      } else {
+        // Delete empty fields
+        delete form_data[field];
       }
     }
   }
@@ -496,7 +500,13 @@ NeuronAnnotations.prototype.add_query_field = function()
   $("#neuron_query_by_annotator" + this.widgetID).before($newRow);
 
   // By default, sub-annotations should not be included
-  $newRow.find('input[type=checkbox]').attr('checked', false);
+  $newRow.find('input[type=checkbox]').attr({
+      checked: false,
+      id: 'neuron_query_include_subannotation' + this.widgetID + '_' +
+          this.nextFieldID,
+      name: 'neuron_query_include_subannotation' + this.widgetID + '_' +
+          this.nextFieldID,
+  });
 
   this.nextFieldID += 1;
 };
@@ -675,10 +685,27 @@ NeuronAnnotations.prototype.annotate = function(entity_ids, skeleton_ids,
               new ErrorDialog(e.error, e.detail).show();
             } else {
               var ann_names = e.annotations.map(function(a) { return a.name; });
+              var used_annotations = e.annotations.reduce(function(o, a) {
+                if (a.entities.length > 0) o.push(a.name);
+                return o;
+              }, []);
               if (e.annotations.length == 1)
-                growlAlert('Information', 'Annotation ' + ann_names[0] + ' added.');
+                if (used_annotations.length > 0) {
+                  growlAlert('Information', 'Annotation ' + ann_names[0] +
+                      ' added to ' + e.annotations[0].entities.length +
+                       (e.annotations[0].entities.length > 1 ? ' entities.' : ' entity.'));
+                } else {
+                  growlAlert('Information', 'Couldn\'t add annotation ' +
+                      ann_names[0] + '.');
+                }
               else
-                growlAlert('Information', 'Annotations ' + ann_names.join(', ') + ' added.');
+                if (used_annotations.length > 0) {
+                  growlAlert('Information', 'Annotations ' +
+                      used_annotations.join(', ') + ' added.');
+                } else {
+                  growlAlert('Information', 'Couldn\'t add any of the annotations' +
+                      ann_names.join(', ') + '.');
+                }
               // Update the annotation cache with new annotations, if any
               try {
                 window.annotations.push(e.annotations);
