@@ -183,8 +183,6 @@ def create_interpolated_treenode(request, project_id=None):
             'x': 0,
             'y': 0,
             'z': 0,
-            'resx': 0,
-            'resy': 0,
             'resz': 0,
             'stack_translation_z': 0,
             'radius': -1}
@@ -207,12 +205,16 @@ def _create_interpolated_treenode(request, params, project_id, skip_last):
     the join_skeletons_interpolated. """
     response_on_error = 'Could not create interpolated treenode'
     try:
-        parent = Treenode.objects.get(pk=params['parent_id'])
-        parent_skeleton_id = parent.skeleton_id
-        loc = parent.location
-        parent_x = decimal.Decimal(loc.x)
-        parent_y = decimal.Decimal(loc.y)
-        parent_z = decimal.Decimal(loc.z)
+        cursor = connection.cursor()
+        cursor.execute('''
+        SELECT (location).x as x,
+               (location).y as y,
+               (location).z as z,
+               skeleton_id
+        FROM treenode
+        WHERE id=%(parent_id)s''', params)
+
+        parent_x, parent_y, parent_z, parent_skeleton_id = cursor.fetchone()
 
         steps = abs((params['z'] - parent_z) / params['resz']).quantize(decimal.Decimal('1'), rounding=decimal.ROUND_FLOOR)
         if steps == decimal.Decimal(0):
