@@ -1362,7 +1362,7 @@ WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode.prototyp
 };
 
 WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode.prototype.updatePosition = function(space, options) {
-	var pos = SkeletonAnnotations.getActiveNodePosition();
+	var pos = SkeletonAnnotations.getActiveNodePositionW();
 	if (!pos) {
     space.updateSplitShading(this.skeleton_id, null, options);
     this.skeleton_id = null;
@@ -1373,12 +1373,7 @@ WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode.prototyp
   space.updateSplitShading(this.skeleton_id, skeleton_id, options);
   this.skeleton_id = skeleton_id;
 
-	var stack = space.stack,
-      t = stack.translation,
-			r = stack.resolution,
-			c = new THREE.Vector3(t.x + (pos.x / stack.scale) * r.x,
-			                      t.y + (pos.y / stack.scale) * r.y,
-														t.z + pos.z * r.z);
+	var c = new THREE.Vector3(pos.x, pos.y, pos.z);
 
 	space.toSpace(c);
 
