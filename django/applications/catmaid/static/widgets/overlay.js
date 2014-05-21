@@ -846,7 +846,7 @@ SkeletonAnnotations.SVGOverlay.prototype.createInterpolatedNodeFn = function () 
         x: q.phys_x,
         y: q.phys_y,
         z: q.phys_z,
-        stack_id: project.focusedStack.id
+        stack_id: stack.id
     };
     var url;
     if (q.nearestnode_id) {
@@ -1631,13 +1631,13 @@ SkeletonAnnotations.SVGOverlay.prototype.createInterpolatedTreenode = function(e
             var merge = function(annotations) {
               var phys_x = self.pix2physX(self.coords.lastX,
                                           self.coords.lastY,
-                                          stack.z);
+                                          self.stack.z);
               var phys_y = self.pix2physY(self.coords.lastX,
                                           self.coords.lastY,
-                                          stack.z);
+                                          self.stack.z);
               var phys_z = self.pix2physZ(self.coords.lastX,
                                           self.coords.lastY,
-                                          stack.z);
+                                          self.stack.z);
               // Ask to join the two skeletons with interpolated nodes
               self.createTreenodeLinkInterpolated(phys_x, phys_y, phys_z,
                   nearestnode_id, annotations);

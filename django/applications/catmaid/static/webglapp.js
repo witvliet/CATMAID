@@ -721,9 +721,7 @@ WebGLApplication.prototype.Space = function( w, h, container, stack, scale ) {
 
 	// Absolute center in Space coordinates (not stack coordinates)
 	this.center = this.createCenter();
-	this.dimensions = new THREE.Vector3(stack.dimension.x * stack.resolution.x * scale,
-                                      stack.dimension.y * stack.resolution.y * scale,
-                                      stack.dimension.z * stack.resolution.z * scale);
+	this.dimensions = new THREE.Vector3(stack.dimension.x * stack.resolution.x * scale, stack.dimension.y * stack.resolution.y * scale, stack.dimension.z * stack.resolution.z * scale);
 
 	// WebGL space
 	this.scene = new THREE.Scene();
