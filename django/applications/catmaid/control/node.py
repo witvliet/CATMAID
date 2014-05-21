@@ -94,9 +94,9 @@ def node_list_tuples(request, project_id=None):
         WHERE
                 (t1.location).z >= %(z1)s
             AND (t1.location).z <  %(z2)s
-            AND (t1.location).x > %(left)s
+            AND (t1.location).x >= %(left)s
             AND (t1.location).x < %(right)s
-            AND (t1.location).y > %(top)s
+            AND (t1.location).y >= %(top)s
             AND (t1.location).y < %(bottom)s
             AND t1.project_id = %(project_id)s
         LIMIT %(limit)s
@@ -170,9 +170,9 @@ def node_list_tuples(request, project_id=None):
         WHERE connector.project_id = %(project_id)s
           AND (connector.location).z >= %(z1)s
           AND (connector.location).z <  %(z2)s
-          AND (connector.location).x > %(left)s
+          AND (connector.location).x >= %(left)s
           AND (connector.location).x < %(right)s
-          AND (connector.location).y > %(top)s
+          AND (connector.location).y >= %(top)s
           AND (connector.location).y < %(bottom)s
         ''', params)
 
