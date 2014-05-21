@@ -123,6 +123,25 @@ SkeletonAnnotations.getActiveNodePosition = function() {
   }
 };
 
+/** In world coordinates. */
+SkeletonAnnotations.getActiveNodePositionW = function() {
+  if (null === this.atn.id) {
+    return null;
+  }
+  var stack = project.getStack(this.atn.stack_id),
+      scale = stack.scale,
+      pz = this.atn.z,
+      py = this.atn.y / scale,
+      px = this.atn.x / scale;
+  var p = {'x': stack.stackToProjectX(pz, py, px),
+           'y': stack.stackToProjectY(pz, py, px),
+           'z': stack.stackToProjectZ(pz, py, px)};
+
+  return p;
+
+};
+
+
 SkeletonAnnotations.getActiveStackId = function() {
   return this.atn.stack_id;
 };
