@@ -4,6 +4,7 @@ import math
 
 from django.db import connection
 from django.http import HttpResponse
+from collections import namedtuple
 
 from catmaid.models import *
 from catmaid.fields import Double3D
@@ -193,8 +194,6 @@ def create_interpolated_treenode(request, project_id=None):
         'x': 0,
         'y': 0,
         'z': 0,
-        'resz': 0,
-        'stack_translation_z': 0,
         'radius': -1}
     int_values = {
         'parent_id': 0,
@@ -205,9 +204,61 @@ def create_interpolated_treenode(request, project_id=None):
     for p in int_values.keys():
         params[p] = int(request.POST.get(p, int_values[p]))
 
-    last_treenode_id, skeleton_id = _create_interpolated_treenode(request, \
-         params, project_id, False)
+    last_treenode_id, skeleton_id = _create_interpolated_treenode(request, params, project_id, False)
     return HttpResponse(json.dumps({'treenode_id': last_treenode_id}))
+
+
+
+stacks_cache = {}
+
+def memoized_stack_properties(cursor, stack_id):
+    stack = stacks_cache.get(stack_id, None)
+    if stack:
+        return stack
+
+    cursor.execute('''
+    SELECT (resolution).x as rx,
+           (resolution).y as ry,
+           (resolution).z as rz,
+           (translation).x as tx,
+           (translation).y as ty,
+           (translation).z as tz,
+            orientation
+    FROM stack,
+         project_stack
+    WHERE stack.id = project_stack.stack_id
+      AND stack.id = %s
+    ''' % int(stack_id))
+
+    resx, resy, resz, tx, ty, tz, orientation = cursor.fetchone()
+
+    Stack = namedtuple('Stack', ('resx', 'resy', 'resz', 'tx', 'ty', 'tz', 'orientation', 'broken_slices'))
+
+    cursor.execute('''
+    SELECT index FROM broken_slice WHERE stack_id=%s
+    ''' % int(stack_id))
+
+    broken_slices = set(row[0] for row in cursor.fetchall())
+
+    stack = Stack(decimal.Decimal(resx),
+                  decimal.Decimal(resy),
+                  decimal.Decimal(resz),
+                  decimal.Decimal(tx),
+                  decimal.Decimal(ty),
+                  decimal.Decimal(tz),
+                  orientation,
+                  broken_slices)
+
+    stacks_cache[stack_id] = stack
+
+    return stack
+
+def _stack_slicing(a, parent_a, res_a, stack_translation_a):
+    one = decimal.Decimal(1)
+    steps = abs((a - parent_a) / res_a).quantize(one, rounding=decimal.ROUND_FLOOR)
+    slice_index = ((parent_a - stack_translation_a) / res_a).quantize(one, rounding=decimal.ROUND_FLOOR)
+    sign = -1 if (a - parent_a) < 0 else 1
+    return steps, slice_index, sign
 
 
 def _create_interpolated_treenode(request, params, project_id, skip_last):
@@ -227,8 +278,20 @@ def _create_interpolated_treenode(request, params, project_id, skip_last):
 
         parent_x, parent_y, parent_z, parent_skeleton_id = cursor.fetchone()
 
-        steps = abs((params['z'] - parent_z) / params['resz']) \
-            .quantize(decimal.Decimal('1'), rounding=decimal.ROUND_FLOOR)
+        parent_x = decimal.Decimal(parent_x)
+        parent_y = decimal.Decimal(parent_y)
+        parent_z = decimal.Decimal(parent_z)
+
+        stack = memoized_stack_properties(cursor, params['stack_id'])
+
+
+        if 0 == stack.orientation: # XY
+            steps, index, sign = _stack_slicing(params['z'], parent_z, stack.resz, stack.tz)
+        elif 1 == stack.orientation: # XZ
+            steps, index, sign = _stack_slicing(params['y'], parent_y, stack.resy, stack.ty)
+        elif 2 == stack.orientation: # YZ
+            steps, index, sign = _stack_slicing(params['x'], parent_x, stack.resx, stack.tx)
+
         if steps == decimal.Decimal(0):
             steps = decimal.Decimal(1)
 
@@ -236,19 +299,13 @@ def _create_interpolated_treenode(request, params, project_id, skip_last):
         dy = (params['y'] - parent_y) / steps
         dz = (params['z'] - parent_z) / steps
 
-        broken_slices = set(int(bs.index) for bs in \
-            BrokenSlice.objects.filter(stack=params['stack_id']))
-        sign = -1 if dz < 0 else 1
-
-        # Loop the creation of treenodes in z resolution steps until target
-        # section is reached
+        # Loop the creation of treenodes in z resolution steps until target section is reached
         parent_id = params['parent_id']
-        atn_slice_index = ((parent_z - params['stack_translation_z']) / params['resz']) \
-            .quantize(decimal.Decimal('1'), rounding=decimal.ROUND_FLOOR)
-        for i in range(1, steps + (0 if skip_last else 1)):
-            if (atn_slice_index + i * sign) in broken_slices:
+        response_on_error = 'Error while trying to insert treenode.'
+
+        for i in xrange(1, steps + (0 if skip_last else 1)):
+            if (index + i * sign) in stack.broken_slices:
                 continue
-            response_on_error = 'Error while trying to insert treenode.'
             new_treenode = Treenode()
             new_treenode.user_id = request.user.id
             new_treenode.editor_id = request.user.id
@@ -269,7 +326,9 @@ def _create_interpolated_treenode(request, params, project_id, skip_last):
         return parent_id, parent_skeleton_id
 
     except Exception as e:
-        raise Exception(response_on_error + ':' + str(e))
+        import traceback
+        raise Exception("%s: %s %s" % (response_on_error, str(e),
+                                       str(traceback.format_exc())))
 
 
 @requires_user_role(UserRole.Annotate)

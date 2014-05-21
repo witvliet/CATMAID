@@ -841,14 +841,11 @@ SkeletonAnnotations.SVGOverlay.prototype.createInterpolatedNodeFn = function () 
   // Function to request interpolated nodes
   var requester = function(parent_id, q) {
     var stack = q.self.getStack();
-    // Creates treenodes from atn to new node in each z section
     var post = {
         pid: project.id,
         x: q.phys_x,
         y: q.phys_y,
         z: q.phys_z,
-        resz: stack.resolution.z,
-        stack_translation_z: stack.translation.z,
         stack_id: project.focusedStack.id
     };
     var url;
@@ -865,13 +862,15 @@ SkeletonAnnotations.SVGOverlay.prototype.createInterpolatedNodeFn = function () 
   };
 
   return function (phys_x, phys_y, phys_z, nearestnode_id, annotation_set) {
-    queue.push({phys_x: phys_x,
-                phys_y: phys_y,
-                phys_z: phys_z,
-                nearestnode_id: nearestnode_id,
-                annotation_set: JSON.stringify(annotation_set),
-                self: this});
+    var p = {phys_x: phys_x,
+             phys_y: phys_y,
+             phys_z: phys_z,
+             self: this};
+    if (nearestnode_id) p.nearestnode_id = nearestnode_id;
+    if (annotation_set) p.annotation_set = JSON.stringify(annotation_set);
 
+    queue.push(p);
+    
     if (queue.length > 1) {
       return; // will be handled by the callback
     }
@@ -1639,7 +1638,6 @@ SkeletonAnnotations.SVGOverlay.prototype.createInterpolatedTreenode = function(e
               var phys_z = self.pix2physZ(self.coords.lastX,
                                           self.coords.lastY,
                                           stack.z);
-
               // Ask to join the two skeletons with interpolated nodes
               self.createTreenodeLinkInterpolated(phys_x, phys_y, phys_z,
                   nearestnode_id, annotations);
