@@ -226,6 +226,79 @@ def _skeleton_for_3d_viewer(skeleton_id, project_id, with_connectors=True, lean=
 
     return name, nodes, tags, connectors, reviews
     
+def _skeleton_with_metadata(skeleton_id, project_id):
+    """ Helper function to retrieve all data including metadata and time stamps for a skeleton.
+    (Not performance critical) """
+    skeleton_id = int(skeleton_id) # sanitize
+    cursor = connection.cursor()
+
+    # Fetch the neuron name
+    cursor.execute(
+        '''SELECT name
+           FROM class_instance ci,
+                class_instance_class_instance cici
+           WHERE cici.class_instance_a = %s
+             AND cici.class_instance_b = ci.id
+        ''' % skeleton_id)
+    row = cursor.fetchone()
+    if not row:
+        # Check that the skeleton exists
+        cursor.execute('''SELECT id FROM class_instance WHERE id=%s''' % skeleton_id)
+        if not cursor.fetchone():
+            raise Exception("Skeleton #%s doesn't exist!" % skeleton_id)
+        else:
+            raise Exception("No neuron found for skeleton #%s" % skeleton_id)
+
+    # Fetch all nodes, with their tags if any
+    cursor.execute(
+        '''SELECT id, parent_id, user_id, (location).x, (location).y, (location).z, radius, confidence, creation_time, edition_time
+          FROM treenode
+          WHERE skeleton_id = %s
+        ''' % (added_fields, skeleton_id) )
+
+    # array of properties: id, parent_id, user_id, x, y, z, radius, confidence
+    nodes = tuple(cursor.fetchall())
+
+    tags = defaultdict(list) # node ID vs list of tags
+    connectors = []
+
+    # Get all reviews for this skeleton including time stamps
+    reviews = get_treenodes_to_reviews_with_time(skeleton_ids=[skeleton_id])
+
+    # Text tags
+    cursor.execute("SELECT id FROM relation WHERE project_id=%s AND relation_name='labeled_as'" % int(project_id))
+    labeled_as = cursor.fetchall()[0][0]
+
+    cursor.execute(
+         ''' SELECT treenode_class_instance.treenode_id, class_instance.name
+             FROM treenode, class_instance, treenode_class_instance
+             WHERE treenode.skeleton_id = %s
+               AND treenode.id = treenode_class_instance.treenode_id
+               AND treenode_class_instance.class_instance_id = class_instance.id
+               AND treenode_class_instance.relation_id = %s
+         ''' % (skeleton_id, labeled_as))
+
+    for row in cursor.fetchall():
+        tags[row[1]].append(row[0])
+
+    # Fetch all connectors with their partner treenode IDs
+    cursor.execute(
+        ''' SELECT tc.treenode_id, tc.connector_id, r.relation_name, c.location, c.creation_time
+            FROM treenode_connector tc
+                 connector c,
+                 relation r
+            WHERE tc.skeleton_id = %s
+              AND tc.connector_id = c.id
+              AND tc.relation_id = r.id
+        ''' % (added_fields, skeleton_id) )
+    # Above, purposefully ignoring connector tags. Would require a left outer join on the inner join of connector_class_instance and class_instance, and frankly connector tags are pointless in the 3d viewer.
+
+    # List of (treenode_id, connector_id, relation_id, x, y, z)n with relation_id replaced by 0 (presynaptic) or 1 (postsynaptic)
+    # 'presynaptic_to' has an 'r' at position 1:
+    for row in cursor.fetchall():
+        x, y, z = imap(float, row[3][1:-1].split(','))
+        connectors.append((row[0], row[1], 0 if 'r' == row[2][1] else 1, x, y, z, row[4]))
+    return name, nodes, tags, connectors, reviews
 
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
@@ -234,6 +307,7 @@ def skeleton_for_3d_viewer(request, project_id=None, skeleton_id=None):
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def skeleton_with_metadata(request, project_id=None, skeleton_id=None):
+    """ Retrieve all data including metadata and time stamps associated with a skeleton. """
 
     def default(obj):
         """Default JSON serializer."""
@@ -248,8 +322,7 @@ def skeleton_with_metadata(request, project_id=None, skeleton_id=None):
             )
         return millis
 
-    return HttpResponse(json.dumps(_skeleton_for_3d_viewer(skeleton_id, project_id, \
-        with_connectors=True, lean=0, all_field=True), separators=(',', ':'), default=default))
+    return HttpResponse(json.dumps(_skeleton_with_metadata(skeleton_id, project_id), separators=(',', ':'), default=default))
 
 def _measure_skeletons(skeleton_ids):
     if not skeleton_ids:
