@@ -144,8 +144,15 @@ def stats_user_activity(request, project_id=None):
         .order_by('creation_time').values('creation_time')
     prelinks = [time.mktime(ele['creation_time'].timetuple()) for ele in stats_prelink]
     postlinks = [time.mktime(ele['creation_time'].timetuple()) for ele in stats_postlink]
+    # Retrieve reviewing timestamps for that user
+    reviews = Review.objects \
+        .filter(project=project_id,
+            reviewer=map_name_to_userid[username]) \
+        .order_by('review_time').values('review_time')
+    reviews_timestamp = [time.mktime(ele['review_time'].timetuple()) for ele in reviews]
     return HttpResponse(json.dumps({'skeleton_nodes': timepoints,
-         'presynaptic': prelinks, 'postsynaptic': postlinks}), mimetype='text/json')
+        'skeleton_nodes_reviewed': reviews_timestamp,
+        'presynaptic': prelinks, 'postsynaptic': postlinks}), mimetype='text/json')
 
 def stats_user_history(request, project_id=None):
     # Get the start date for the query, defaulting to 10 days ago.
