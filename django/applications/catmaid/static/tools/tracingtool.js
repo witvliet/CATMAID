@@ -826,6 +826,17 @@ function TracingTool()
     }
   }) );
 
+  this.addAction( new Action({
+      helpText: "Ilastik tools",
+      keyShortcuts: {
+          'F3': [ 114 ]
+      },
+      run: function (e) {
+          WindowMaker.create('ilastik-tools');
+          return true;
+      }
+  }) );
+
 
   var keyCodeToAction = getKeyCodeToActionMap(actions);
 

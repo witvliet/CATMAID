@@ -2446,6 +2446,25 @@ var WindowMaker = new function()
 
     return win;
   };
+
+  var createIlastikWindow = function()
+  {
+    var IT = new IlastikTools();
+    var win = new CMWWindow( "Ilastik tools" );
+    var content = win.getFrame();
+    var container = createContainer("ilastiktools" + IT.widgetID);
+    content.appendChild( container );
+    content.style.backgroundColor = "#ffffff";
+
+    // Wire it up
+    addListener(win, container);
+    addLogic(win);
+
+    // Initialize settings window with container added to the DOM
+    IT.init(container);
+
+    return win;
+  };
   
   var creators = {
     "keyboard-shortcuts": createKeyboardShortcutsWindow,
@@ -2479,6 +2498,7 @@ var WindowMaker = new function()
     "neuron-annotations": createNeuronAnnotationsWindow,
     "neuron-navigator": createNeuronNavigatorWindow,
     "settings": createSettingsWindow,
+    "ilastik-tools": createIlastikWindow,
   };
 
   /** If the window for the given name is already showing, just focus it.
