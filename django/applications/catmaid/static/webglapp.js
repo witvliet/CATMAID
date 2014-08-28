@@ -1302,6 +1302,8 @@ WebGLApplication.prototype.Space.prototype.View.prototype.init = function() {
   this.stats.domElement.style.right = '0px';
   this.stats.domElement.style.bottom = '0px';
   this.space.container.appendChild(this.stats.domElement);
+
+  this.render2();
 };
 
 
@@ -1326,12 +1328,18 @@ WebGLApplication.prototype.Space.prototype.View.prototype.createControls = funct
 };
 
 WebGLApplication.prototype.Space.prototype.View.prototype.render = function() {
+
+};
+
+WebGLApplication.prototype.Space.prototype.View.prototype.render2 = function() {
 	this.controls.update();
 	if (this.renderer) {
 		this.stats.begin();
 		this.renderer.clear();
 		this.renderer.render(this.space.scene, this.camera);
 		this.stats.end();
+
+    requestAnimationFrame(this.render2.bind(this));
 	}
 };
 
