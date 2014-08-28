@@ -146,6 +146,7 @@ WebGLApplication.prototype.Options = function() {
   this.resample_skeletons = false;
   this.resampling_delta = 3000; // nm
   this.skeleton_line_width = 3;
+  this.show_debug = false;
 };
 
 WebGLApplication.prototype.Options.prototype = {};
@@ -698,6 +699,14 @@ WebGLApplication.prototype.configureParameters = function() {
 
   var linewidth = optionField('Skeleton rendering line width: ', ' pixels.', 5, null, 'skeleton_line_width');
 
+  var debug = document.createElement('input');
+  debug.setAttribute("type", "checkbox");
+  debug.setAttribute("id", "toggle_debug");
+  debug.checked = options.show_debug;
+  dialog.appendChild(debug);
+  dialog.appendChild(document.createTextNode('Toggle statistics and debugging info'));
+  dialog.appendChild(document.createElement("br"));
+
   var submit = this.submit;
 
   $(dialog).dialog({
@@ -727,7 +736,8 @@ WebGLApplication.prototype.configureParameters = function() {
         options.show_active_node = bactive.checked;
         options.show_meshes = bmeshes.checked;
         options.meshes_color = options.validateOctalString("#meshes-color", options.meshes_color);
-        options.lean_mode = blean.checked;
+          options.lean_mode = blean.checked;
+        options.show_debug = debug.checked;
 
         var read = function(checkbox, checkboxKey, valueField, valueKey) {
           var old_value = options[checkboxKey];
@@ -751,6 +761,7 @@ WebGLApplication.prototype.configureParameters = function() {
 
         space.staticContent.adjust(options, space);
         space.content.adjust(options, space, submit, changed_bandwidth, changed_line_width);
+        space.view.adjust(options);
 
         // Copy
         WebGLApplication.prototype.OPTIONS = options.clone();
@@ -1363,6 +1374,10 @@ WebGLApplication.prototype.Space.prototype.View.prototype.ZX = function() {
 	this.camera.position.y = dimensions.y * 2;
 	this.camera.position.z = center.z;
 	this.camera.up.set(-1, 0, 0);
+};
+
+WebGLApplication.prototype.Space.prototype.View.prototype.adjust = function(options) {
+  this.stats.domElement.style.display = options.show_debug ? 'block' : 'none';
 };
 
 /** Construct mouse controls as objects, so that no context is retained. */
