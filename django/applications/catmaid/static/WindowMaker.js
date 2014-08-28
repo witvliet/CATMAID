@@ -2462,7 +2462,7 @@ var WindowMaker = new function()
     content.style.backgroundColor = "#ffffff";
 
     // Wire it up
-    addListener(win, container);
+    addListener(win, container, undefined, IT.destroy.bind(IT));
     addLogic(win);
 
     // Initialize settings window with container added to the DOM

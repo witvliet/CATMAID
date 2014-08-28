@@ -37,6 +37,15 @@ IlastikTools.prototype.init = function(container) {
 };
 
 /**
+ * Remove all Ilastik layers, when destroyed.
+ */
+IlastikTools.prototype.destroy = function() {
+  project.getStacks().forEach((function(s) {
+    s.removeLayer("ilastik" + this.widgetID);
+  }).bind(this));
+};
+
+/**
  * Reads a file from a file object and tries to parse it as CSV file generated
  * by Ilastik.
  */
@@ -67,6 +76,7 @@ IlastikTools.prototype.addFile = function(file) {
         alert('Not all lines of the CSV file have five elements!');
       } else {
         this.positions = csv;
+        this.recreateLayers();
       }
     } else {
       alert('No data to import!');
@@ -75,6 +85,22 @@ IlastikTools.prototype.addFile = function(file) {
   }).bind(this);
 
   reader.readAsText(file);
+};
+
+/**
+ * Recreates layers for the currently loaded data in all open stacks.
+ */
+IlastikTools.prototype.recreateLayers = function() {
+  // Remove existing layers
+  project.getStacks().forEach((function(s) {
+    s.removeLayer("ilastik" + this.widgetID);
+  }).bind(this));
+
+  // Create and  new layers
+  project.getStacks().forEach((function(s) {
+    s.addLayer("ilastik" + this.widgetID, new IlastikDataLayer(s, this.positions));
+    s.redraw();
+  }).bind(this));
 };
 
 /**
