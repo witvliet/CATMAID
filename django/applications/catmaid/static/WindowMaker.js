@@ -1865,6 +1865,11 @@ var WindowMaker = new function()
               // Show dialog to select
               export_connectors();
             });
+            // Bind tree geometry export link to handler
+            $(this).find('#export-tree-geometry').click(function() {
+              // Show dialog to select
+              export_tree_geometry();
+            });
           }
         });
 
