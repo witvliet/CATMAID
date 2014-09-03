@@ -4,9 +4,19 @@
 function IlastikDataLayer(stack, data)
 {
   this.stack = stack;
-  this.data = data;
   this.opacity = 1;
   this.radius = 3;
+
+  // Pre-process the data to map rows to z indices
+  this.data = data.reduce(function(o, r) {
+    var z = r[3];
+    if (! (z in o)) {
+      o[z] = [];
+    }
+    o[z].push(r);
+
+    return o;
+  }, {});
 
   // Create container, aligned to the upper left
   this.view = document.createElement("div");
@@ -54,9 +64,7 @@ IlastikDataLayer.prototype.redraw = function(completionCallback)
 
   // Find data points on current slice
   var z = this.stack.z;
-  var stackPositions = this.data.filter(function(p) {
-    return p[3] == z; 
-  });
+  var stackPositions = this.data[z] || [];
 
   // Translate the stack positions found to screen space
   // TODO: Expect project coordinates to handle different stacks
