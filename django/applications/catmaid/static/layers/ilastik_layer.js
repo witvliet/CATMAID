@@ -58,6 +58,9 @@ IlastikDataLayer.prototype.resize = function()
 
 IlastikDataLayer.prototype.redraw = function(completionCallback)
 {
+  // Clean paper
+  this.paper.clear();
+
   // Get view box in local/stack and world/project coordinates
   var localViewBox = this.stack.createStackViewBox();
   var worldViewBox = this.stack.createStackToProjectBox(localViewBox);
@@ -77,8 +80,7 @@ IlastikDataLayer.prototype.redraw = function(completionCallback)
     ];
   }).bind(this));
 
-  // Clean paper
-  this.paper.clear();
+  // Draw synapses
   screenPositions.forEach((function(p) {
     var circle = this.paper.circle(p[0], p[1], this.radius);
     circle.attr('fill', '#00f');
