@@ -150,11 +150,16 @@ IlastikTools.prototype.update_ui = function() {
     ]
   });
 
+
   // Double-clicking on a row jumps to position
   $('#ilastik_result' + this.widgetID).on('dblclick', 'td', function() {
-    var tr = this.parentNode;
+    var $tr = $(this).parent();
+    // Highlight column
+    $(table).find('tr').removeClass('gradeA');
+    $tr.addClass('gradeA');
+    // Get data
     var data = [];
-    $(this).parent().find('td').each(function() {
+    $tr.find('td').each(function() {
       data.push($(this).html());
     });
     // Expect coordinates in 2., 3. and 4. column. These coordinates are in
