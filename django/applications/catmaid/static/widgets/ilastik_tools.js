@@ -118,6 +118,10 @@ IlastikTools.prototype.update_ui = function() {
       .append($('<label />').text('Y resolution:').append(yRes))
       .append($('<label />').text('Z resolution:').append(zRes)));
 
+  // Add some explanative text
+  this.$data_container.append($('<p />')
+      .text('S: Synapse, N: Node, NC: Nearest connector'));
+
   // Add result table
   this.$data_container.append('<table cellpadding="0" cellspacing="0" ' +
       'border="0" class="display" id="ilastik_result' + this.widgetID +
