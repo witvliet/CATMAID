@@ -60,9 +60,9 @@ IlastikTools.prototype.addFile = function(file) {
     return;
   }
 
-  // Helper to check if an array (CSV line) has five elements
-  function not_five_elements(line) {
-    return 5 !== line.length;
+  // Helper to check if an array (CSV line) has 17 elements
+  function not_17_elements(line) {
+    return 17 !== line.length;
   }
 
   var reader = new FileReader();
@@ -72,8 +72,8 @@ IlastikTools.prototype.addFile = function(file) {
     var csv = $.csv.toArrays(e.target.result, {separator: '\t'});
     if (csv && csv.length > 0) {
       this.positions = [];
-      if (csv.some(not_five_elements)) {
-        alert('Not all lines of the CSV file have five elements!');
+      if (csv.some(not_17_elements)) {
+        alert('Not all lines of the CSV file have 17 elements!');
       } else {
         this.positions = csv;
         this.recreateLayers();
@@ -126,11 +126,23 @@ IlastikTools.prototype.update_ui = function() {
   var table = $('#ilastik_result' + this.widgetID).dataTable({
     "aaData": this.positions,
     "aoColumns": [
-      { "sTitle": "Index" },
-      { "sTitle": "X" },
-      { "sTitle": "Y" },
-      { "sTitle": "Z" },
-      { "sTitle": "Value" }
+      { "sTitle": "S ID" },
+      { "sTitle": "S X" },
+      { "sTitle": "S Y" },
+      { "sTitle": "S Z" },
+      { "sTitle": "Size" },
+      { "sTitle": "Distance" },
+      { "sTitle": "Uncertainity" },
+      { "sTitle": "N ID" },
+      { "sTitle": "N X" },
+      { "sTitle": "N Y" },
+      { "sTitle": "N Z" },
+      { "sTitle": "N Count" },
+      { "sTitle": "NC ID" },
+      { "sTitle": "NC Distance [nm]" },
+      { "sTitle": "NC X [nm]" },
+      { "sTitle": "NC Y [nm]" },
+      { "sTitle": "NC Z [nm]" },
     ]
   });
 
