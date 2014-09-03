@@ -76,12 +76,16 @@ IlastikDataLayer.prototype.redraw = function(completionCallback)
     var s = this.stack;
     return [
       (p[1] - s.x) * s.scale + s.viewWidth * 0.5,
-      (p[2] - s.y) * s.scale + s.viewHeight * 0.5
+      (p[2] - s.y) * s.scale + s.viewHeight * 0.5,
+      (p[8] - s.x) * s.scale + s.viewWidth * 0.5,
+      (p[9] - s.y) * s.scale + s.viewHeight * 0.5
     ];
   }).bind(this));
 
-  // Draw synapses
+  // Draw synapses and lines to referred node
   screenPositions.forEach((function(p) {
+    var line = this.paper.path(['M', p[0], p[1], 'L', p[2], p[3]]);
+    line.attr('stroke', '#0ff');
     var circle = this.paper.circle(p[0], p[1], this.radius);
     circle.attr('fill', '#00f');
     circle.attr('stroke', '#0ff');
