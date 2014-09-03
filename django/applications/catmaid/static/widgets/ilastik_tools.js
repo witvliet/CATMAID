@@ -113,10 +113,10 @@ IlastikTools.prototype.update_ui = function() {
   var xRes = $('<input />').attr('type', 'text').val('4.0');
   var yRes = $('<input />').attr('type', 'text').val('4.0');
   var zRes = $('<input />').attr('type', 'text').val('45.0');
-  this.$data_container
+  this.$data_container.append($('<p />')
       .append($('<label />').text('X resolution:').append(xRes))
       .append($('<label />').text('Y resolution:').append(yRes))
-      .append($('<label />').text('Z resolution:').append(zRes));
+      .append($('<label />').text('Z resolution:').append(zRes)));
 
   // Add result table
   this.$data_container.append('<table cellpadding="0" cellspacing="0" ' +
