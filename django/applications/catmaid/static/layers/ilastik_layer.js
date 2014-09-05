@@ -28,9 +28,7 @@ function IlastikDataLayer(stack, data)
   stack.getView().appendChild(this.view);
 
   // Create SVG
-  this.paper = Raphael(this.view,
-      Math.floor(stack.dimension.x * stack.scale),
-      Math.floor(stack.dimension.y * stack.scale));
+  this.paper = Raphael(this.view, stack.viewWidth, stack.viewHeight);
 };
 
 IlastikDataLayer.prototype = {};
@@ -51,8 +49,9 @@ IlastikDataLayer.prototype.getOpacity = function()
     return this.opacity;
 };
 
-IlastikDataLayer.prototype.resize = function()
+IlastikDataLayer.prototype.resize = function(width, height)
 {
+  this.paper.setSize(width, height);
   this.redraw();
 };
 
