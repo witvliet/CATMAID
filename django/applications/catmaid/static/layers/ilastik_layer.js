@@ -81,13 +81,22 @@ IlastikDataLayer.prototype.redraw = function(completionCallback)
     ];
   }).bind(this));
 
-  // Draw synapses and lines to referred node
+  // Draw synapses and lines to referred node (if they are in view)
   screenPositions.forEach((function(p) {
-    var line = this.paper.path(['M', p[0], p[1], 'L', p[2], p[3]]);
-    line.attr('stroke', '#0ff');
-    var circle = this.paper.circle(p[0], p[1], this.radius);
-    circle.attr('fill', '#00f');
-    circle.attr('stroke', '#0ff');
+    var sVisible = p[0] >= 0 && p[0] < this.paper.width &&
+                   p[1] >= 0 && p[1] < this.paper.height;
+    var nVisible = p[2] >= 0 && p[2] < this.paper.width &&
+                   p[3] >= 0 && p[3] < this.paper.height;
+
+    if (sVisible || nVisible) {
+      var line = this.paper.path(['M', p[0], p[1], 'L', p[2], p[3]]);
+      line.attr('stroke', '#0ff');
+    }
+    if (sVisible) {
+      var circle = this.paper.circle(p[0], p[1], this.radius);
+      circle.attr('fill', '#00f');
+      circle.attr('stroke', '#0ff');
+    }
   }).bind(this));
 
   if (completionCallback) {
