@@ -33,6 +33,10 @@ function Project( pid )
 	 */
 	this.addStack = function( stack )
 	{
+		// Save a local reference to the currently focused stack, because it gets
+		// overwritten if the new stack is added.
+		var lastFocusedStack = self.focusedStack;
+
 		var opened = false;
 		for ( var i = 0; i < stacks.length; ++i )
 		{
@@ -55,7 +59,8 @@ function Project( pid )
 			ui.onresize();
 		}
 		if ( stacks.length > 1 )
-			self.moveTo( self.coordinates.z, self.coordinates.y, self.coordinates.x );
+			self.moveTo( self.coordinates.z, self.coordinates.y, self.coordinates.x,
+					lastFocusedStack ? lastFocusedStack.s : undefined );
 		else
 		{
 			var c = stack.projectCoordinates();
