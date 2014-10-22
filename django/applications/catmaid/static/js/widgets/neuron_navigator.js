@@ -8,6 +8,8 @@ var NeuronNavigator = function()
   this.widgetID = this.registerInstance();
   this.registerSource();
   this.current_node = null;
+  // Map registered neurons to the number of nodes referencing them
+  this.registered_neurons = {};
 };
 
 NeuronNavigator.prototype = {};
@@ -25,6 +27,7 @@ NeuronNavigator.prototype.destroy = function()
 {
   this.unregisterInstance();
   this.unregisterSource();
+  NeuronNameService.getInstance().unregister(this);
 };
 
 NeuronNavigator.prototype.append = function() {};
@@ -75,6 +78,23 @@ NeuronNavigator.prototype.init_ui = function(container)
   this.select_node(home_node);
 };
 
+/**
+ * Get a list of all nodes from the requested node to the root.
+ */
+NeuronNavigator.prototype.get_node_list = function(node)
+{
+  if (!node) {
+    return [];
+  } else {
+    var nodes = [node];
+    while (node.parent_node) {
+      node = node.parent_node;
+      nodes.push(node);
+    }
+    return nodes;
+  }
+};
+
 NeuronNavigator.prototype.set_annotation_node = function(
     annotation_name, annotation_id)
 {
@@ -92,6 +112,16 @@ NeuronNavigator.prototype.set_annotation_node = function(
 
 NeuronNavigator.prototype.select_node = function(node)
 {
+
+  // Find all nodes that will be removed after this selection
+  var current_nodes = this.get_node_list(this.current_node);
+  var new_nodes = this.get_node_list(node);
+  var removed_nodes = current_nodes.filter(function(n) {
+    return -1 === new_nodes.indexOf(n);
+  });
+  // Destroy all removed nodes
+  removed_nodes.forEach(function (n) { n.destroy() });
+
   // Remember this node as the current node
   this.current_node = node;
 
@@ -174,6 +204,53 @@ NeuronNavigator.prototype.reroot = function()
 };
 
 /**
+ * Register a neuron with the navigator. This is used to make nodes receive
+ * updates about changes of neurons they are about.
+ */
+NeuronNavigator.prototype.register = function(node, neuron_id)
+{
+  // Increment reference counter
+  if (this.registered_neurons.hasOwnProperty(neuron_id)) {
+    this.registered_neurons[neuron_id] = this.registered_neurons[neuron_id] + 1;
+  } else {
+    // Register with the neuron name service to get notified about updates
+    NeuronNameService.getInstance().registerAll(this, node.getSelectedSkeletonModels());
+    this.registered_neurons[neuron_id] = 1;
+  }
+};
+
+/**
+ * Unregister a neuron for a node.
+ */
+NeuronNavigator.prototype.unregister = function(node, neuron_id)
+{
+  // Increment reference counter
+  if (!this.registered_neurons.hasOwnProperty(neuron_id)) {
+    return
+  }
+
+  var n_references = this.registered_neurons[neuron_id];
+
+  if (1 === n_references) {
+    // Unregister with the neuron name service, because this was the last node
+    // referencing it.
+    NeuronNameService.getInstance().unregister(this, node.getSelectedSkeletonModels());
+    delete this.registered_neurons[neuron_id];
+  } else {
+    this.registered_neurons[neuron_id] = this.registered_neurons[neuron_id] - 1;
+  }
+};
+
+/**
+ * Will refresh current node if notified by the neuron name service.
+ */
+NeuronNavigator.prototype.updateNeuronNames = function()
+{
+  this.select_node(this.current_node);
+};
+
+
+/**
  * A class representing a node in the graph of the navigator.
  */
 NeuronNavigator.Node = function(name)
@@ -189,6 +266,15 @@ NeuronNavigator.Node = function(name)
   this.possibleLengths = [25, 100, 500, 2000];
   this.possibleLengthsLabels = this.possibleLengths.map(
       function (n) { return n.toString(); });
+};
+
+/**
+ * Default implementation for destroying a node. IT can be overridden by base
+ * classes.
+ */
+NeuronNavigator.Node.prototype.destroy = function()
+{
+  return;
 };
 
 /**
@@ -1364,6 +1450,15 @@ NeuronNavigator.NeuronNode = function(neuron)
   this.neuron_name = neuron.name;
   this.name = neuron.name;
   this.skeleton_ids = neuron.skeleton_ids;
+
+  this.link = function(navigator, parent)
+  {
+    NeuronNavigator.NeuronNode.prototype.link.call(this, navigator, parent);
+
+    if (this.navigator && this.neuron_id) {
+        this.navigator.register(this, this.neuron_id);
+    }
+  };
 };
 
 NeuronNavigator.NeuronNode.prototype = {};
@@ -1373,6 +1468,13 @@ $.extend(NeuronNavigator.NeuronNode.prototype,
 NeuronNavigator.NeuronNode.prototype.breaks_filter_chain = function()
 {
   return true;
+};
+
+NeuronNavigator.NeuronNode.prototype.destroy = function()
+{
+    if (this.navigator && this.neuron_id) {
+        this.navigator.unregister(this, this.neuron_id);
+    }
 };
 
 NeuronNavigator.NeuronNode.prototype.create_ann_post_process_fn = function(
@@ -1758,7 +1860,7 @@ NeuronNavigator.ActiveNeuronMixin = function()
 };
 
 $.extend(NeuronNavigator.ActiveNeuronMixin.prototype,
-    new NeuronNavigator.NeuronNode({id: -1, name: '', skeleton_ids: []}));
+    new NeuronNavigator.NeuronNode({id: null, name: '', skeleton_ids: []}, true));
 
 NeuronNavigator.ActiveNeuronMixin.prototype.add_activeneuron_content =
     function(container, filters)
