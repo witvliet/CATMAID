@@ -95,64 +95,66 @@ function PixiTileLayer(
 
     var xd = 0;
     var yd = 0;
-    
-    // // If panning only (no scaling, no browsing through z)
-    // if ( stack.z == stack.old_z && stack.s == stack.old_s )
-    // {
-    //   var old_fr = Math.floor( stack.old_yc / effectiveTileHeight );
-    //   var old_fc = Math.floor( stack.old_xc / effectiveTileWidth );
-      
-    //   // Compute panning in X and Y
-    //   xd = fc - old_fc;
-    //   yd = fr - old_fr;
 
-    //   // re-order the tiles array on demand
-    //   if ( xd < 0 )
-    //   {
-    //     // Panning to the left:
-    //     // Move the last column of tiles to the first column
-    //     for ( var i = tiles.length - 1; i >= 0; --i )
-    //     {
-    //       var tile = tiles[ i ].pop();
-    //       tile.visible = false;
-    //       tiles[ i ].unshift( tile );
-    //     }
-    //   }
-    //   else if ( xd > 0 )
-    //   {
-    //     // Panning to the right:
-    //     // Move the first column of tiles to the last column
-    //     for ( var i = tiles.length - 1; i >= 0; --i )
-    //     {
-    //       var img = tiles[ i ].shift();
-    //       img.visible = false;
-    //       tiles[ i ].push( img );
-    //     }
-    //   }
+    // If panning only (no scaling, no browsing through z)
+    if ( stack.z == stack.old_z && stack.s == stack.old_s )
+    {
+      var old_fr = Math.floor( stack.old_yc / effectiveTileHeight );
+      var old_fc = Math.floor( stack.old_xc / effectiveTileWidth );
 
-    //   if ( yd < 0 )
-    //   {
-    //     // Panning to the top:
-    //     // Move the last row of tiles to the first row
-    //     var old_row = tiles.pop();
-    //     for ( var i = old_row.length - 1; i >= 0; --i )
-    //     {
-    //       old_row[ i ].visible = false;
-    //     }
-    //     tiles.unshift( old_row );
-    //   }
-    //   else if ( yd > 0 )
-    //   {
-    //     // Panning to the bottom:
-    //     // Move the first row of tiles to the last row
-    //     var old_row = tiles.shift();
-    //     for ( var i = old_row.length - 1; i >= 0; --i )
-    //     {
-    //       old_row[ i ].visible = false;
-    //     }
-    //     tiles.push( old_row );
-    //   }
-    // }
+      // Compute panning in X and Y
+      xd = fc - old_fc;
+      yd = fr - old_fr;
+
+      // re-order the tiles array on demand
+      if ( xd < 0 )
+      {
+        // Panning to the left:
+        // Move the last column of tiles to the first column
+        for ( var i = tiles.length - 1; i >= 0; --i )
+        {
+          for (var j = tiles[i].length - 1; j >= 1; --j){
+            tiles[i][j].setTexture(tiles[i][j-1].texture);
+          }
+          tiles[i][0].visible = false;
+        }
+      }
+      else if ( xd > 0 )
+      {
+        // Panning to the right:
+        // Move the first column of tiles to the last column
+        for ( var i = tiles.length - 1; i >= 0; --i )
+        {
+          for (var j = 0; j < tiles[i].length - 1; ++j){
+            tiles[i][j].setTexture(tiles[i][j+1].texture);
+          }
+          tiles[i][tiles[i].length - 1].visible = false;
+        }
+      }
+
+      if ( yd < 0 )
+      {
+        // Panning to the top:
+        // Move the last row of tiles to the first row
+        for ( var i = tiles.length - 1; i >= 1; --i )
+        {
+          for (var j = tiles[i].length - 1; j >= 0; --j){
+            tiles[i][j].setTexture(tiles[i-1][j].texture);
+          }
+        }
+      }
+      else if ( yd > 0 )
+      {
+        // Panning to the bottom:
+        // Move the first row of tiles to the last row
+        for ( var i = 0; i < tiles.length - 1; ++i )
+        {
+          for (var j = tiles[i].length - 1; j >= 0; --j){
+            tiles[i][j].setTexture(tiles[i+1][j].texture);
+          }
+        }
+      }
+    }
 
     // Adjust the last tile in a row or column to be visible rather than hidden.
     // Must run when changing scale, or when changing the size of the canvas window.
@@ -187,25 +189,18 @@ function PixiTileLayer(
     else
       left = -( ( stack.xc + 1 ) % effectiveTileWidth ) - effectiveTileWidth + 1;
 
-    var t = top;
-    var l = left;
-
-    var nextL, nextT, seamRow;
-
     batchContainer.position.x = left;
     batchContainer.position.y = top;
+    batchContainer.scale.x = mag;
+    batchContainer.scale.y = mag;
 
     // update the images sources
     for ( var i = 0; i < tiles.length; ++i )
     {
       var r = fr + i;
-      nextT = t + effectiveTileHeight;
-      seamRow = Math.round(nextT) - nextT > 0;
       for ( var j = 0; j < tiles[ 0 ].length; ++j )
       {
         var c = fc + j;
-
-        nextL = l + effectiveTileWidth;
 
         if ( r >= 0 && c >= 0 && r <= LAST_YT && c <= LAST_XT )
         {
@@ -216,21 +211,12 @@ function PixiTileLayer(
           if (source != tile.texture.baseTexture.imageUrl)
             tile.setTexture(PIXI.Texture.fromImage(source));
 
-          // tile.position.x = l;
-          // tile.position.y = t;
-          tile.scale.x = mag;
-          tile.scale.y = mag;
           tile.visible = true;
         } else tiles[i][j].visible = false;
-
-        l = nextL;
       }
-      l = left;
-      t = nextT;
     }
 
     renderer.render(stage);
-
 
     if (typeof completionCallback !== "undefined") {
       completionCallback();
@@ -312,8 +298,7 @@ function PixiTileLayer(
   var tiles_buf = [];
 
   var batchContainer = null;
-  // var renderer = new PIXI.autoDetectRenderer(stack.getView().clientWidth, stack.getView().clientHeight);
-  var renderer = new PIXI.WebGLRenderer(stack.getView().clientWidth, stack.getView().clientHeight);
+  var renderer = new PIXI.autoDetectRenderer(stack.getView().clientWidth, stack.getView().clientHeight);
   self.stage = new PIXI.Stage(0x000000);
   var stage = self.stage;
 
