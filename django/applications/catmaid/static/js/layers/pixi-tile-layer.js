@@ -227,12 +227,13 @@ function PixiTileLayer(
 
   this.resize = function( width, height )
   {
+    if (width == renderer.width && height == renderer.height) return;
+
     renderer.resize(width, height);
     var rows = Math.floor( height / tileHeight ) + 2;
     var cols = Math.floor( width / tileWidth ) + 2;
     initTiles( rows, cols );
     self.redraw();
-    return;
   };
 
   /**
