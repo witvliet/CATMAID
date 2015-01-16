@@ -44,12 +44,16 @@ function PixiTileLayer(
     for ( var i = 0; i < rows; ++i )
     {
       tiles[ i ] = [];
+      tiles_buf[i] = [];
+
       for ( var j = 0; j < cols; ++j )
       {
         tiles[ i ][ j ] = new PIXI.Sprite(emptyTex);
         batchContainer.addChild(tiles[i][j]);
         tiles[i][j].position.x = j * tileWidth;
         tiles[i][j].position.y = i * tileHeight;
+
+        tiles_buf[i][j] = false;
       }
     }
 
@@ -208,10 +212,23 @@ function PixiTileLayer(
             tileBaseName, tileWidth, tileHeight, c, r, zoom);
 
           var tile = tiles[i][j];
-          if (source != tile.texture.baseTexture.imageUrl)
-            tile.setTexture(PIXI.Texture.fromImage(source));
-
-          tile.visible = true;
+          if (source != tile.texture.baseTexture.imageUrl) {
+            tile.visible = false;
+            var loader = new PIXI.ImageLoader(source);
+            tiles_buf[i][j] = loader;
+            loader.on('loaded', (function (i, j) {
+              // Only update texture if the loaded texture is still the one set
+              // in tiles_buf. The intended texture may have changed while this
+              // one was still loading.
+              if (tiles_buf[i][j] == this) {
+                tiles[i][j].setTexture(this.texture);
+                tiles[i][j].visible = true;
+                renderer.render(stage);
+                tiles_buf[i][j] = false;
+              }
+            }).bind(loader, i, j));
+            loader.load();
+          } else tile.visible = true;
         } else tiles[i][j].visible = false;
       }
     }
