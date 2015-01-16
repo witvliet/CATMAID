@@ -213,33 +213,51 @@ function PixiTileLayer(
 
           var tile = tiles[i][j];
           if (source != tile.texture.baseTexture.imageUrl) {
-            tile.visible = false;
             var loader = new PIXI.ImageLoader(source);
             tiles_buf[i][j] = loader;
-            loader.on('loaded', (function (i, j) {
-              // Only update texture if the loaded texture is still the one set
-              // in tiles_buf. The intended texture may have changed while this
-              // one was still loading.
-              if (tiles_buf[i][j] == this) {
-                tiles[i][j].setTexture(this.texture);
-                tiles[i][j].visible = true;
-                renderer.render(stage);
-                tiles_buf[i][j] = false;
-              }
-            }).bind(loader, i, j));
+            loader.on('loaded', this.checkBuffer.bind(this));
             loader.load();
           } else tile.visible = true;
         } else tiles[i][j].visible = false;
       }
     }
 
-    renderer.render(stage);
+    if (stack.z == stack.old_z && zoom == Math.max(0, Math.ceil(stack.old_s)))
+      renderer.render(stage);
+
+    if (this.isBuffering())
+      loadBufferTimeout = window.setTimeout(this.loadBuffer.bind(this), 3000);
 
     if (typeof completionCallback !== "undefined") {
       completionCallback();
     }
 
     return 2;
+  };
+
+  this.checkBuffer = function () {
+    if (!this.isBuffering()) this.loadBuffer();
+  };
+
+  this.isBuffering = function () {
+    return tiles_buf.some(function (r) { return r.some( function (c) {
+        return c && !c.texture.valid; }); });
+  };
+
+  this.loadBuffer = function () {
+    window.clearTimeout(loadBufferTimeout);
+
+    for (var i = 0; i < tiles.length; ++i) {
+      for (var j = 0; j < tiles[ 0 ].length; ++j) {
+        if (tiles_buf[i][j]) {
+          tiles[i][j].setTexture(tiles_buf[i][j].texture);
+          tiles[i][j].visible = true;
+          tiles_buf[i][j] = false;
+        }
+      }
+    }
+
+    renderer.render(stage);
   };
 
   this.resize = function( width, height )
@@ -325,6 +343,8 @@ function PixiTileLayer(
 
   if( self.visible )
     stack.getView().appendChild( tilesContainer );
+
+  var loadBufferTimeout = null;
 
   var LAST_XT = Math.floor( ( stack.dimension.x * stack.scale - 1 ) / tileWidth );
   var LAST_YT = Math.floor( ( stack.dimension.y * stack.scale - 1 ) / tileHeight );
