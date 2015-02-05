@@ -1266,6 +1266,31 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso)
       this.nodes[i].drawEdges();
     }
   }
+
+  // Create virtual nodes, if needed. These are nodes that are not actually on
+  // the current section, but are created to represent the connection between a
+  // child and a parent node that are not part of this section either.
+  jso[0].forEach(function(a, index, array) {
+    var n = this.nodes[a[0]];
+    var zres = this.stack.resolution.z;
+    // Check if the node is below this section
+    if (n.zdiff > zres || n.zdiff < 0) {
+      // Check if parent is also not in this section
+      var p = n.parent;
+      if (p && (p.zdiff > zres || p.zdiff < 0)) {
+        var vn = createVirtualNode(this.graphics, n, p, this.stack.z);
+        this.nodes[vn.id] = vn;
+      }
+      // Check if children are not in section as well
+      for (var c in n.children) {
+        if (c && (c.zdiff > zres || c.zdiff < 0)) {
+          var vn = createVirtualNode(this.graphics, c, n, this.stack.z);
+          this.nodes[vn.id] = vn;
+        }
+      }
+    }
+  }, this);
+
   
   // Now that all edges have been created, disable unused arrows
   this.graphics.disableRemainingArrows();
@@ -1296,8 +1321,36 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso)
     statusBar.replaceLast("*WARNING*: " + msg);
     growlAlert('WARNING', msg);
   }
-};
 
+  /**
+   * Create and return a virtual node. It is actually non-existant and the given
+   * child and parent are connected directly. However, both of them (!) are not
+   * part of the current section. The node will be placed on the XY plane of the
+   * given Z.
+   */
+  function createVirtualNode(graphics, child, parent, z)
+  {
+    // Make sure child and parent are at different positions
+    if (child.x === parent.x && parent.y === parent.z && child.z === parent.z) {
+      console.log('Child and parent have same position, can\'t create virtual node.');
+      return null;
+    }
+
+    // Define X and Y so that they are on the intersection of the line between
+    // child and parent and the current section.
+    var pos = CATMAID.tools.intersectLineWithZPlane(child.x, child.y, child.z,
+        parent.x, parent.y, parent.z, z)
+
+    var id = 'vn-' + child.id + '-' + parent.id;
+    var r = -1;
+    var c = 5;
+
+    var vn = graphics.newNode(id, null, null, r, pos[0], pos[1], z, 0, c,
+        child.skeleton_id, true);
+
+    return vn;
+  };
+};
 
 /* When we pass a completedCallback to redraw, it's essentially
    always because we want to know that, if any fetching of nodes
