@@ -462,6 +462,7 @@ SkeletonAnnotations.SVGOverlay.prototype.selectNode = function(id) {
 SkeletonAnnotations.SVGOverlay.prototype.findConnectors = function(node_id) {
   var pre = [];
   var post = [];
+  var gj = [];
   for (var id in this.nodes) {
     if (this.nodes.hasOwnProperty(id)) {
       var node = this.nodes[id];
@@ -470,11 +471,13 @@ SkeletonAnnotations.SVGOverlay.prototype.findConnectors = function(node_id) {
           pre.push(parseInt(id));
         } else if (node.postgroup.hasOwnProperty(node_id)) {
           post.push(parseInt(id));
+        } else if (node.gjgroup.hasOwnProperty(node_id)) {
+          gj.push(parseInt(id));
         }
       }
     }
   }
-  return [pre, post];
+  return [pre, post, gj];
 };
 
 SkeletonAnnotations.SVGOverlay.prototype.recolorAllNodes = function () {
@@ -1201,11 +1204,12 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso,
     // a[0]: ID, a[1]: x, a[2]: y, a[3]: z, a[4]: confidence,
     // a[5]: presynaptic nodes as array of arrays with treenode id
     // and confidence, a[6]: postsynaptic nodes as array of arrays with treenode id
-    // and confidence, a[7]: whether the user can edit the connector
+    // and confidence, a[7]: nodes with gapjunctions as array of arrays with 
+    // treenode id and confidence, a[8]: whether the user can edit the connector
     this.nodes[a[0]] = this.graphics.newConnectorNode(
       a[0], this.phys2pixX(a[1]),
       this.phys2pixY(a[2]), this.phys2pixZ(a[3]),
-      (a[3] - pz) / this.stack.resolution.z, a[4], a[7]);
+      (a[3] - pz) / this.stack.resolution.z, a[4], a[8]);
   }, this);
 
   // Disable any unused instances
@@ -1249,6 +1253,17 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso,
         // link it to postgroup, to connect it to the connector
         connector.postgroup[tnid] = {'treenode': node,
                                      'confidence': r[1]};
+      }
+    }, this);
+    // a[7]: gap junction relation which is an array of arrays of tnid and tc_confidence
+    a[7].forEach(function(r, i, ar) {
+      // r[0]: tnid, r[1]: tc_confidence
+      var tnid = r[0];
+      var node = this.nodes[tnid];
+      if (node) {
+        // link it to gjgroup, to connect it to the connector
+        connector.gjgroup[tnid] = {'treenode': node,
+                                   'confidence': r[1]};
       }
     }, this);
   }, this);
@@ -1413,7 +1428,7 @@ SkeletonAnnotations.SVGOverlay.prototype.whenclicked = function (e) {
         e.stopPropagation();
       } // else, a node under the mouse will be removed
     }
-  } else if (e.shiftKey) {
+  } else if (e.shiftKey || e.altKey) { 
     if (null === atn.id) {
       if (SkeletonAnnotations.currentmode === SkeletonAnnotations.MODES.SKELETON) {
         growlAlert('BEWARE', 'You need to activate a treenode first (skeleton tracing mode)!');
@@ -1431,6 +1446,15 @@ SkeletonAnnotations.SVGOverlay.prototype.whenclicked = function (e) {
           this.createSingleConnector(phys_x, phys_y, phys_z, pos_x, pos_y, pos_z, 5,
               function (connectorID) {
                 self.createLink(targetTreenodeID, connectorID, synapse_type + "synaptic_to");
+              });
+          e.stopPropagation();
+        } else if (e.altKey) {
+          // Create a new connector and a non-directional link
+          statusBar.replaceLast("Created gap junction connector with treenode #" + atn.id);
+          var self = this;
+          this.createSingleConnector(phys_x, phys_y, phys_z, pos_x, pos_y, pos_z, 5,
+              function (connectorID) {
+                self.createLink(targetTreenodeID, connectorID, "gapjunction_with");
               });
           e.stopPropagation();
         }
@@ -2122,6 +2146,9 @@ SkeletonAnnotations.SVGOverlay.prototype.switchBetweenTerminalAndConnector = fun
       // Otherwise, go to the presynaptic terminal if there is only one
       } else if (1 === countProperties(ob.pregroup)) {
         this.moveToAndSelectNode(this.nodes[Object.keys(ob.pregroup)[0]].id);
+      // Otherwise, go to the gapjunction node if there is only one
+      } else if (1 === countProperties(ob.gjgroup)) {
+        this.moveToAndSelectNode(this.nodes[Object.keys(ob.gjgroup)[0]].id);
       } else {
         growlAlert("Oops", "Don't know which terminal to switch to");
         return;
@@ -2136,12 +2163,16 @@ SkeletonAnnotations.SVGOverlay.prototype.switchBetweenTerminalAndConnector = fun
       var cs = this.findConnectors(ob.id);
       var preIDs = cs[0];
       var postIDs = cs[1];
+      var gjIDs = cs[2];
       if (1 === postIDs.length) {
         this.switchingTreenodeID = ob.id;
         this.switchingConnectorID = postIDs[0];
       } else if (1 === preIDs.length) {
         this.switchingTreenodeID = ob.id;
         this.switchingConnectorID = preIDs[0];
+      } else if (1 === gjIDs.length) {
+        this.switchingTreenodeID = ob.id;
+        this.switchingConnectorID = gjIDs[0];
       } else {
         growlAlert("Oops", "Don't know which connector to switch to");
         this.switchingTreenodeID = null;
@@ -2208,10 +2239,13 @@ SkeletonAnnotations.SVGOverlay.prototype.deleteNode = function(nodeId) {
           // If there was a presynaptic node, select it
           var preIDs  = Object.keys(connectornode.pregroup);
           var postIDs = Object.keys(connectornode.postgroup);
+          var gjIDs = Object.keys(connectornode.gjgroup);
           if (preIDs.length > 0) {
               self.selectNode(preIDs[0]);
           } else if (postIDs.length > 0) {
               self.selectNode(postIDs[0]);
+          } else if (gjIDs.length > 0) {
+              self.selectNode(gjIDs[0]);
           } else {
               self.activateNode(null);
           }
@@ -2251,6 +2285,9 @@ SkeletonAnnotations.SVGOverlay.prototype.deleteNode = function(nodeId) {
               // Then try connectors for which node is presynaptic
               } else if (pp[0].length > 0) {
                 self.selectNode(pp[0][0]);
+              // Then try connectors for which node has gap junction to
+              } else if (pp[2].length > 0) {
+                self.selectNode(pp[2][0]);
               } else {
                 self.activateNode(null);
               }

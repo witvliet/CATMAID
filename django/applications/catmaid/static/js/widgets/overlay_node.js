@@ -658,6 +658,10 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
       this.postLines.forEach(SkeletonElements.prototype.ElementPool.prototype.disableFn);
       this.postLines = null;
     }
+    if (this.gjLines) {
+      this.gjLines.forEach(SkeletonElements.prototype.ElementPool.prototype.disableFn);
+      this.gjLines = null;
+    }
   };
 
   this.obliterate = function() {
@@ -669,10 +673,12 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
     }
     this.pregroup = null;
     this.postgroup = null;
+    this.gjgroup = null;
     // Note: mouse event handlers are removed by c.remove()
     this.removeConnectorArrows(); // also removes confidence text associated with edges
     this.preLines = null;
     this.postLines = null;
+    this.gjLines = null;
   };
 
   this.disable = function() {
@@ -684,6 +690,7 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
     this.removeConnectorArrows();
     this.pregroup = null;
     this.postgroup = null;
+    this.gjgroup = null;
   };
 
   this.colorFromZDiff = function()
@@ -728,7 +735,7 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
         node = this.pregroup[i].treenode;
         if (this.mustDrawLineWith(node)) {
           if (!this.preLines) this.preLines = [];
-          this.preLines.push(this.createArrow(this, node, this.pregroup[i].confidence, true));
+          this.preLines.push(this.createArrow(this, node, this.pregroup[i].confidence, 1));
         }
       }
     }
@@ -738,7 +745,17 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
         node = this.postgroup[i].treenode;
         if (this.mustDrawLineWith(node)) {
           if (!this.postLines) this.postLines = [];
-          this.postLines.push(this.createArrow(this, node, this.postgroup[i].confidence, false));
+          this.postLines.push(this.createArrow(this, node, this.postgroup[i].confidence, 0));
+        }
+      }
+    }
+
+    for (i in this.gjgroup) {
+      if (this.gjgroup.hasOwnProperty(i)) {
+        node = this.gjgroup[i].treenode;
+        if (this.mustDrawLineWith(node)) {
+          if (!this.gjLines) this.gjLines = [];
+          this.gjLines.push(this.createArrow(this, node, this.gjgroup[i].confidence, 2));
         }
       }
     }
@@ -754,6 +771,7 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
     this.can_edit = can_edit;
     this.pregroup = {};
     this.postgroup = {};
+    this.gjgroup = {};
     this.needsync = false;
 
     if (this.c) {
@@ -767,6 +785,7 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
 
     this.preLines = null;
     this.postLines = null;
+    this.gjLines = null;
   };
 };
 
@@ -794,9 +813,11 @@ SkeletonElements.prototype.ConnectorNode = function(
   this.can_edit = can_edit;
   this.pregroup = {}; // set of presynaptic treenodes
   this.postgroup = {}; // set of postsynaptic treenodes
+  this.gjgroup = {}; // set of treenodes with gap junctions
   this.c = null; // The SVG circle for drawing
   this.preLines = null; // Array of ArrowLine to the presynaptic nodes
   this.postLines = null; // Array of ArrowLine to the postsynaptic nodes
+  this.gjLines = null; // Array of Arrowline to nodes with gap junctions
 };
 
 SkeletonElements.prototype.ConnectorNode.prototype = new SkeletonElements.prototype.AbstractConnectorNode();
@@ -941,7 +962,7 @@ SkeletonElements.prototype.mouseEventManager = new (function()
     e.preventDefault();
 
     // If not trying to join or remove a node, but merely click on it to drag it or select it:
-    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    if (!e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
       catmaidSVGOverlay.activateNode(node);
     }
 
@@ -974,7 +995,7 @@ SkeletonElements.prototype.mouseEventManager = new (function()
     }
     // return some log information when clicked on the node
     // this usually refers here to the c object
-    if (e.shiftKey) {
+    if (e.shiftKey || e.altKey) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
         return catmaidSVGOverlay.deleteNode(connectornode.id);
       }
@@ -985,8 +1006,16 @@ SkeletonElements.prototype.mouseEventManager = new (function()
         if (atnType === SkeletonAnnotations.TYPE_CONNECTORNODE) {
           alert("Can not join two connector nodes!");
         } else if (atnType === SkeletonAnnotations.TYPE_NODE) {
-          var synapse_type = e.altKey ? 'post' : 'pre';
-          catmaidSVGOverlay.createLink(atnID, connectornode.id, synapse_type + "synaptic_to");
+          var cs = catmaidSVGOverlay.findConnectors(atnID);
+          var gjIDs = cs[2];
+          // create gap junction link with altKey or if gap junction link
+          // already exists to active connector
+          if (gjIDs.length === 0 && e.shiftKey) { 
+            var synapse_type = e.altKey ? 'post' : 'pre';
+            catmaidSVGOverlay.createLink(atnID, connectornode.id, synapse_type + "synaptic_to");
+          } else {
+            catmaidSVGOverlay.createLink(atnID, connectornode.id, "gapjunction_with");
+          }
           statusBar.replaceLast("Joined node #" + atnID + " with connector #" + connectornode.id);
         }
       } else {
@@ -1036,6 +1065,7 @@ SkeletonElements.prototype.ArrowLine = function(paper) {
 SkeletonElements.prototype.ArrowLine.prototype = new (function() {
   this.PRE_COLOR = "rgb(200,0,0)";
   this.POST_COLOR = "rgb(0,217,232)";
+  this.GJ_COLOR = "rgb(235, 117, 0)";
   this.BASE_EDGE_WIDTH = 2;
   this.CATCH_SCALE = 3;
   this.CONFIDENCE_FONT_PT = 15;
@@ -1087,6 +1117,9 @@ SkeletonElements.prototype.ArrowLine.prototype = new (function() {
     this.catcher.attr({x1: x1, y1: y1, x2: x2new, y2: y2new});
 
     var stroke_color = is_pre ? this.PRE_COLOR : this.POST_COLOR;
+    if (is_pre == 2) {
+        stroke_color = this.GJ_COLOR;
+    }
 
     if (confidence < 5) {
       this.confidence_text = this.updateConfidenceText(x2, y2, x1, y1, stroke_color, confidence, this.confidence_text);

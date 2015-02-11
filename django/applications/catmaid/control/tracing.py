@@ -28,6 +28,7 @@ needed_relations = {
     'part_of': "One thing is part of something else.",
     'presynaptic_to': "Something is presynaptic to something else.",
     'postsynaptic_to': "Something is postsynaptic to something else.",
+    'gapjunction_with': "Something has a gap junction with something else", 
     'annotated_with': "Something is annotated by something else.",
 }
 
