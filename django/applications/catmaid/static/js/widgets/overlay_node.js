@@ -703,7 +703,7 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
     } else {
       var gjIDs = Object.keys(this.gjgroup);
       if (gjIDs.length > 0) {
-        return "rgb(255,0,255)";
+        return "rgb(159,37,194)";
       } else {
         return "rgb(235,117,0)";
       }
@@ -717,7 +717,7 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
     if (this.zdiff >= 0 && this.zdiff < 1) {
       var gjIDs = Object.keys(this.gjgroup);
       if (gjIDs.length > 0) {
-        return "rgb(255,0,255)";
+        return "rgb(159,37,194)";
       } else {
         return "rgb(235,117,0)";
       }
@@ -1085,7 +1085,7 @@ SkeletonElements.prototype.ArrowLine = function(paper) {
 SkeletonElements.prototype.ArrowLine.prototype = new (function() {
   this.PRE_COLOR = "rgb(200,0,0)";
   this.POST_COLOR = "rgb(0,217,232)";
-  this.GJ_COLOR = "rgb(255,0,255)";
+  this.GJ_COLOR = "rgb(159,37,194)";
   this.BASE_EDGE_WIDTH = 2;
   this.CATCH_SCALE = 3;
   this.CONFIDENCE_FONT_PT = 15;
