@@ -932,6 +932,7 @@ SkeletonAnnotations.SVGOverlay.prototype.createPostsynapticTreenode = function (
 
 SkeletonAnnotations.SVGOverlay.prototype.createPresynapticTreenode = function (connectorID, phys_x, phys_y, phys_z, radius, confidence, pos_x, pos_y, pos_z) {
   // Check that connectorID doesn't have a presynaptic treenode already
+  // and that connectorID doesn't have gap junctions
   // (It is also checked in the server on attempting to create a link. Here, it is checked for convenience to avoid creating an isolated treenode for no reason.)
   var connectorNode = this.nodes[connectorID];
   if (!connectorNode) {
@@ -943,6 +944,26 @@ SkeletonAnnotations.SVGOverlay.prototype.createPresynapticTreenode = function (c
     return;
   }
   this.createTreenodeWithLink(connectorID, phys_x, phys_y, phys_z, radius, confidence, pos_x, pos_y, pos_z, "presynaptic_to");
+};
+
+SkeletonAnnotations.SVGOverlay.prototype.createGapjunctionTreenode = function (connectorID, phys_x, phys_y, phys_z, radius, confidence, pos_x, pos_y, pos_z) {
+  // Check that connectorID doesn't already have two gap junction links
+  // and that connectorID doesn't have post- or presynaptic links
+  // (It is also checked in the server on attempting to create a link. Here, it is checked for convenience to avoid creating an isolated treenode for no reason.)
+  var connectorNode = this.nodes[connectorID];
+  if (!connectorNode) {
+    alert("Connector #" + connectorID + " is not loaded. Browse to its section and make sure it is selected.");
+    return;
+  }
+  if (Object.keys(connectorNode.gjgroup).length > 1) {
+    growlAlert("WARNING", "The connector already has two gap junction nodes!");
+    return;
+  }
+  if (Object.keys(connectorNode.pregroup).length > 0 || Object.keys(connectorNode.postgroup).length > 0) {
+    growlAlert("WARNING", "Gap junction can not be added as the connector is part of a synapse!");
+    return;
+  }
+  this.createTreenodeWithLink(connectorID, phys_x, phys_y, phys_z, radius, confidence, pos_x, pos_y, pos_z, "gapjunction_with");
 };
 
 SkeletonAnnotations.SVGOverlay.prototype.createTreenodeWithLink = function (connectorID, phys_x, phys_y, phys_z, radius, confidence, pos_x, pos_y, pos_z, link_type) {
@@ -1462,8 +1483,13 @@ SkeletonAnnotations.SVGOverlay.prototype.whenclicked = function (e) {
         return true;
       } else if (SkeletonAnnotations.TYPE_CONNECTORNODE === atn.type) {
         // create new treenode (and skeleton) postsynaptic to activated connector
-        statusBar.replaceLast("Created treenode #" + atn.id + " postsynaptic to active connector");
-        this.createPostsynapticTreenode(atn.id, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
+        // or as gap junction with, if connector already has a gap junction
+        // or altKey was used and no pre- or postsynaptic connections exist
+        if (e.altKey) {
+            this.createGapjunctionTreenode(atn.id, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
+        } else {
+            this.createPostsynapticTreenode(atn.id, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
+        }
         e.stopPropagation();
         return true;
       }
@@ -1482,7 +1508,19 @@ SkeletonAnnotations.SVGOverlay.prototype.whenclicked = function (e) {
       } else if (SkeletonAnnotations.TYPE_CONNECTORNODE === atn.type) {
         // create new treenode (and skeleton) presynaptic to activated connector
         // if the connector doesn't have a presynaptic node already
-        this.createPresynapticTreenode(atn.id, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
+        // or as gap junction with, if connector already has a gap junction
+        var connectornode = this.nodes[atn.id]
+        if (!connectornode) {
+          alert("Connector #" + atn.id + " is not loaded. Browse to its section and make sure it is selected.");
+          e.stopPropagation();
+          return true;
+        }
+        var gjIDs = Object.keys(connectornode.gjgroup);
+        if (gjIDs.length === 0) {
+            this.createPresynapticTreenode(atn.id, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
+        } else {
+            this.createGapjunctionTreenode(atn.id, phys_x, phys_y, phys_z, -1, 5, pos_x, pos_y, pos_z);
+        }
         e.stopPropagation();
       }
       // Else don't stop propagation: a node may be moved

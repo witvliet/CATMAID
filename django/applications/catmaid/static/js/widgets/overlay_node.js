@@ -701,7 +701,12 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
     } else if (this.zdiff < 0) {
       return "rgb(255,0,0)";
     } else {
-      return "rgb(235,117,0)";
+      var gjIDs = Object.keys(this.gjgroup);
+      if (gjIDs.length > 0) {
+        return "rgb(255,0,255)";
+      } else {
+        return "rgb(235,117,0)";
+      }
     }
   };
 
@@ -710,7 +715,12 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
       return "rgb(0,255,0)";
     }
     if (this.zdiff >= 0 && this.zdiff < 1) {
-      return "rgb(235,117,0)";
+      var gjIDs = Object.keys(this.gjgroup);
+      if (gjIDs.length > 0) {
+        return "rgb(255,0,255)";
+      } else {
+        return "rgb(235,117,0)";
+      }
     }
   };
 
@@ -858,7 +868,7 @@ SkeletonElements.prototype.mouseEventManager = new (function()
       return;
     }
     var node = catmaidSVGOverlay.nodes[d];
-    if (e.shiftKey) {
+    if (e.shiftKey || e.altKey) {
       var atnID = SkeletonAnnotations.getActiveNodeId();
       if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
         return catmaidSVGOverlay.deleteNode(node.id);
@@ -873,10 +883,21 @@ SkeletonElements.prototype.mouseEventManager = new (function()
             return;
           }
           // careful, atnID is a connector
-          catmaidSVGOverlay.createLink(node.id, atnID, "postsynaptic_to");
-          // TODO check for error
-          statusBar.replaceLast("Joined node #" + atnID + " to connector #" + node.id);
-        } else if (atnType === SkeletonAnnotations.TYPE_NODE) {
+          var connectornode = catmaidSVGOverlay.nodes[atnID]
+          if (!connectornode) {
+            alert("Connector #" + atnID + " is not loaded. Browse to its section and make sure it is selected.");
+            return;
+          }
+          var gjIDs = Object.keys(connectornode.gjgroup);
+          if (gjIDs.length > 0 || e.altKey) {
+            catmaidSVGOverlay.createLink(node.id, atnID, "gapjunction_with");
+          } else {
+            catmaidSVGOverlay.createLink(node.id, atnID, "postsynaptic_to");
+            // TODO check for error
+            statusBar.replaceLast("Joined node #" + atnID + " to connector #" + node.id);
+          }
+
+        } else if (atnType === SkeletonAnnotations.TYPE_NODE && e.shiftKey) {
           // Joining two skeletons: only possible if one owns both nodes involved
           // or is a superuser
           if( node.skeleton_id === SkeletonAnnotations.getActiveSkeletonId() ) {
@@ -1006,10 +1027,9 @@ SkeletonElements.prototype.mouseEventManager = new (function()
         if (atnType === SkeletonAnnotations.TYPE_CONNECTORNODE) {
           alert("Can not join two connector nodes!");
         } else if (atnType === SkeletonAnnotations.TYPE_NODE) {
-          var cs = catmaidSVGOverlay.findConnectors(atnID);
-          var gjIDs = cs[2];
           // create gap junction link with altKey or if gap junction link
           // already exists to active connector
+          var gjIDs = Object.keys(connectornode.gjgroup);
           if (gjIDs.length === 0 && e.shiftKey) { 
             var synapse_type = e.altKey ? 'post' : 'pre';
             catmaidSVGOverlay.createLink(atnID, connectornode.id, synapse_type + "synaptic_to");
@@ -1065,7 +1085,7 @@ SkeletonElements.prototype.ArrowLine = function(paper) {
 SkeletonElements.prototype.ArrowLine.prototype = new (function() {
   this.PRE_COLOR = "rgb(200,0,0)";
   this.POST_COLOR = "rgb(0,217,232)";
-  this.GJ_COLOR = "rgb(235, 117, 0)";
+  this.GJ_COLOR = "rgb(255,0,255)";
   this.BASE_EDGE_WIDTH = 2;
   this.CATCH_SCALE = 3;
   this.CONFIDENCE_FONT_PT = 15;
@@ -1116,9 +1136,19 @@ SkeletonElements.prototype.ArrowLine.prototype = new (function() {
     this.line.attr({x1: x1, y1: y1, x2: x2new, y2: y2new});
     this.catcher.attr({x1: x1, y1: y1, x2: x2new, y2: y2new});
 
-    var stroke_color = is_pre ? this.PRE_COLOR : this.POST_COLOR;
-    if (is_pre == 2) {
-        stroke_color = this.GJ_COLOR;
+    
+    if (is_pre === 0) {
+      // post-synaptic
+      var stroke_color = this.POST_COLOR;
+      var marker_end = 'url(#markerArrowPost)';
+    } else if (is_pre === 1) {
+      // pre-synaptic
+      var stroke_color = this.PRE_COLOR;
+      var marker_end = 'url(#markerArrowPre)';
+    } else {
+      // gap junction
+      var stroke_color = this.GJ_COLOR;
+      var marker_end = 'url(#markerArrowGj)';
     }
 
     if (confidence < 5) {
@@ -1131,7 +1161,7 @@ SkeletonElements.prototype.ArrowLine.prototype = new (function() {
     // Adjust
     this.line.attr({stroke: stroke_color,
                     'stroke-width': this.EDGE_WIDTH,
-                    'marker-end': is_pre ? 'url(#markerArrowPre)' : 'url(#markerArrowPost)'});
+                    'marker-end': marker_end});
     this.catcher.attr({stroke: stroke_color, // Though invisible, must be set for mouse events to trigger
                        'stroke-opacity': 0,
                        'stroke-width': this.EDGE_WIDTH*this.CATCH_SCALE });
@@ -1169,7 +1199,7 @@ SkeletonElements.prototype.ArrowLine.prototype = new (function() {
 
   this.init = function(connector, node, confidence, is_pre) {
     this.catcher.datum({connector_id: connector.id, treenode_id: node.id});
-    if (is_pre) {
+    if (is_pre === 1) {
       this.update(node.x, node.y, connector.x, connector.y, is_pre, confidence, connector.NODE_RADIUS);
     } else {
       this.update(connector.x, connector.y, node.x, node.y, is_pre, confidence, node.NODE_RADIUS);
@@ -1199,9 +1229,10 @@ SkeletonElements.prototype.ArrowLine.prototype = new (function() {
     // connectors are created, one for each color.
     this.markerDefs = [
       defs.append('marker'),
+      defs.append('marker'),
       defs.append('marker')];
-    var ids = ['markerArrowPost', 'markerArrowPre'];
-    var colors = [this.POST_COLOR, this.PRE_COLOR];
+    var ids = ['markerArrowPost', 'markerArrowPre', 'markerArrowGj'];
+    var colors = [this.POST_COLOR, this.PRE_COLOR, this.GJ_COLOR];
     this.markerDefs.forEach(function (m, i) {
         m.attr({
         id: ids[i],
@@ -1213,7 +1244,7 @@ SkeletonElements.prototype.ArrowLine.prototype = new (function() {
         refY: '5',
         orient: 'auto'
       }).append('path').attr({
-        d: 'M 0 0 L 10 5 L 0 10 z',
+        d: (ids[i] === 'markerArrowGj') ? 'M 0 0 L 5 0 L 5 10 L 0 10 z' : 'M 0 0 L 10 5 L 0 10 z',
         fill: colors[i]
       });
     });

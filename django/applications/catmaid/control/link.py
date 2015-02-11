@@ -44,6 +44,23 @@ def create_link(request, project_id=None):
         if (presyn_links.count() != 0):
             return HttpResponse(json.dumps({'error': 'Connector %s does not have zero presynaptic connections.' % to_id}))
 
+    elif link_type == 'postsynaptic_to':
+        # Enforce only two gap junction links
+        gj_links = TreenodeConnector.objects.filter(project=project, connector=to_connector, relation__relation_name='gapjunction_with')
+        if (gj_links.count() > 0):
+            return HttpResponse(json.dumps({'error': 'Connector %s can not have both a gap junction and a postsynaptic node.' % to_id}))
+
+    elif link_type == 'gapjunction_with':
+        # Enforce only two gap junction links
+        gj_links = TreenodeConnector.objects.filter(project=project, connector=to_connector, relation=relation)
+        synapse_links = TreenodeConnector.objects.filter(project=project, connector=to_connector, relation__relation_name__endswith='synaptic_to')
+        if (gj_links.count() >= 2):
+            return HttpResponse(json.dumps({'error': 'Connector %s can only have two gap junction connections.' % to_id}))
+        elif (synapse_links.count() != 0):
+            return HttpResponse(json.dumps({'error': 'Connector %s is part of a synapse, and gap junction can not be added.' % to_id}))
+            
+
+
     TreenodeConnector(
         user=request.user,
         project=project,
