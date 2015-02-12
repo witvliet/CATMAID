@@ -25,6 +25,7 @@ var SkeletonConnectivity = function() {
   // Default table layout to be side by side. Have it seperate from init() as
   // long as it is part of the top button row.
   this.tablesSideBySide = true;
+  this.showGapjunctionTable = false;
 };
 
 SkeletonConnectivity.prototype = {};
@@ -43,12 +44,15 @@ SkeletonConnectivity.prototype.init = function() {
   // Incoming an outgoing connections of current neurons
   this.incoming = {};
   this.outgoing = {};
+  this.gapjunctions = {};
   // Default upstream and downstream tables to be not collapsed
   this.upstreamCollapsed = false;
   this.downstreamCollapsed = false;
+  this.gapjunctionCollapsed = false;
   // Thresholds for current skeleton set
   this.upThresholds = {};
   this.downThresholds = {};
+  this.gapjunctionThresholds = {};
   // Indicates whether single nodes should be hidden
   this.hideSingleNodePartners = false;
   // ID of the user who is currently reviewing or null for 'union'
@@ -199,7 +203,7 @@ SkeletonConnectivity.prototype.getSelectedSkeletonModels = function() {
                 new THREE.Color().setRGB(0.8, 0.6, 1)];
   // Read out all skeletons
   var sks = {};
-  ['presynaptic_to', 'postsynaptic_to'].forEach(function(relation, index) {
+  ['presynaptic_to', 'postsynaptic_to', 'gapjunction_with'].forEach(function(relation, index) {
     $("input[id^='" + relation + "-show-skeleton-" + widgetID + "-']").each(function(i, e) {
       var skid = parseInt(e.value);
       if (!(skid in sks)) sks[skid] = {};
@@ -250,6 +254,7 @@ SkeletonConnectivity.prototype.update = function() {
           if (200 !== status) {
             self.incoming = {};
             self.outgoing = {};
+            self.gapjunctions = {};
             new ErrorDialog("Couldn't load connectivity information",
                 "The server returned an unexpected status code: " +
                     status).show();
@@ -259,6 +264,7 @@ SkeletonConnectivity.prototype.update = function() {
           if (json.error) {
             self.incoming = {};
             self.outgoing = {};
+            self.gapjunctions = {};
             new ErrorDialog("Couldn't load connectivity information",
                 json.error).show();
             return;
@@ -268,6 +274,7 @@ SkeletonConnectivity.prototype.update = function() {
           // the connectivity plots in a separate widget.
           self.incoming = json.incoming;
           self.outgoing = json.outgoing;
+          self.gapjunctions = json.gapjunctions;
 
           // Register this widget with the name service for all neurons
           var createPartnerModels = function(partners, result) {
@@ -279,6 +286,9 @@ SkeletonConnectivity.prototype.update = function() {
           var partnerModels = {};
           createPartnerModels(self.incoming, partnerModels);
           createPartnerModels(self.outgoing, partnerModels);
+          createPartnerModels(self.gapjunctions, partnerModels);
+          //alert(JSON.stringify(self.incoming))
+          //alert(JSON.stringify(self.gapjunctions))
 
           // Make all partners known to the name service
           NeuronNameService.getInstance().registerAll(self, partnerModels, function() {
@@ -402,6 +412,17 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
     incoming.toggleClass('table_container_wide', !sideBySide);
     outgoing.toggleClass('table_container_half', sideBySide);
     outgoing.toggleClass('table_container_wide', !sideBySide);
+    gapjunctions.toggleClass('table_container_half', sideBySide);
+    gapjunctions.toggleClass('table_container_wide', !sideBySide);
+  };
+  /**
+   * Support function to show or hide the gap junction table.
+   */
+  var gapjunctionTable = function(visible) {
+    gapjunctions.toggleClass('table_container_hidden', !visible)
+    incoming.toggleClass('gapjunction_visible', visible);
+    outgoing.toggleClass('gapjunction_visible', visible);
+    gapjunctions.toggleClass('gapjunction_visible', visible);
   };
 
   /**
@@ -498,9 +519,9 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
     table.append( thead );
     var row = $('<tr />');
     row.append( $('<th />').text("select").attr('rowspan', headerRows));
-    row.append( $('<th />').text(title + "stream neuron").attr('rowspan',
+    row.append( $('<th />').text((title !== 'Gapjunction') ? title + "stream neuron" : "Gap junctions with neuron").attr('rowspan',
         headerRows));
-    row.append( $('<th />').text("syn count").attr('rowspan', 1).attr('colspan',
+    row.append( $('<th />').text((title !== 'Gapjunction') ? "syn count" : "gj count").attr('rowspan', 1).attr('colspan',
         extraCols ? skids.length + 1 : 1));
     row.append( $('<th />').text("reviewed").attr('rowspan', headerRows));
     row.append( $('<th />').text("node count").attr('rowspan', headerRows));
@@ -804,7 +825,8 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
             .append($('<th />').text('Selected').append(selectAllCb))
             .append($('<th />').text('Neuron'))
             .append($('<th />').text('Upstream Threshold'))
-            .append($('<th />').text('Downstream Threshold'))));
+            .append($('<th />').text('Downstream Threshold'))
+            .append($('<th />').text('Gap junction Threshold'))));
   // Add a row for each neuron looked at
   this.ordered_skeleton_ids.forEach(function(skid, i) {
     var id = this.widgetID + '-' + skid;
@@ -812,6 +834,8 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
         this.upThresholds[skid] || 1, 21);
     var $downThrSelector = createThresholdSelector('neuron-down-threshold-' + id,
         this.downThresholds[skid] || 1, 21);
+    var $gapjunctionThrSelector = createThresholdSelector('neuron-gapjunction-threshold-' + id,
+        this.gapjunctionThresholds[skid] || 1, 21);
     // Create and attach handlers to threshold selectors. Generate the function
     // to avoid the creation of a closure.
     $upThrSelector.change((function(widget, skid) {
@@ -823,6 +847,12 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
     $downThrSelector.change((function(widget, skid) {
       return function() {
         widget.downThresholds[skid] = parseInt(this.value);
+        widget.redraw();
+      };
+    })(this, skid));
+    $gapjunctionThrSelector.change((function(widget, skid) {
+      return function() {
+        widget.gapjunctionThresholds[skid] = parseInt(this.value);
         widget.redraw();
       };
     })(this, skid));
@@ -864,6 +894,8 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
         .append($('<td />').append($upThrSelector)
             .attr('class', 'input-container'))
         .append($('<td />').append($downThrSelector)
+            .attr('class', 'input-container'))
+        .append($('<td />').append($gapjunctionThrSelector)
             .attr('class', 'input-container'));
     neuronTable.append(row);
   }, this);
@@ -882,6 +914,8 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
         this.upThresholds['sum'] || 1, 21);
     var $downThrSelector = createThresholdSelector('neuron-down-threshold-' + id,
         this.downThresholds['sum'] || 1, 21);
+    var $gapjunctionThrSelector = createThresholdSelector('neuron-gapjunction-threshold-' + id,
+        this.gapjunctionThresholds['sum'] || 1, 21);
     // Create and attach handlers to threshold selectors. Generate the function
     // to avoid the creation of a closure.
     $upThrSelector.change((function(widget) {
@@ -896,6 +930,12 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
         widget.createConnectivityTable();
       };
     })(this));
+    $gapjunctionThrSelector.change((function(widget, skid) {
+      return function() {
+        widget.gapjunctionThresholds['sum'] = parseInt(this.value);
+        widget.createConnectivityTable();
+      };
+    })(this));
     // Create and append footer for current skeleton
     var row = $('<tfoot />').append($('<tr />')
         .append($('<td />'))
@@ -904,6 +944,8 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
         .append($('<td />').append($upThrSelector)
             .attr('class', 'input-container'))
         .append($('<td />').append($downThrSelector)
+            .attr('class', 'input-container'))
+        .append($('<td />').append($gapjunctionThrSelector)
             .attr('class', 'input-container')));
     neuronTable.append(row);
   }
@@ -974,9 +1016,11 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
   // Create containers for pre and postsynaptic partners
   var incoming = $('<div />');
   var outgoing = $('<div />');
+  var gapjunctions = $('<div />');
   var tables = $('<div />').css('width', '100%').attr('class', 'content')
      .append(incoming)
-     .append(outgoing);
+     .append(outgoing)
+     .append(gapjunctions);
   content.append(tables);
 
   // Add handler to layout toggle
@@ -985,6 +1029,15 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
         return function() {
           widget.tablesSideBySide = this.checked;
           layoutTables(this.checked);
+        };
+      })(this)).change();
+
+  // Add handler to gap junction table toggle
+  $('#connectivity-gapjunctiontable-toggle-' + widgetID).unbind('change')
+      .change((function(widget) {
+        return function() {
+          widget.showGapjunctionTable = this.checked;
+          gapjunctionTable(this.checked);
         };
       })(this)).change();
 
@@ -1001,9 +1054,16 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
       this.hiddenSkeletons, this.downstreamCollapsed, (function() {
         this.downstreamCollapsed = !this.downstreamCollapsed;
       }).bind(this));
+  var table_gapjunctions = create_table.call(this, this.ordered_skeleton_ids,
+      this.skeletons, this.gapjunctionThresholds, to_sorted_array(this.gapjunctions),
+      'Gapjunction', 'gapjunction_with', this.hideSingleNodePartners, this.reviewFilter,
+      this.hiddenSkeletons, this.gapjunctionCollapsed, (function() {
+        this.gapjunctionCollapsed = !this.gapjunctionCollapsed;
+      }).bind(this));
 
   incoming.append(table_incoming);
   outgoing.append(table_outgoing);
+  gapjunctions.append(table_gapjunctions);
 
   // Extend tables with DataTables for sorting, reordering and filtering
   var dataTableOptions = {
@@ -1048,10 +1108,11 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
 
   table_incoming.dataTable(dataTableOptions);
   table_outgoing.dataTable(dataTableOptions);
+  table_gapjunctions.dataTable(dataTableOptions);
 
   $('.dataTables_wrapper', tables).css('min-height', 0);
 
-  $.each([table_incoming, table_outgoing], function () {
+  $.each([table_incoming, table_outgoing, table_gapjunctions], function () {
     var self = this;
     $(this).siblings('.connectivity_table_actions').append(
       $('<div class="dataTables_export"></div>').append(
@@ -1072,6 +1133,7 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
   var nSkeletons = Object.keys(this.skeletons).length;
   add_select_all_fn(this, 'up', table_incoming, nSkeletons);
   add_select_all_fn(this, 'down', table_outgoing, nSkeletons);
+  add_select_all_fn(this, 'gapjunction', table_gapjunctions, nSkeletons);
 
   // Add handler for hiding neurons
   $('.hide-skeleton').click(this, function(e) {

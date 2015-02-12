@@ -2197,6 +2197,21 @@ var WindowMaker = new function()
         layoutLabel.appendChild(layoutToggle);
         contentbutton.appendChild(layoutLabel);
 
+        var gapjunctionToggle = document.createElement('input');
+        gapjunctionToggle.setAttribute('id', 'connectivity-gapjunctiontable-toggle-' + widgetID);
+        gapjunctionToggle.setAttribute('type', 'checkbox');
+        if (SC.showGapjunctionTable) {
+          gapjunctionToggle.setAttribute('checked', 'checked');
+        }
+        gapjunctionToggle.onchange = (function() {
+          this.showGapjunctionTable = this.checked;
+        }).bind(SC);
+        var gapjunctionLabel = document.createElement('label');
+        gapjunctionLabel.appendChild(document.createTextNode('Show gap junctions'));
+        gapjunctionLabel.appendChild(gapjunctionToggle);
+        contentbutton.appendChild(gapjunctionLabel);
+
+
         content.appendChild( contentbutton );
 
         var container = createContainer( "connectivity_widget" + widgetID );

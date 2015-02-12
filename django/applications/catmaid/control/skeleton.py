@@ -501,6 +501,9 @@ def _connected_skeletons(skeleton_ids, op, relation_id_1, relation_id_2, model_o
 
     # Sum the number of synapses
     for srcID, partnerID in cursor.fetchall():
+        # Skip connections with self non-directional connectors (gap junctions)
+        if relation_id_1 == relation_id_2 and srcID == partnerID:
+            continue
         partners[partnerID].skids[srcID] += 1
 
     # There may not be any synapses
@@ -580,12 +583,14 @@ def _skeleton_info_raw(project_id, skeletons, op):
     WHERE project_id=%s
       AND (relation_name='presynaptic_to'
         OR relation_name='postsynaptic_to'
+        OR relation_name='gapjunction_with'
         OR relation_name='model_of')''' % project_id)
     relation_ids = dict(cursor.fetchall())
 
     # Obtain partner skeletons and their info
     incoming = _connected_skeletons(skeletons, op, relation_ids['postsynaptic_to'], relation_ids['presynaptic_to'], relation_ids['model_of'], cursor)
     outgoing = _connected_skeletons(skeletons, op, relation_ids['presynaptic_to'], relation_ids['postsynaptic_to'], relation_ids['model_of'], cursor)
+    gapjunctions = _connected_skeletons(skeletons, op, relation_ids['gapjunction_with'], relation_ids['gapjunction_with'], relation_ids['model_of'], cursor)
 
     def prepare(partners):
         for partnerID in partners.keys():
@@ -599,8 +604,9 @@ def _skeleton_info_raw(project_id, skeletons, op):
 
     prepare(incoming)
     prepare(outgoing)
+    prepare(gapjunctions)
 
-    return incoming, outgoing
+    return incoming, outgoing, gapjunctions
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def skeleton_info_raw(request, project_id=None):
@@ -610,9 +616,9 @@ def skeleton_info_raw(request, project_id=None):
     op = request.POST.get('boolean_op') # values: AND, OR
     op = {'AND': 'AND', 'OR': 'OR'}[op[6:]] # sanitize
 
-    incoming, outgoing = _skeleton_info_raw(project_id, skeletons, op)
+    incoming, outgoing, gapjunctions = _skeleton_info_raw(project_id, skeletons, op)
 
-    return HttpResponse(json.dumps({'incoming': incoming, 'outgoing': outgoing}), content_type='text/json')
+    return HttpResponse(json.dumps({'incoming': incoming, 'outgoing': outgoing, 'gapjunctions': gapjunctions}), content_type='text/json')
 
 
 @requires_user_role([UserRole.Annotate, UserRole.Browse])

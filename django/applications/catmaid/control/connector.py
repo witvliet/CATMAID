@@ -67,8 +67,8 @@ def one_to_many_synapses(request, project_id=None):
     if not skids:
         raise ValueError("No skeleton IDs for 'many' provided")
 
-    relation_name = request.POST.get('relation') # expecting presynaptic_to or postsynaptic_to
-    if 'postsynaptic_to' == relation_name or 'presynaptic_to' == relation_name:
+    relation_name = request.POST.get('relation') # expecting presynaptic_to, postsynaptic_to, or gapjunction_with
+    if 'postsynaptic_to' == relation_name or 'presynaptic_to' == relation_name or 'gapjunction_with' == relation_name:
         pass
     else:
         raise Exception("Cannot accept a relation named '%s'" % relation_name)
