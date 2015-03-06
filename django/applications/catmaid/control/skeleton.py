@@ -489,6 +489,7 @@ def _connected_skeletons(skeleton_ids, op, relation_id_1, relation_id_2, model_o
     partners = defaultdict(newPartner)
 
     # Obtain the synapses made by all skeleton_ids considering the desired direction of the synapse, as specified by relation_id_1 and relation_id_2:
+    # Check that treenode_connectors aren't the same, as gap junctions are non-directional and dublicates would appear
     cursor.execute('''
     SELECT t1.skeleton_id, t2.skeleton_id
     FROM treenode_connector t1,
@@ -496,19 +497,22 @@ def _connected_skeletons(skeleton_ids, op, relation_id_1, relation_id_2, model_o
     WHERE t1.skeleton_id IN (%s)
       AND t1.relation_id = %s
       AND t1.connector_id = t2.connector_id
+      AND t1.id <> t2.id
       AND t2.relation_id = %s
     ''' % (','.join(map(str, skeleton_ids)), int(relation_id_1), int(relation_id_2)))
-
+    
     # Sum the number of synapses
     for srcID, partnerID in cursor.fetchall():
-        # Skip connections with self non-directional connectors (gap junctions)
+        # For connections with self that are non-directional (gap junctions)
+        # add only half a connection, as they will be in the query twice.
         if relation_id_1 == relation_id_2 and srcID == partnerID:
-            continue
-        partners[partnerID].skids[srcID] += 1
+            partners[partnerID].skids[srcID] += 0.5
+        else:
+            partners[partnerID].skids[srcID] += 1
 
     # There may not be any synapses
     if not partners:
-        return partners
+        return partners        
 
     # If op is AND, discard entries where only one of the skids has synapses
     if len(skeleton_ids) > 1 and 'AND' == op:

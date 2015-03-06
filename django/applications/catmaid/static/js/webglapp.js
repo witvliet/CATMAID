@@ -1284,9 +1284,12 @@ WebGLApplication.prototype.Space.prototype.StaticContent = function(dimensions, 
   this.labelColors = {uncertain: new THREE.MeshBasicMaterial({color: 0xff8000, opacity:0.6, transparent: true}),
                       todo: new THREE.MeshBasicMaterial({color: 0xff0000, opacity:0.6, transparent: true})};
   this.textGeometryCache = new WebGLApplication.prototype.Space.prototype.TextGeometryCache();
-  this.synapticColors = [new THREE.MeshBasicMaterial( { color: 0xff0000, opacity:0.6, transparent:false  } ), new THREE.MeshBasicMaterial( { color: 0x00f6ff, opacity:0.6, transparent:false  } )];
+  this.synapticColors = [new THREE.MeshBasicMaterial( { color: 0xff0000, opacity:0.6, transparent:false  } ), 
+                         new THREE.MeshBasicMaterial( { color: 0x00f6ff, opacity:0.6, transparent:false  } ), 
+                         new THREE.MeshBasicMaterial( { color: 0x9f25e8, opacity:0.6, transparent:false  } )];
   this.connectorLineColors = {'presynaptic_to': new THREE.LineBasicMaterial({color: 0xff0000, opacity: 1.0, linewidth: 6}),
-                              'postsynaptic_to': new THREE.LineBasicMaterial({color: 0x00f6ff, opacity: 1.0, linewidth: 6})};
+                              'postsynaptic_to': new THREE.LineBasicMaterial({color: 0x00f6ff, opacity: 1.0, linewidth: 6}),
+                              'gapjunction_with': new THREE.LineBasicMaterial({color: 0x9f25e8, opacity: 1.0, linewidth: 6})};
 };
 
 WebGLApplication.prototype.Space.prototype.StaticContent.prototype = {};
@@ -1318,6 +1321,7 @@ WebGLApplication.prototype.Space.prototype.StaticContent.prototype.dispose = fun
   this.labelColors.todo.dispose();
   this.synapticColors[0].dispose();
   this.synapticColors[1].dispose();
+  this.synapticColors[2].dispose();
 };
 
 WebGLApplication.prototype.Space.prototype.StaticContent.prototype.createBoundingBox = function(center, dimension, resolution) {
@@ -2379,8 +2383,8 @@ WebGLApplication.prototype.Space.prototype.Skeleton = function(space, skeletonmo
 
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype = {};
 
-WebGLApplication.prototype.Space.prototype.Skeleton.prototype.CTYPES = ['neurite', 'presynaptic_to', 'postsynaptic_to'];
-WebGLApplication.prototype.Space.prototype.Skeleton.prototype.synapticTypes = ['presynaptic_to', 'postsynaptic_to'];
+WebGLApplication.prototype.Space.prototype.Skeleton.prototype.CTYPES = ['neurite', 'presynaptic_to', 'postsynaptic_to', 'gapjunction_with'];
+WebGLApplication.prototype.Space.prototype.Skeleton.prototype.synapticTypes = ['presynaptic_to', 'postsynaptic_to', 'gapjunction_with'];
 
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.initialize_objects = function(options) {
 	this.visible = true;
@@ -2396,11 +2400,13 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.initialize_objects
 	this.geometry[CTYPES[0]] = new THREE.Geometry();
 	this.geometry[CTYPES[1]] = new THREE.Geometry();
 	this.geometry[CTYPES[2]] = new THREE.Geometry();
+      this.geometry[CTYPES[3]] = new THREE.Geometry();
 
       this.actor = {}; // has three keys (the CTYPES), each key contains the edges of each type
       this.actor[CTYPES[0]] = new THREE.Line(this.geometry[CTYPES[0]], this.line_material, THREE.LinePieces);
       this.actor[CTYPES[1]] = new THREE.Line(this.geometry[CTYPES[1]], this.space.staticContent.connectorLineColors[CTYPES[1]], THREE.LinePieces);
       this.actor[CTYPES[2]] = new THREE.Line(this.geometry[CTYPES[2]], this.space.staticContent.connectorLineColors[CTYPES[2]], THREE.LinePieces);
+      this.actor[CTYPES[3]] = new THREE.Line(this.geometry[CTYPES[3]], this.space.staticContent.connectorLineColors[CTYPES[3]], THREE.LinePieces);
 
 	this.specialTagSpheres = {};
 	this.synapticSpheres = {};
@@ -2433,6 +2439,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.removeActorFromSce
   // Dispose only of the geometries. Materials for connectors are shared
   this.actor[this.CTYPES[1]].geometry.dispose();
   this.actor[this.CTYPES[2]].geometry.dispose();
+  this.actor[this.CTYPES[3]].geometry.dispose();
 
 	[this.actor, this.synapticSpheres, this.radiusVolumes,
 	 this.specialTagSpheres].forEach(function(ob) {
@@ -3244,6 +3251,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.create_connector_s
 	this.connectorgeometry = {};
 	this.connectorgeometry[this.CTYPES[1]] = new THREE.Geometry();
 	this.connectorgeometry[this.CTYPES[2]] = new THREE.Geometry();
+  this.connectorgeometry[this.CTYPES[3]] = new THREE.Geometry();
 
   this.synapticTypes.forEach(function(type) {
     // Vertices is an array of Vector3, every two a pair, the first at the connector and the second at the node

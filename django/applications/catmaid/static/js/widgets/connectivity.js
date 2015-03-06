@@ -287,8 +287,6 @@ SkeletonConnectivity.prototype.update = function() {
           createPartnerModels(self.incoming, partnerModels);
           createPartnerModels(self.outgoing, partnerModels);
           createPartnerModels(self.gapjunctions, partnerModels);
-          //alert(JSON.stringify(self.incoming))
-          //alert(JSON.stringify(self.gapjunctions))
 
           // Make all partners known to the name service
           NeuronNameService.getInstance().registerAll(self, partnerModels, function() {

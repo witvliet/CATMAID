@@ -118,7 +118,8 @@ def compact_skeleton(request, project_id=None, skeleton_id=None, with_connectors
         ''' % skeleton_id)
 
         post = relations['postsynaptic_to']
-        connectors = tuple((row[0], row[1], 1 if row[2] == post else 0, row[3], row[4], row[5]) for row in cursor.fetchall())
+        gj = relations['gapjunction_with']
+        connectors = tuple((row[0], row[1], 1 if row[2] == post else 0 if row[2] != gj else 2, row[3], row[4], row[5]) for row in cursor.fetchall())
 
     if 0 != with_tags:
         # Fetch all node tags
