@@ -1,59 +1,6 @@
 /* -*- mode: espresso; espresso-indent-level: 2; indent-tabs-mode: nil -*- */
 /* vim: set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
 
-
-/* It's very easy to accidentally leave in a console.log if you're
- * working with Firebug, but this will break CATMAID for the majority
- * of browsers.  If window.console isn't defined, create a noop
- * version of console.log: */
-
-if (!window.console) {
-  window.console = {};
-  window.console.log = function() {};
-}
-
-// Attach a general error handler
-window.onerror = function(msg, url, lineno, colno, err)
-{
-  var info = 'An error occured in CATMAID and the current action can\'t be ' +
-      'completed. You can try to reload the widget or tool you just used.';
-  var detail = 'Error: ' + msg + ' URL: ' + url + ' Line: ' + lineno +
-      ' Column: ' + colno + ' Stacktrace: ' + (err ? err.stack : 'N/A');
-
-  // Log the error detail to the console
-  console.log(detail);
-
-  // Log the error in the backend, bypass the request queue and make a direct
-  // AJAX call through jQuery.
-  $.ajax({
-    'url': django_url + 'log/error',
-    'type': 'POST',
-    'data': {
-      'msg': detail,
-    }
-  });
-
-  // Log the error object, if available
-  if (err) {
-    console.log('Error object:');
-    console.log(err);
-  } else {
-    console.log('No error object was provided');
-  }
-
-  // Use alert() to inform the user, if the error function isn't available for
-  // some reason
-  if (error) {
-    error(info, detail);
-  } else {
-    alert(info + ' Detail: ' + detail);
-  }
-
-  // Return true to indicate the exception is handled and doesn't need to be
-  // shown to the user.
-  return true;
-};
-
 var global_bottom = 29;
 var statusBar; //!< global statusBar
 var slider_trace_z;
@@ -64,7 +11,6 @@ var input_fontsize; //!< fontsize input
 var input_fontcolourred; //!< fontcolour red input
 var input_fontcolourgreen; //!< fontcolour green input
 var input_fontcolourblue; //!< fontcolour blue input
-var ui;
 var requestQueue;
 var project;
 var project_view;
@@ -81,16 +27,6 @@ var stack_menu;
 var message_menu;
 // A menu for user related links
 var user_menu;
-
-var pid;
-var sids = [];
-var ss = [];
-var zp;
-var yp;
-var xp;
-var inittool;
-var init_active_skeleton;
-var init_active_node_id;
 
 var session;
 var msg_timeout;
@@ -134,7 +70,7 @@ function countProperties(obj) {
  */
 
 function login_oninputreturn(e) {
-  if (ui.getKey(e) == 13) {
+  if (CATMAID.ui.getKey(e) == 13) {
     login(document.getElementById("account").value, document.getElementById("password").value);
     return false;
   } else
@@ -160,7 +96,7 @@ function login(
 	};
 	if ( msg_timeout ) window.clearTimeout( msg_timeout );
 	
-	ui.catchEvents( "wait" );
+	CATMAID.ui.catchEvents( "wait" );
 	if ( account || password ) {
 		// Attempt to login.
 		requestQueue.register(
@@ -191,7 +127,7 @@ function login(
 
 function handle_login(status, text, xml, completionCallback) {
   if (status == 200 && text) {
-    var e = eval("(" + text + ")");
+    var e = JSON.parse(text);
 
     if (e.id) {
       session = e;
@@ -254,7 +190,7 @@ function handle_login(status, text, xml, completionCallback) {
 function logout() {
   if (msg_timeout) window.clearTimeout(msg_timeout);
 
-  ui.catchEvents("wait");
+  CATMAID.ui.catchEvents("wait");
   requestQueue.register(django_url + 'accounts/logout', 'POST', undefined, handle_logout);
 
   return;
@@ -301,9 +237,9 @@ function handle_profile_update(e) {
     /* A valid user profile is needed to start CATMAID. This is a severe error
      * and a message box will tell the user to report this problem.
      */
-    new ErrorDialog("The user profile couldn't be loaded. This, however, is " +
-        "required to start CATMAID. Please report this problem to your " +
-        "administrator and try again later.", error).show();
+    new CATMAID.ErrorDialog("The user profile couldn't be loaded. This " +
+        "however, is required to start CATMAID. Please report this problem " +
+        "to your administrator and try again later.", error).show();
     return;
   }
 
@@ -315,7 +251,7 @@ function handle_profile_update(e) {
   $('#toolbox_edit').hide();
 
   // TODO: There should be a user change event for this to subscribe
-  ReviewSystem.Whitelist.refresh();
+  CATMAID.ReviewSystem.Whitelist.refresh();
 }
 
 /**
@@ -394,7 +330,7 @@ function handle_updateProjects(status, text, xml) {
 			project = undefined;
 		}
 	}
-	ui.releaseEvents();
+	CATMAID.ui.releaseEvents();
 	return;
 }
 
@@ -535,31 +471,37 @@ function updateProjectListFromCache() {
 
 /**
  * queue an open-project-stack-request to the request queue
- * freeze the window to wait for an answer
+ * freeze the window to wait for an answer. The successFn callback is called
+ * only if the loading was successful.
  */
-function openProjectStack( pid, sid, completionCallback, stackConstructor )
+function openProjectStack( pid, sid, successFn, stackConstructor )
 {
 	if ( project && project.id != pid )
 	{
 		project.destroy();
 	}
 
-	ui.catchEvents( "wait" );
+	CATMAID.ui.catchEvents( "wait" );
 	requestQueue.register(
 		django_url + pid + '/stack/' + sid + '/info',
 		'GET',
 		{ },
-		function(args)
-		{
-			// Convert arguments to array and append stackConstructor
-			var stack = handle_openProjectStack.apply(
-					this,
-					Array.prototype.slice.call(arguments).concat(stackConstructor));
-			if (completionCallback)
-			{
-				completionCallback(stack);
-			}
-		});
+		CATMAID.jsonResponseHandler(
+			function(json) {
+				var stack = handle_openProjectStack(json, stackConstructor);
+				// Call success function, if any, if a stack was added
+				if (stack) {
+					CATMAID.tools.callIfFn(successFn);
+				}
+			}, function(e) {
+				// Handle login errors
+				if (e.permission_error) {
+					new CATMAID.LoginDialog(e.error, realInit).show();
+					return true;
+				}
+				return false;
+			}));
+
 	return;
 }
 
@@ -569,173 +511,110 @@ function openProjectStack( pid, sid, completionCallback, stackConstructor )
  *
  * free the window
  */
-function handle_openProjectStack( status, text, xml, stackConstructor )
+function handle_openProjectStack( e, stackConstructor )
 {
-	var stack = null;
-	if ( status == 200 && text )
-	{
-		var e = eval( "(" + text + ")" );
-		if ( e.error )
-		{
-			if (e.permission_error) {
-				new LoginDialog(e.error, realInit).show();
-			} else {
-				new ErrorDialog(e.error, e.detail).show();
-			}
-		}
-		else
-		{
-			//! look if the project is already opened, otherwise open a new one
-			if ( !( project && project.id == e.pid ) )
-			{
-				project = new Project( e.pid );
-				project_view = project.getView();
-				project.register();
-				// TODO: There should be a project change event for this to subscribe
-				ReviewSystem.Whitelist.refresh();
-			}
+  var stack = null;
+  //! look if the project is already opened, otherwise open a new one
+  if ( !( project && project.id == e.pid ) )
+  {
+    project = new Project( e.pid );
+    project_view = project.getView();
+    project.register();
+    // TODO: There should be a project change event for this to subscribe
+    CATMAID.ReviewSystem.Whitelist.refresh();
+  }
 
-			var labelupload = '';
+  var labelupload = '';
 
-			if( e.hasOwnProperty('labelupload_url') && e.tile_source_type === 2 ) {
-				labelupload = e.labelupload_url;
-			}
+  if( e.hasOwnProperty('labelupload_url') && e.tile_source_type === 2 ) {
+    labelupload = e.labelupload_url;
+  }
 
-			if (typeof stackConstructor === 'undefined') stackConstructor = Stack;
-			stack = new stackConstructor(
-					project,
-					e.sid,
-					e.stitle,
-					e.dimension,
-					e.resolution,
-					e.translation,		//!< @todo replace by an affine transform
-					e.broken_slices,
-					e.trakem2_project,
-					e.num_zoom_levels,
-					-2,
-					e.tile_source_type,
-					labelupload, // TODO: if there is any
-					e.metadata,
-					userprofile.inverse_mouse_wheel,
-					e.orientation );
+  if (typeof stackConstructor === 'undefined') stackConstructor = Stack;
+  stack = new stackConstructor(
+      project,
+      e.sid,
+      e.stitle,
+      e.dimension,
+      e.resolution,
+      e.translation,		//!< @todo replace by an affine transform
+      e.broken_slices,
+      e.trakem2_project,
+      e.num_zoom_levels,
+      -2,
+      e.tile_source_type,
+      labelupload, // TODO: if there is any
+      e.metadata,
+      userprofile.inverse_mouse_wheel,
+      e.orientation );
 
-			document.getElementById( "toolbox_project" ).style.display = "block";
+  document.getElementById( "toolbox_project" ).style.display = "block";
 
-			var tilesource = getTileSource( e.tile_source_type, e.image_base,
-					e.file_extension );
-			var tilelayer = new TileLayer(
-					"Image data",
-					stack,
-					e.tile_width,
-					e.tile_height,
-					tilesource,
-					true,
-					1,
-					true);
+  var tilesource = getTileSource( e.tile_source_type, e.image_base,
+      e.file_extension );
+  var tilelayer = new TileLayer(
+      "Image data",
+      stack,
+      e.tile_width,
+      e.tile_height,
+      tilesource,
+      true,
+      1,
+      true);
 
-			stack.addLayer( "TileLayer", tilelayer );
+  stack.addLayer( "TileLayer", tilelayer );
 
-			$.each(e.overlay, function(key, value) {
-				var tilesource = getTileSource( value.tile_source_type,
-					value.image_base, value.file_extension );
-				var layer_visibility = false;
-				if( parseInt(value.default_opacity) > 0) 
-					layer_visibility = true;
-				var tilelayer2 = new TileLayer(
-								value.title,
-								stack,
-								value.tile_width,
-								value.tile_height,
-								tilesource,
-								layer_visibility,
-								value.default_opacity / 100,
-								false);
-				stack.addLayer( value.title, tilelayer2 );
-			});
+  $.each(e.overlay, function(key, value) {
+    var tilesource = getTileSource( value.tile_source_type,
+      value.image_base, value.file_extension );
+    var layer_visibility = false;
+    if( parseInt(value.default_opacity) > 0)
+      layer_visibility = true;
+    var tilelayer2 = new TileLayer(
+            value.title,
+            stack,
+            value.tile_width,
+            value.tile_height,
+            tilesource,
+            layer_visibility,
+            value.default_opacity / 100,
+            false);
+    stack.addLayer( value.title, tilelayer2 );
+  });
 
-			// If the requested stack is already loaded, the existing
-			// stack is returned. Continue work with the existing stack.
-			stack = project.addStack( stack );
+  // If the requested stack is already loaded, the existing
+  // stack is returned. Continue work with the existing stack.
+  stack = project.addStack( stack );
 
-			// refresh the overview handler to also register the mouse events on the buttons
-			stack.tilelayercontrol.refresh();
+  // refresh the overview handler to also register the mouse events on the buttons
+  stack.tilelayercontrol.refresh();
 
-			var tools = {
-				navigator: Navigator,
-				tracingtool: TracingTool,
-				segmentationtool: SegmentationTool,
-				classification_editor: null
-			};
+  /* Update the projects stack menu. If there is more
+  than one stack linked to the current project, a submenu for easy
+  access is generated. */
+  stack_menu.update();
+  getStackMenuInfo(project.id, function(stacks) {
+    if (stacks.length > 1)
+    {
+      var stack_menu_content = [];
+      $.each(stacks, function(i, s) {
+        stack_menu_content.push(
+          {
+            id : s.id,
+            title : s.title,
+            note : s.note,
+            action : s.action
+          }
+        );
+      });
 
-			//! if the stack was initialized by an URL query, move it to a given position
-			if ( pid == e.pid && sids.length > 0 )
-			{
-				for ( var i = 0; i < sids.length; ++i )
-				{
-					if ( sids[ i ] == e.sid )
-					{
-						if (
-							typeof ss[ i ] == "number" &&
-							typeof zp == "number" &&
-							typeof yp == "number" &&
-							typeof xp == "number" )
-						{
-							project.moveTo( zp, yp, xp, ss[i],
-									function() {
-										// Set the tool only after the move;
-										// otherwise, thousands of skeleton nodes may be fetched and painted
-										// unnecessarily.
-										var tool = tools[inittool];
-										if (tool) {
-											project.setTool(new tool());
-										}
-										if (init_active_node_id) {
-											// initialization hack
-											SkeletonAnnotations.init_active_node_id = init_active_node_id;
-										}
-									});
+      stack_menu.update( stack_menu_content );
+      document.getElementById( "stackmenu_box" ).style.display = "block";
+    }
+  });
 
-							sids.splice( i, 1 );
-							ss.splice( i, 1 );
-							break;
-						}
-					}
-				}
-			}
-			else if ( inittool )
-			{
-				var tool = tools[ inittool ];
-				if ( tool )
-					project.setTool( new tool() );
-			}
-
-			/* Update the projects stack menu. If there is more
-			than one stack linked to the current project, a submenu for easy
-			access is generated. */
-			stack_menu.update();
-			getStackMenuInfo(project.id, function(stacks) {
-				if (stacks.length > 1)
-				{
-					var stack_menu_content = [];
-					$.each(stacks, function(i, s) {
-						stack_menu_content.push(
-							{
-								id : s.id,
-								title : s.title,
-								note : s.note,
-								action : s.action
-							}
-						);
-					});
-
-					stack_menu.update( stack_menu_content );
-					document.getElementById( "stackmenu_box" ).style.display = "block";
-				}
-			});
-		}
-	}
-	ui.releaseEvents();
-	return stack;
+  CATMAID.ui.releaseEvents();
+  return stack;
 }
 
 /**
@@ -744,7 +623,7 @@ function handle_openProjectStack( status, text, xml, stackConstructor )
 
 function check_messages() {
   requestQueue.register(django_url + 'messages/latestunreaddate', 'GET',
-      undefined, jsonResponseHandler(function(data) {
+      undefined, CATMAID.jsonResponseHandler(function(data) {
         // If there is a newer latest message than we know of, get all
         // messages to display them in the message menu and widget.
         if (data.latest_unread_date) {
@@ -784,7 +663,7 @@ function handle_message( status, text, xml )
 	
 	if ( status == 200 && text )
 	{
-		var e = eval( "(" + text + ")" );
+		var e = JSON.parse(text);
 		if ( e.error )
 		{
 			alert( e.error );
@@ -866,7 +745,7 @@ function dataviews() {
 function handle_dataviews(status, text, xml) {
 	if ( status == 200 && text )
 	{
-		var e = eval( "(" + text + ")" );
+		var e = JSON.parse(text);
 		if ( e.error )
 		{
 			alert( e.error );
@@ -957,7 +836,7 @@ function load_default_dataview() {
 function handle_load_default_dataview(status, text, xml) {
 	if ( status == 200 && text )
 	{
-		var e = eval( "(" + text + ")" );
+		var e = JSON.parse(text);
 		if ( e.error )
 		{
 			alert( e.error );
@@ -1018,8 +897,8 @@ function handle_load_dataview(status, text, xml) {
 function global_resize( e )
 {
 	var top = document.getElementById( "toolbar_container" ).offsetHeight;
-	var height = Math.max( 0, ui.getFrameHeight() - top - global_bottom );
-	var width = ui.getFrameWidth();
+	var height = Math.max( 0, CATMAID.ui.getFrameHeight() - top - global_bottom );
+	var width = CATMAID.ui.getFrameWidth();
 	
 	var content = document.getElementById( "content" );
 	content.style.top = top + "px";
@@ -1044,15 +923,24 @@ var realInit = function()
 	}
 
 	//! analyze the URL
+	var pid;
+	var sids = [];
+	var ss = [];
+	var inittool;
 	var z;
 	var y;
 	var x;
 	var s;
-  
+	var zp;
+	var yp;
+	var xp;
+	var init_active_node_id;
+	var init_active_skeleton;
+
 	var account;
 	var password;
 	
-	var values = parseQuery();
+	var values = CATMAID.tools.parseQuery(window.location.search);
 	if ( values )
 	{
 		// simply parse the fragment values
@@ -1127,8 +1015,6 @@ var realInit = function()
 	statusBar = new Console();
 	document.body.appendChild( statusBar.getView() );
 	
-	ui = new UI();
-	
 	input_fontsize = document.getElementById( "fontsize" );
 	
 	a_url = document.getElementById( "a_url" );
@@ -1185,11 +1071,46 @@ var realInit = function()
 
 	// login and thereafter load stacks if requested
 	login(undefined, undefined, function() {
-		if ( pid && sids.length > 0 )
-		{
-			for ( var i = 0; i < sids.length; ++i )
-			{
-				openProjectStack( pid, sids[ i ] );
+		var tools = {
+			navigator: Navigator,
+			tracingtool: TracingTool,
+			segmentationtool: SegmentationTool,
+			classification_editor: null
+		};
+
+		loadStacksFromURL();
+
+		// Open stacks one after another and move to the requested location. Load
+		// the requested tool after everything has been loaded.
+		function loadStacksFromURL() {
+			if (pid) {
+				if (sids.length > 0) {
+					// Open stack and queue test/loading for next one
+					var sid = sids.shift();
+					var s = ss.shift();
+					openProjectStack(pid, sid, function() {
+						// Moving every stack is not really necessary, but for now a
+						// convenient way to apply the requested scale to each stack.
+						if (typeof zp == "number" && typeof yp == "number" &&
+								typeof xp == "number" && typeof s == "number" ) {
+							project.moveTo(zp, yp, xp, s, function() {
+								// Load next stack
+								loadStacksFromURL();
+							});
+						}
+					});
+				} else {
+					// Set the tool only after the move; otherwise, thousands of skeleton
+					// nodes may be fetched and painted unnecessarily.
+					var tool = tools[inittool];
+					if (tool) {
+						project.setTool(new tool());
+					}
+					if (init_active_node_id) {
+						// initialization hack
+						SkeletonAnnotations.init_active_node_id = init_active_node_id;
+					}
+				}
 			}
 		}
 	});
@@ -1205,10 +1126,10 @@ var realInit = function()
 	input_fontcolourblue = new Input( "fontcolourblue", 3, function( e ){ return true; }, 0 );
 	document.getElementById( "input_fontcolourblue" ).appendChild( input_fontcolourblue.getView() );
 	
-	ui.registerEvent( "onresize", global_resize );
+	CATMAID.ui.registerEvent( "onresize", global_resize );
 	
 	rootWindow = new CMWRootNode();
-	ui.registerEvent( "onresize", resize );
+	CATMAID.ui.registerEvent( "onresize", resize );
 
   // change global bottom bar height, hide the copyright notice
   // and move the statusBar
@@ -1225,8 +1146,8 @@ var realInit = function()
 var resize = function( e )
 {
 	var top = document.getElementById( "toolbar_container" ).offsetHeight;
-	var height = Math.max( 0, ui.getFrameHeight() - top - global_bottom );
-	var width = ui.getFrameWidth();
+	var height = Math.max( 0, CATMAID.ui.getFrameHeight() - top - global_bottom );
+	var width = CATMAID.ui.getFrameWidth();
 	
 	var content = document.getElementById( "content" );
 	content.style.top = top + "px";
@@ -1235,7 +1156,7 @@ var resize = function( e )
 	
 	rootFrame = rootWindow.getFrame();
 	rootFrame.style.top = top + "px";
-	rootFrame.style.width = UI.getFrameWidth() + "px";
+	rootFrame.style.width = CATMAID.UI.getFrameWidth() + "px";
 	rootFrame.style.height = height + "px";
 	
 	rootWindow.redraw();
@@ -1264,7 +1185,7 @@ function showMessages()
 					if ( messageContext.parentNode )
 						messageContext.parentNode.removeChild( messageContext );
 					document.getElementById( "dump" ).appendChild( messageContext );
-					if ( typeof project === undefined || project === null )
+					if ( typeof project === "undefined" || project === null )
 					{
 						rootWindow.close();
 						document.getElementById( "content" ).style.display = "block";

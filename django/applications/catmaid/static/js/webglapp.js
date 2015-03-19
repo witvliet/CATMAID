@@ -1,12 +1,11 @@
 /* -*- mode: espresso; espresso-indent-level: 2; indent-tabs-mode: nil -*- */
 /* vim: set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
 /* global
+  CATMAID
   annotations,
   Arbor,
   ArborParser,
-  dataURItoBlob,
   error,
-  ErrorDialog,
   fetchSkeletons,
   growlAlert,
   InstanceRegistry,
@@ -14,7 +13,6 @@
   OptionsDialog,
   project,
   requestQueue,
-  ReviewSystem,
   SelectionTable,
   session,
   SkeletonAnnotations,
@@ -38,6 +36,10 @@ var WebGLApplication = function() {
   this.registerSource();
   // Indicates whether init has been called
   this.initialized = false;
+  // Indicates if there is an animation running
+  this.animationRequestId = undefined;
+  // The current animation, if any
+  this.animation = undefined;
 
   // Listen to changes of the active node
   SkeletonAnnotations.on(SkeletonAnnotations.EVENT_ACTIVE_NODE_CHANGED,
@@ -57,7 +59,7 @@ WebGLApplication.prototype.init = function(canvasWidth, canvasHeight, divID) {
 	this.stack = project.focusedStack;
   this.submit = new submitterFn();
 	this.options = new WebGLApplication.prototype.OPTIONS.clone();
-	this.space = new this.Space(canvasWidth, canvasHeight, this.container, this.stack);
+	this.space = new this.Space(canvasWidth, canvasHeight, this.container, this.stack, this.options);
   this.updateActiveNodePosition();
 	this.initialized = true;
 };
@@ -168,11 +170,11 @@ WebGLApplication.prototype.exportPNG = function() {
   this.space.render();
   try {
     var imageData = this.space.view.getImageData();
-    var blob = dataURItoBlob(imageData);
+    var blob = CATMAID.tools.dataURItoBlob(imageData);
     growlAlert("Information", "The exported PNG will have a transparent background");
     saveAs(blob, "catmaid_3d_view.png");
   } catch (e) {
-    error("Could not export current 3D view, there was an error.", e);
+    CATMAID.error("Could not export current 3D view, there was an error.", e);
   }
 };
 
@@ -206,7 +208,7 @@ WebGLApplication.prototype.exportSVG = function() {
     var blob = new Blob([data], {type: 'text/svg'});
     saveAs(blob, "catmaid-3d-view.svg");
   } catch (e) {
-    error("Could not export current 3D view, there was an error.", e);
+    CATMAID.error("Could not export current 3D view, there was an error.", e);
   }
   $.unblockUI();
 };
@@ -367,7 +369,7 @@ WebGLApplication.prototype.exportCatalogSVG = function() {
         var blob = new Blob([data], {type: 'text/svg'});
         saveAs(blob, "catmaid-neuron-catalog.svg");
       } catch (e) {
-        error("Could not export neuron catalog. There was an error.", e);
+        CATMAID.error("Could not export neuron catalog. There was an error.", e);
       }
       $.unblockUI();
     }
@@ -537,7 +539,8 @@ WebGLApplication.prototype.spatialSelect = function() {
         function(status, text) {
           if (200 !== status) return;
           var json = $.parseJSON(text);
-          if (json.error) return new ErrorDialog("Could not fetch skeletons.", json.error);
+          if (json.error) return new CATMAID.ErrorDialog(
+              "Could not fetch skeletons.", json.error);
           if (json.skeletons) {
             if (json.reached_limit) growlAlert("Warning", "Too many: loaded only a subset");
             newSelection(json.skeletons);
@@ -577,9 +580,16 @@ WebGLApplication.prototype.Options = function() {
   this.resample_skeletons = false;
   this.resampling_delta = 3000; // nm
   this.skeleton_line_width = 3;
+  this.skeleton_node_scaling = 1.0;
   this.invert_shading = false;
   this.follow_active = false;
   this.distance_to_active_node = 5000; // nm
+  this.min_synapse_free_cable = 5000; // nm
+  this.animation_rotation_axis = "up";
+  this.animation_rotation_speed = 0.01;
+  this.animation_back_forth = false;
+  this.animation_stepwise_visibility = false;
+  this.strahler_cut = 2; // to approximate twigs
 };
 
 WebGLApplication.prototype.Options.prototype = {};
@@ -669,7 +679,8 @@ WebGLApplication.prototype.updateSkeletonColors = function(callback) {
           console.log('ERROR: failed to load reviews for skeleton ' + skeleton_id);
         },
         fnRecolor);
-  } else if ('axon-and-dendrite' === this.options.color_method) {
+  } else if ('axon-and-dendrite' === this.options.color_method
+          || 'dendritic-backbone' === this.options.shading_method) {
     var skeletons = this.space.content.skeletons;
     // Find the subset of skeletons that don't have their axon loaded
     var skeleton_ids = Object.keys(skeletons).filter(function(skid) {
@@ -686,7 +697,7 @@ WebGLApplication.prototype.updateSkeletonColors = function(callback) {
         },
         function(skid) {
           // Failed loading
-          skeletons[skid].axon = {}; // dummy
+          skeletons[skid].axon = null;
           console.log('ERROR: failed to load axon-and-dendrite for skeleton ' + skid);
         },
         fnRecolor);
@@ -733,7 +744,7 @@ WebGLApplication.prototype.storeCurrentView = function(name, callback) {
   } else {
     // Abort if a view with this name exists already
     if (name in this.availableViews) {
-      error("A view with the name \"" + name + "\" already exists.");
+      CATMAID.error("A view with the name \"" + name + "\" already exists.");
       return;
     }
     // Store view
@@ -760,7 +771,7 @@ WebGLApplication.prototype.getStoredViews = function() {
  */
 WebGLApplication.prototype.activateView = function(name) {
   if (!(name in this.availableViews)) {
-    error("There is no view named \"" + name + "\"!");
+    CATMAID.error("There is no view named \"" + name + "\"!");
     return;
   }
   // Activate view by executing the stored function
@@ -861,19 +872,7 @@ WebGLApplication.prototype.set_shading_method = function() {
   // Set the shading of all skeletons based on the state of the "Shading" pop-up menu.
   this.options.shading_method = $('#skeletons_shading' + this.widgetID + ' :selected').attr("value");
 
-  var skeletons = this.space.content.skeletons;
-  try {
-    $.blockUI();
-    Object.keys(skeletons).forEach(function(skid) {
-      skeletons[skid].updateSkeletonColor(this.options);
-    }, this);
-  } catch (e) {
-    console.log(e, e.stack);
-    alert(e);
-  }
-  $.unblockUI();
-
-  this.space.render();
+  this.updateSkeletonColors();
 };
 
 WebGLApplication.prototype.look_at_active_node = function() {
@@ -1054,9 +1053,10 @@ WebGLApplication.prototype.showActiveNode = function() {
 
 
 /** Defines the properties of the 3d space and also its static members like the bounding box and the missing sections. */
-WebGLApplication.prototype.Space = function( w, h, container, stack ) {
+WebGLApplication.prototype.Space = function( w, h, container, stack, options ) {
 	this.stack = stack;
   this.container = container; // used by MouseControls
+  this.options = options;
 
 	this.canvasWidth = w;
 	this.canvasHeight = h;
@@ -1068,8 +1068,19 @@ WebGLApplication.prototype.Space = function( w, h, container, stack ) {
                                       stack.dimension.y * stack.resolution.y,
                                       stack.dimension.z * stack.resolution.z);
 
+	// Set the node scaling for skeletons so that it makes nodes not too big for
+	// higher resolutions and not too small for lower ones.
+	options.skeleton_node_scaling = 2 * Math.min(stack.resolution.x,
+	    stack.resolution.y, stack.resolution.z);
+	// Make the scaling factor look a bit prettier by rounding to two decimals
+	options.skeleton_node_scaling = Number(options.skeleton_node_scaling.toFixed(2));
+
 	// WebGL space
 	this.scene = new THREE.Scene();
+	// A render target used for picking objects
+	this.pickingTexture = new THREE.WebGLRenderTarget(w, h);
+	this.pickingTexture.generateMipmaps = false;
+
 	this.view = new this.View(this);
 	this.lights = this.createLights(stack.dimension, stack.resolution, this.view.camera);
 	this.lights.forEach(function(l) {
@@ -1077,11 +1088,11 @@ WebGLApplication.prototype.Space = function( w, h, container, stack ) {
 	}, this.scene);
 
 	// Content
-	this.staticContent = new this.StaticContent(this.dimensions, stack, this.center);
+	this.staticContent = new this.StaticContent(this.dimensions, stack, this.center, options);
 	this.scene.add(this.staticContent.box);
 	this.scene.add(this.staticContent.floor);
 
-	this.content = new this.Content();
+	this.content = new this.Content(options);
 	this.scene.add(this.content.active_node.mesh);
 };
 
@@ -1092,6 +1103,7 @@ WebGLApplication.prototype.Space.prototype.setSize = function(canvasWidth, canva
 	this.canvasHeight = canvasHeight;
 	this.view.camera.setSize(canvasWidth, canvasHeight);
 	this.view.camera.updateProjectionMatrix();
+	this.pickingTexture.setSize(canvasWidth, canvasHeight);
 	this.view.renderer.setSize(canvasWidth, canvasHeight);
 	if (this.view.controls) {
 		this.view.controls.handleResize();
@@ -1217,6 +1229,44 @@ WebGLApplication.prototype.Space.prototype.updateSplitShading = function(old_ske
   }
 };
 
+/**
+ * Return an object containing visibility information on all loaded skeleton.
+ */
+WebGLApplication.prototype.Space.prototype.getVisibilityMap = function()
+{
+  var visibilityMap = {};
+  for (var skid in this.content.skeletons) {
+    var s = this.content.skeletons[skid];
+    visibilityMap[skid] = {
+      actor: s.visible,
+      pre: s.skeletonmodel.pre_visible,
+      post: s.skeletonmodel.post_visible,
+      text: s.skeletonmodel.text_visible,
+      meta: s.skeletonmodel.meta_visible
+    };
+  }
+
+  return visibilityMap;
+};
+
+/**
+ * Updates the visibility of all skeletons. If a skeleton ID is given as a
+ * second argument, only this skeleton will be set visible (if it was visible
+ * before), otherwise all skeletons are set to the state in the given map.
+ */
+WebGLApplication.prototype.Space.prototype.setSkeletonVisibility = function(
+    visMap, visibleSkids)
+{
+  for (var skid in this.content.skeletons) {
+    var s = this.content.skeletons[skid];
+    var visible = visibleSkids ? (-1 !== visibleSkids.indexOf(skid)) : true;
+    s.setActorVisibility(visMap[skid].actor ? visible : false);
+    s.setPreVisibility(visMap[skid].pre ? visible : false);
+    s.setPostVisibility(visMap[skid].post ? visible : false);
+    s.setTextVisibility(visMap[skid].text ? visible : false);
+    s.setMetaVisibility(visMap[skid].meta ? visible : false);
+  }
+};
 
 WebGLApplication.prototype.Space.prototype.TextGeometryCache = function() {
 	this.geometryCache = {};
@@ -1275,8 +1325,8 @@ WebGLApplication.prototype.Space.prototype.StaticContent = function(dimensions, 
 	this.missing_sections = [];
 
 	// Shared across skeletons
-  this.labelspheregeometry = new THREE.OctahedronGeometry( 260, 3);
-  this.radiusSphere = new THREE.OctahedronGeometry( 80, 3);
+  this.labelspheregeometry = new THREE.OctahedronGeometry(32, 3);
+  this.radiusSphere = new THREE.OctahedronGeometry(10, 3);
   this.icoSphere = new THREE.IcosahedronGeometry(1, 2);
   this.cylinder = new THREE.CylinderGeometry(1, 1, 1, 10, 1, false);
   this.textMaterial = new THREE.MeshNormalMaterial( { color: 0xffffff, overdraw: true } );
@@ -1378,6 +1428,12 @@ WebGLApplication.prototype.Space.prototype.StaticContent.prototype.createBoundin
 
   mesh.position.set(center.x, center.y, center.z);
 
+  // The bounding box will not move and automatic matrix update can be disabled.
+  // However, we have to apply the initial position change by explicitely
+  // updating the matrix.
+  mesh.matrixAutoUpdate = false;
+  mesh.updateMatrix();
+
   return mesh;
 };
 
@@ -1450,6 +1506,12 @@ WebGLApplication.prototype.Space.prototype.StaticContent.prototype.createFloor =
     var mesh = new THREE.Line( geometry, material, THREE.LinePieces );
 
     mesh.position.set(min_x, floor, min_z);
+
+    // The floor will not move and automatic matrix update can be disabled.
+    // However, we have to apply the initial position change by explicitely
+    // updating the matrix.
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
 
     return mesh;
 };
@@ -1537,9 +1599,9 @@ WebGLApplication.prototype.Space.prototype.StaticContent.prototype.createMissing
 	}, []);
 };
 
-WebGLApplication.prototype.Space.prototype.Content = function() {
+WebGLApplication.prototype.Space.prototype.Content = function(options) {
 	// Scene content
-	this.active_node = new this.ActiveNode();
+	this.active_node = new this.ActiveNode(options);
 	this.meshes = [];
 	this.skeletons = {};
 };
@@ -1599,6 +1661,7 @@ WebGLApplication.prototype.Space.prototype.Content.prototype.adjust = function(o
 	}
 
 	this.active_node.setVisible(options.show_active_node);
+	CATMAID.tools.setXYZ(this.active_node.mesh.scale, options.skeleton_node_scaling);
 };
 
 WebGLApplication.prototype.Space.prototype.View = function(space) {
@@ -1646,9 +1709,9 @@ WebGLApplication.prototype.Space.prototype.View.prototype.init = function() {
   this.renderer.context.canvas.addEventListener('webglcontextlost', function(e) {
     e.preventDefault();
     // Notify user about reload
-    error("Due to limited system resources the 3D display can't be shown " +
-          "right now. Please try and restart the widget containing the 3D " +
-          "viewer.");
+    CATMAID.error("Due to limited system resources the 3D display can't be " +
+          "shown right now. Please try and restart the widget containing the " +
+          "3D viewer.");
   }, false);
   this.renderer.context.canvas.addEventListener('webglcontextrestored', (function(e) {
     // TODO: Calling init() isn't enough, but one can manually restart
@@ -1667,7 +1730,7 @@ WebGLApplication.prototype.Space.prototype.View.prototype.createRenderer = funct
   } else if ('svg' === type) {
     renderer = new THREE.SVGRenderer();
   } else {
-    error("Unknon renderer type: " + type);
+    CATMAID.error("Unknon renderer type: " + type);
     return null;
   }
 
@@ -1709,8 +1772,9 @@ WebGLApplication.prototype.Space.prototype.View.prototype.render = function() {
 /**
  * Get the toDataURL() image data of the renderer in PNG format.
  */
-WebGLApplication.prototype.Space.prototype.View.prototype.getImageData = function() {
-  return this.renderer.domElement.toDataURL("image/png");
+WebGLApplication.prototype.Space.prototype.View.prototype.getImageData = function(type) {
+  type = type || "image/png";
+  return this.renderer.domElement.toDataURL(type);
 };
 
 /**
@@ -1846,24 +1910,6 @@ WebGLApplication.prototype.Space.prototype.View.prototype.getSVGData = function(
   }
 
   /**
-   * Updates the visibility of all skeletons. If a skeleton ID is given as a
-   * second argument, only this skeleton will be set visible (if it was visible
-   * before), otherwise all skeletons are set to the state in the given map.
-   */
-  function setSkeletonVisibility(visMap, visibleSkids)
-  {
-    for (var skid in self.space.content.skeletons) {
-      var s = self.space.content.skeletons[skid];
-      var visible = visibleSkids ? (-1 !== visibleSkids.indexOf(skid)) : true;
-      s.setActorVisibility(visMap[skid].actor ? visible : false);
-      s.setPreVisibility(visMap[skid].pre ? visible : false);
-      s.setPostVisibility(visMap[skid].post ? visible : false);
-      s.setTextVisibility(visMap[skid].text ? visible : false);
-      s.setMetaVisibility(visMap[skid].meta ? visible : false);
-    }
-  }
-
-  /**
    * Create an SVG catalog of the current view.
    */
   function createCatalogData(sphereMeshes, options)
@@ -1901,17 +1947,7 @@ WebGLApplication.prototype.Space.prototype.View.prototype.getSVGData = function(
     var numRows = Math.ceil(skeletons.length / numColumns);
 
     // Crate a map of current visibility
-    var visibilityMap = {};
-    for (var skid in self.space.content.skeletons) {
-      var s = self.space.content.skeletons[skid];
-      visibilityMap[skid] = {
-        actor: s.visible,
-        pre: s.skeletonmodel.pre_visible,
-        post: s.skeletonmodel.post_visible,
-        text: s.skeletonmodel.text_visible,
-        meta: s.skeletonmodel.meta_visible
-      };
-    }
+    var visibilityMap = self.space.getVisibilityMap();
 
     // Append missing pinned skeletons
     var visibleSkids = options['pinnedSkeletons'] || [];
@@ -1922,7 +1958,7 @@ WebGLApplication.prototype.Space.prototype.View.prototype.getSVGData = function(
       var skid = skeletons[i];
       // Display only current skeleton along with pinned ones
       visibleSkids.push(skid);
-      setSkeletonVisibility(visibilityMap, visibleSkids);
+      self.space.setSkeletonVisibility(visibilityMap, visibleSkids);
 
       // Render view and replace sphere meshes of current skeleton
       var spheres = visibleSkids.reduce(function(o, s) {
@@ -1950,7 +1986,7 @@ WebGLApplication.prototype.Space.prototype.View.prototype.getSVGData = function(
     }
 
     // Restore visibility
-    setSkeletonVisibility(visibilityMap);
+    self.space.setSkeletonVisibility(visibilityMap);
 
     // Create result svg
     var svg = document.createElement('svg');
@@ -2223,99 +2259,227 @@ WebGLApplication.prototype.Space.prototype.View.prototype.MouseControls = functi
     mouse.is_mouse_down = true;
 		if (!ev.shiftKey) return;
 
-    // Step, which is normalized screen coordinates, is choosen so that it will
-    // span half a pixel width in screen space.
-    var adjPxNSC = ((ev.offsetX + 1) / space.canvasWidth) * 2 - 1;
-    var step = 0.5 * Math.abs(mouse.position.x - adjPxNSC);
-    var increments = 10;
-
-    // Setup ray caster
-    var raycaster = new THREE.Raycaster();
-    var setupRay = (function(raycaster, camera) {
-      if (camera.inPerspectiveMode) {
-        raycaster.ray.origin.copy(camera.position);
-        return function(x,y) {
-          raycaster.ray.direction.set(x, y, 0.5).unproject(camera).sub(camera.position).normalize();
-        };
-      } else {
-        raycaster.ray.direction.set(0, 0, -1).transformDirection(camera.matrixWorld);
-        return function(x, y) {
-          raycaster.ray.origin.set(x, y, -1 ).unproject(camera);
-        };
-      }
-    })(raycaster, camera);
-
-    // Attempt to intersect visible skeleton spheres, stopping at the first found
-    var fields = ['specialTagSpheres', 'synapticSpheres', 'radiusVolumes'];
-    var skeletons = space.content.skeletons;
-
-    // Iterate over all skeletons and find the ones that are intersected
-    var intersectedSkeletons = Object.keys(skeletons).some(function(skeleton_id) {
-      var skeleton = skeletons[skeleton_id];
-      if (!skeleton.visible) return false;
-      var all_spheres = fields.map(function(field) { return skeleton[field]; })
-                              .reduce(function(a, spheres) {
-                                return Object.keys(spheres).reduce(function(a, id) {
-                                  a.push(spheres[id]);
-                                  return a;
-                                }, a);
-                              }, []);
-      return intersect(all_spheres, mouse.position.x, mouse.position.y, step, increments,
-          raycaster, setupRay);
-    });
-
-    if (!intersectedSkeletons) {
-      growlAlert("Oops", "Couldn't find any intersectable object under the mouse.");
+    // Try to pick the node by casting a ray
+    var nodeId = space.pickNodeWithIntersectionRay(mouse.position.x, mouse.position.y,
+        ev.offsetX, camera);
+    if (!nodeId) {
+      // If no node was found through ray casting, try to pick a node using a
+      // color map. This option is more precise, but also slower. It is
+      // therefore used as a second option.
+      nodeId = space.pickNodeWithColorMap(ev.offsetX, ev.offsetY, camera);
     }
-
-    /**
-     * Returns if a ray shot through X/Y (in normalized screen coordinates
-     * [-1,1]) inersects at least one of the intersectable spheres. If no
-     * intersection is found for the click position, concentric circles are
-     * created and rays are shoot along it. These circles are enlarged in every
-     * iteration by <step> until a maximum of <increment> circles was tested or
-     * an intersection was found. Every two circles, the radius is enlarged by
-     * one screen space pixel.
-     */
-    function intersect(objects, x, y, step, increments, raycaster, setupRay)
-    {
-      var found = false;
-      for (var i=0; i<=increments; ++i) {
-        var numRays = i ? 4 * i : 1;
-        var a = 2 * Math.PI / numRays;
-        for (var j=0; j<numRays; ++j) {
-          setupRay(x + i * step * Math.cos(j * a),
-                   y + i * step * Math.sin(j * a));
-
-          // Test intersection
-          var intersects = raycaster.intersectObjects(objects);
-          if (intersects.length > 0) {
-            found = objects.some(function(sphere) {
-              if (sphere.id !== intersects[0].object.id) return false;
-              SkeletonAnnotations.staticMoveToAndSelectNode(sphere.node_id);
-              return true;
-            });
-          }
-
-          if (found) {
-            break;
-          }
-        }
-        if (found) {
-          break;
-        }
-      }
-
-      return found;
+    if (!nodeId) {
+      growlAlert("Oops", "Couldn't find any intersectable object under the mouse.");
+    } else {
+      SkeletonAnnotations.staticMoveToAndSelectNode(nodeId);
     }
   };
 };
 
+/**
+ * Tries to pick an element by creating a color map.
+ *
+ * @param x First mouse position component, relativ to WebGL canvas
+ * @param y First mouse position component, relativ to WebGL canvas
+ * @param camera The camera the picking map should be created with
+ * @param savePickingMap Export the picking color map as PNG image
+ * @return the picked node's ID or null if no node was found
+ */
+WebGLApplication.prototype.Space.prototype.pickNodeWithColorMap = function(x, y, camera, savePickingMap) {
+  // Attempt to intersect visible skeleton spheres, stopping at the first found
+  var color = 0;
+  var idMap = {};
+  var submit = new submitterFn();
+  var originalMaterials = {};
+  var originalVisibility = {};
+  var originalConnectorPreVisibility =
+    this.staticContent.connectorLineColors.presynaptic_to.visible;
+  var originalConnectorPostVisibility =
+    this.staticContent.connectorLineColors.postsynaptic_to.visible;
 
-WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode = function() {
+  // Hide everthing unpickable
+  var o = CATMAID.tools.deepCopy(this.options);
+  o.show_meshes = false;
+  o.show_missing_sections = false;
+  o.show_active_node = false;
+  o.show_floor = false;
+  o.show_background = false;
+  o.show_box = false;
+  o.show_zplane = false;
+  this.staticContent.adjust(o, this);
+  this.content.adjust(o, this, submit);
+  // Hide pre and post synaptic flags
+  this.staticContent.connectorLineColors.presynaptic_to.visible = false;
+  this.staticContent.connectorLineColors.postsynaptic_to.visible = false;
+
+  // Prepare all spheres for picking by coloring them with an ID.
+  mapToPickables(this.content.skeletons, function(skeleton) {
+    originalVisibility[skeleton.id] = skeleton.actor.neurite.visible;
+    skeleton.actor.neurite.visible = false;
+  }, function(id, obj) {
+    // IDs are expected to be 64 (bigint in Postgres) and can't be mapped to
+    // colors directly. Since the space we are looking here at is likely to be
+    // smaller, we can map colors to IDs ourself.
+    color++;
+    idMap[color] = id;
+    originalMaterials[id] = obj.material;
+    obj.material = new THREE.MeshBasicMaterial({color: color});
+  });
+
+  // Render scene to picking texture
+  var gl = this.view.renderer.getContext();
+  this.view.renderer.render(this.scene, camera, this.pickingTexture);
+  var pixelBuffer = new Uint8Array(4);
+
+  // Read pixel under cursor
+  gl.readPixels(x, this.pickingTexture.height - y, 1, 1, gl.RGBA,
+      gl.UNSIGNED_BYTE, pixelBuffer);
+
+  // Reset materials
+  mapToPickables(this.content.skeletons, function(skeleton) {
+    skeleton.actor.neurite.visible = originalVisibility[skeleton.id];
+  }, function(id, obj) {
+    obj.material = originalMaterials[id];
+  });
+
+  // Reset visibility of unpickable things
+  this.staticContent.adjust(this.options, this);
+  this.content.adjust(this.options, this, submit);
+  // Restore original pre and post synaptic visibility
+  this.staticContent.connectorLineColors.presynaptic_to.visible =
+    originalConnectorPreVisibility;
+  this.staticContent.connectorLineColors.postsynaptic_to.visible =
+    originalConnectorPostVisibility;
+
+  var colorId = (pixelBuffer[0] << 16) | (pixelBuffer[1] << 8) | (pixelBuffer[2]);
+
+  // If wanted, the picking map can be exported
+  if (savePickingMap) {
+    var img = CATMAID.tools.createImageFromGlContext(gl,
+        this.pickingTexture.width, this.pickingTexture.height);
+    var blob = CATMAID.tools.dataURItoBlob(img.src);
+    saveAs(blob, "pickingmap.png");
+  }
+
+  if (0 === colorId || !idMap[colorId]) {
+    return null;
+  }
+
+  return idMap[colorId];
+
+  /**
+   * Execute a function for every skeleton and one for each of its pickable
+   * elements (defined in fields.
+   */
+  function mapToPickables(skeletons, fnSkeleton, fnPickable) {
+    var fields = ['specialTagSpheres', 'synapticSpheres', 'radiusVolumes'];
+    Object.keys(skeletons).forEach(function(skeleton_id) {
+      var skeleton = skeletons[skeleton_id];
+      fnSkeleton(skeleton);
+      fields.map(function(field) {
+        return skeleton[field];
+      }).forEach(function(spheres) {
+        Object.keys(spheres).forEach(function(id) {
+          fnPickable(id, spheres[id]);
+        });
+      });
+    });
+  }
+};
+
+WebGLApplication.prototype.Space.prototype.pickNodeWithIntersectionRay = function(x, y, xOffset, camera) {
+  // Attempt to intersect visible skeleton spheres, stopping at the first found
+  var fields = ['specialTagSpheres', 'synapticSpheres', 'radiusVolumes'];
+  var skeletons = this.content.skeletons;
+
+  // Step, which is normalized screen coordinates, is choosen so that it will
+  // span half a pixel width in screen space.
+  var adjPxNSC = ((xOffset + 1) / this.canvasWidth) * 2 - 1;
+  var step = 0.5 * Math.abs(x - adjPxNSC);
+  var increments = 1;
+
+  // Setup ray caster
+  var raycaster = new THREE.Raycaster();
+  var setupRay = (function(raycaster, camera) {
+    if (camera.inPerspectiveMode) {
+      raycaster.ray.origin.copy(camera.position);
+      //raycaster.ray.origin.set(0, 0, 0).unproject(camera);
+      return function(x,y) {
+        raycaster.ray.direction.set(x, y, 0.5).unproject(camera).sub(camera.position).normalize();
+      };
+    } else {
+      raycaster.ray.direction.set(0, 0, -1).transformDirection(camera.matrixWorld);
+      return function(x, y) {
+        raycaster.ray.origin.set(x, y, -1 ).unproject(camera);
+      };
+    }
+  })(raycaster, camera);
+
+  // Iterate over all skeletons and find the ones that are intersected
+  var nodeId = null;
+  var intersectionFound = Object.keys(skeletons).some(function(skeleton_id) {
+    var skeleton = skeletons[skeleton_id];
+    if (!skeleton.visible) return false;
+    var all_spheres = fields.map(function(field) { return skeleton[field]; })
+                            .reduce(function(a, spheres) {
+                              return Object.keys(spheres).reduce(function(a, id) {
+                                a.push(spheres[id]);
+                                return a;
+                              }, a);
+                            }, []);
+    nodeId = intersect(all_spheres, x, y, step, increments, raycaster, setupRay);
+    return nodeId !== null;
+  });
+
+  return nodeId;
+
+  /**
+   * Returns if a ray shot through X/Y (in normalized screen coordinates
+   * [-1,1]) inersects at least one of the intersectable spheres. If no
+   * intersection is found for the click position, concentric circles are
+   * created and rays are shoot along it. These circles are enlarged in every
+   * iteration by <step> until a maximum of <increment> circles was tested or
+   * an intersection was found. Every two circles, the radius is enlarged by
+   * one screen space pixel.
+   */
+  function intersect(objects, x, y, step, increments, raycaster, setupRay)
+  {
+    var found = false;
+    var nodeId = null;
+    for (var i=0; i<=increments; ++i) {
+      var numRays = i ? 4 * i : 1;
+      var a = 2 * Math.PI / numRays;
+      for (var j=0; j<numRays; ++j) {
+        setupRay(x + i * step * Math.cos(j * a),
+                 y + i * step * Math.sin(j * a));
+
+        // Test intersection
+        var intersects = raycaster.intersectObjects(objects);
+        if (intersects.length > 0) {
+          found = objects.some(function(sphere) {
+            if (sphere.id !== intersects[0].object.id) return false;
+            nodeId = sphere.node_id;
+            return true;
+          });
+        }
+
+        if (found) {
+          break;
+        }
+      }
+      if (found) {
+        break;
+      }
+    }
+
+    return nodeId;
+  }
+};
+
+WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode = function(options) {
   this.skeleton_id = null;
-  this.mesh = new THREE.Mesh( new THREE.IcosahedronGeometry(1, 2), new THREE.MeshBasicMaterial( { color: 0x00ff00, opacity:0.8, transparent:true } ) );
-  this.mesh.scale.x = this.mesh.scale.y = this.mesh.scale.z = 320;
+  this.mesh = new THREE.Mesh( new THREE.IcosahedronGeometry(40, 2), new THREE.MeshBasicMaterial( { color: 0x00ff00, opacity:0.8, transparent:true } ) );
+  CATMAID.tools.setXYZ(this.mesh.scale, options.skeleton_node_scaling);
 };
 
 WebGLApplication.prototype.Space.prototype.Content.prototype.ActiveNode.prototype = {};
@@ -2377,7 +2541,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton = function(space, skeletonmo
   // Attaching them directly to the nodes is too much of a performance hit.
   // Gets loaded dynamically, and erased when refreshing (because a new Skeleton is instantiated with the same model).
   this.reviews = null;
-  // A map of nodeID vs true for nodes that belong to the axon, as computed by splitByFlowCentrality. Loaded dynamically, and erased when refreshing like this.reviews.
+  // The arbor of the axon, as computed by splitByFlowCentrality. Loaded dynamically, and erased when refreshing like this.reviews.
   this.axon = null;
 };
 
@@ -2665,6 +2829,19 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createArbor = func
                               function(v) { return v.node_id; });
 };
 
+/** Second argument 'arbor' is optional. */
+WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createUpstreamArbor = function(tag_regex, arbor) {
+  var tags = this.tags,
+      regex = new RegExp(tag_regex),
+      cuts = Object.keys(tags).filter(function(tag) {
+    return tag.match(regex);
+  }).reduce(function(o, tag) {
+    return tags[tag].reduce(function(o, nodeID) { o[nodeID] = true; return o;}, o);
+  }, {});
+  arbor = arbor ? arbor : this.createArbor();
+  return arbor.upstreamArbor(cuts);
+};
+
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.getPositions = function() {
   var vs = this.geometry['neurite'].vertices,
       p = {};
@@ -2699,8 +2876,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.splitByFlowCentral
     ap.arbor = arbor;
     ap.synapses(json[1]);
 
-    var axon = SynapseClustering.prototype.findAxon(ap, 0.9, this.getPositions());
-    return axon ? axon.nodes() : null;
+    return SynapseClustering.prototype.findAxon(ap, 0.9, this.getPositions());
 };
 
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.updateSkeletonColor = function(options) {
@@ -2832,6 +3008,59 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.updateSkeletonColo
           node_weights[node] = undefined === within[node] ? 0 : 1;
         });
       }
+    } else if ('synapse-free' === options.shading_method) {
+      var locations = this.getPositions(),
+          node_weights = {};
+      arbor.split(this.createSynapseCounts()).forEach(function(fragment) {
+        var weight = 0;
+        if (fragment.cableLength(locations) >= options.min_synapse_free_cable) {
+          weight = 1;
+        }
+        fragment.nodesArray().forEach(function(node) {
+          this[node] = weight;
+        }, node_weights);
+      });
+    } else if ('dendritic-backbone' === options.shading_method) {
+      node_weights = {};
+      if (!this.axon) {
+        // Not computable
+        console.log("Shading '" + options.shading_method + "' not computable for skeleton ID #" + this.id + ", neuron named: " + NeuronNameService.getInstance().getName(this.id) + ". The axon is missing.");
+      } else {
+        // Prune artifactual branches
+        if (this.tags['not a branch']) {
+          var ap = new ArborParser(); ap.inputs = {}; ap.outputs = {};
+          ap.arbor = arbor.clone();
+          ap.collapseArtifactualBranches(this.tags);
+          arbor = ap.arbor;
+        }
+        // Create backbone arbor
+        var upstream;
+        if (this.tags['microtubules end'] && this.tags['microtubules end'].length > 0) {
+          upstream = this.createUpstreamArbor('microtubules end', arbor);
+        } else {
+          var cuts = arbor.approximateTwigRoots(options.strahler_cut);
+          if (cuts && cuts.length > 0) {
+            upstream = arbor.upstreamArbor(cuts);
+            growlAlert("Approximating dendritic backbone", "By strahler number " + options.strahler_cut + ", neuron: " + NeuronNameService.getInstance().getName(this.id));
+          }
+        }
+        node_weights = {};
+        if (upstream) {
+          // Collect nodes that don't belong to the dendritic backbone
+          var outside = {},
+              add = (function(node) { this[node] = true; }).bind(outside);
+          // Nodes from the axon terminals
+          this.axon.nodesArray().forEach(add);
+          // Nodes from the linker between dendritic tree and axon terminals
+          this.axon.fc_max_plateau.forEach(add);
+          // Nodes primarily from the linker between arbor and soma
+          this.axon.fc_zeros.forEach(add);
+          // Set weights
+          arbor.nodesArray().forEach(function(node) {
+            this[node] = (upstream.contains(node) && !outside[node]) ? 1 : 0;
+          }, node_weights);
+        }
+      }
     }
   }
 
@@ -2867,7 +3096,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.updateSkeletonColo
     } else if ('whitelist-reviewed' === options.color_method) {
       pickColor = this.reviews ?
         (function(vertex) {
-          var wl = ReviewSystem.Whitelist.getWhitelist();
+          var wl = CATMAID.ReviewSystem.Whitelist.getWhitelist();
           var reviewers = this.reviews[vertex.node_id];
         return reviewers && reviewers.some(function (r) {
             return r[0] in wl && (new Date(r[1])) > wl[r[0]];}) ?
@@ -2885,19 +3114,11 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.updateSkeletonColo
     } else if ('axon-and-dendrite' === options.color_method) {
       pickColor = this.axon ?
         (function(vertex) {
-        return this.axon[vertex.node_id] ? axonColor : dendriteColor;
-      }).bind(this)
+        return this.contains(vertex.node_id) ? axonColor : dendriteColor;
+      }).bind(this.axon)
         : function() { return notComputable; };
     } else if ('downstream-of-tag' === options.color_method) {
-      var tags = this.tags,
-          regex = new RegExp(options.tag_regex),
-          cuts = Object.keys(tags).filter(function(tag) {
-        return tag.match(regex);
-      }).reduce(function(o, tag) {
-        return tags[tag].reduce(function(o, nodeID) { o[nodeID] = true; return o;}, o);
-      }, {});
-      if (!arbor) arbor = this.createArbor();
-      var upstream = arbor.upstreamArbor(cuts);
+      var upstream = this.createUpstreamArbor(options.tag_regex, arbor);
       pickColor = function(vertex) {
         return upstream.contains(vertex.node_id) ? unreviewedColor : actorColor;
       };
@@ -2965,6 +3186,26 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.updateSkeletonColo
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.changeSkeletonLineWidth = function(width) {
     this.actor['neurite'].material.linewidth = width;
     this.actor['neurite'].material.needsUpdate = true;
+};
+
+/**
+ * Scale node handles of a skeletons. These are the special tag spheres and the
+ * synaptic spheres.
+ */
+WebGLApplication.prototype.Space.prototype.Skeleton.prototype.scaleNodeHandles = function(value) {
+    // Scale special tag spheres
+    for (var k in this.specialTagSpheres) {
+      if (this.specialTagSpheres.hasOwnProperty(k)) {
+        CATMAID.tools.setXYZ(this.specialTagSpheres[k].scale, value);
+      }
+    }
+
+    // Scale synaptic spheres
+    for (var k in this.synapticSpheres) {
+      if (this.synapticSpheres.hasOwnProperty(k)) {
+        CATMAID.tools.setXYZ(this.synapticSpheres[k].scale, value);
+      }
+    }
 };
 
 WebGLApplication.prototype.Space.prototype.Skeleton.prototype.changeColor = function(color, options) {
@@ -3147,14 +3388,14 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.completeUpdateConn
     }, this);
 
   } else if ('axon-and-dendrite' === options.connector_color) {
-    var axon = this.splitByFlowCentrality(json),
+    var axon = this.axon ? this.axon : null,
         fnMakeColor,
         fnConnectorValue;
 
     if (axon) {
       var colors = [new THREE.Color().setRGB(0, 1, 0),  // axon: green
                     new THREE.Color().setRGB(0, 0, 1)]; // dendrite: blue
-      fnConnectorValue = function(node_id, connector_id) { return axon[node_id] ? 0 : 1; };
+      fnConnectorValue = function(node_id, connector_id) { return axon.contains(node_id) ? 0 : 1; };
       fnMakeColor = function(value) { return colors[value]; };
     } else {
       // Not computable
@@ -3270,7 +3511,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.create_connector_s
 };
 
 /** Place a colored sphere at the node. Used for highlighting special tags like 'uncertain end' and 'todo'. */
-WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createLabelSphere = function(v, material) {
+WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createLabelSphere = function(v, material, scaling) {
   if (this.specialTagSpheres.hasOwnProperty(v.node_id)) {
     // There already is a tag sphere at the node
     return;
@@ -3278,6 +3519,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createLabelSphere 
 	var mesh = new THREE.Mesh( this.space.staticContent.labelspheregeometry, material );
 	mesh.position.set( v.x, v.y, v.z );
 	mesh.node_id = v.node_id;
+	CATMAID.tools.setXYZ(mesh.scale, scaling);
 	this.specialTagSpheres[v.node_id] = mesh;
 	this.space.add( mesh );
 };
@@ -3331,7 +3573,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createCylinder = f
 };
 
 /* The itype is 0 (pre) or 1 (post), and chooses from the two arrays: synapticTypes and synapticColors. */
-WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createSynapticSphere = function(v, itype) {
+WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createSynapticSphere = function(v, itype, scaling) {
   if (this.synapticSpheres.hasOwnProperty(v.node_id)) {
     // There already is a synaptic sphere at the node
     return;
@@ -3340,6 +3582,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.createSynapticSphe
 	mesh.position.set( v.x, v.y, v.z );
 	mesh.node_id = v.node_id;
 	mesh.type = this.synapticTypes[itype];
+	CATMAID.tools.setXYZ(mesh.scale, scaling);
 	this.synapticSpheres[v.node_id] = mesh;
 	this.space.add( mesh );
 };
@@ -3388,7 +3631,6 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
 		// If node has a parent
     var v1;
 		if (node[1]) {
-			var p = nodeProps[node[1]];
       v1 = vs[node[0]];
       if (!v1) {
 			  v1 = this.space.toSpace(new THREE.Vector3(node[3], node[4], node[5]));
@@ -3396,6 +3638,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
         v1.user_id = node[2];
         vs[node[0]] = v1;
       }
+      var p = nodeProps[node[1]];
       var v2 = vs[p[0]];
       if (!v2) {
 			  v2 = this.space.toSpace(new THREE.Vector3(p[3], p[4], p[5]));
@@ -3438,17 +3681,22 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
 		}
 		if (!lean && node[7] < 5) {
 			// Edge with confidence lower than 5
-			this.createLabelSphere(v1, this.space.staticContent.labelColors.uncertain);
+			this.createLabelSphere(v1, this.space.staticContent.labelColors.uncertain, options.skeleton_node_scaling);
 		}
 	}, this);
 
   if (options.smooth_skeletons) {
     var arbor = this.createArbor();
     if (arbor.root) {
-      Object.keys(vs).forEach(function(node_id) {
-        // Copy coords and not replace, given that the same instances are reused
-        vs[node_id].copy(this[node_id]);
-      }, arbor.smoothPositions(vs, options.smooth_skeletons_sigma));
+      var smoothed = arbor.smoothPositions(vs, options.smooth_skeletons_sigma),
+          vertices = this.geometry['neurite'].vertices;
+      // Iterate only unique vertices: the children
+      for (var i=0; i<vertices.length; i+=2) {
+        var v = vertices[i]; // i: child, i+1: parent
+        v.copy(smoothed[v.node_id]);
+      }
+      // Root should not change position, but for completeness and future-proofing:
+      vs[arbor.root].copy(smoothed[arbor.root]);
     }
   }
 
@@ -3465,7 +3713,7 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
     v1.node_id = con[1];
 		var v2 = vs[con[0]];
 		this.createEdge(v1, v2, this.synapticTypes[con[2]]);
-		this.createSynapticSphere(v2, con[2]);
+		this.createSynapticSphere(v2, con[2], options.skeleton_node_scaling);
 	}, this);
 
 	// Place spheres on nodes with special labels, if they don't have a sphere there already
@@ -3475,13 +3723,15 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
 			if (-1 !== tagLC.indexOf('todo')) {
 				this.tags[tag].forEach(function(nodeID) {
 					if (!this.specialTagSpheres[nodeID]) {
-						this.createLabelSphere(vs[nodeID], this.space.staticContent.labelColors.todo);
+						this.createLabelSphere(vs[nodeID], this.space.staticContent.labelColors.todo,
+							options.skeleton_node_scaling);
 					}
 				}, this);
 			} else if (-1 !== tagLC.indexOf('uncertain')) {
 				this.tags[tag].forEach(function(nodeID) {
 					if (!this.specialTagSpheres[nodeID]) {
-						this.createLabelSphere(vs[nodeID], this.space.staticContent.labelColors.uncertain);
+						this.createLabelSphere(vs[nodeID], this.space.staticContent.labelColors.uncertain,
+							options.skeleton_node_scaling);
 					}
 				}, this);
 			}
@@ -3489,6 +3739,10 @@ WebGLApplication.prototype.Space.prototype.Skeleton.prototype.reinit_actor = fun
 	}
 
   if (options.resample_skeletons) {
+    if (options.smooth_skeletons) {
+      // Can't both smooth and resample
+      return;
+    }
     // WARNING: node IDs no longer resemble actual skeleton IDs.
     // All node IDs will now have negative values to avoid accidental similarities.
     var arbor = this.createArbor();
@@ -3618,10 +3872,11 @@ WebGLApplication.prototype.adjustContent = function() {
 };
 
 
-WebGLApplication.prototype._validate = function(number, error_msg) {
+WebGLApplication.prototype._validate = function(number, error_msg, min) {
   if (!number) return null;
+  var min = typeof(min) === "number" ? min : 1.0;
   var value = +number; // cast
-  if (Number.isNaN(value) || value < 1) return growlAlert("WARNING", error_msg);
+  if (Number.isNaN(value) || value < min) return growlAlert("WARNING", error_msg);
   return value;
 };
 
@@ -3642,6 +3897,15 @@ WebGLApplication.prototype.updateSkeletonLineWidth = function(value) {
   this.options.skeleton_line_width = value;
   var sks = this.space.content.skeletons;
   Object.keys(sks).forEach(function(skid) { sks[skid].changeSkeletonLineWidth(value); });
+  this.space.render();
+};
+
+WebGLApplication.prototype.updateSkeletonNodeHandleScaling = function(value) {
+  value = this._validate(value, "Invalid skeleton node scaling value", 0);
+  if (!value) return;
+  this.options.skeleton_node_scaling = value;
+  var sks = this.space.content.skeletons;
+  Object.keys(sks).forEach(function(skid) { sks[skid].scaleNodeHandles(value); });
   this.space.render();
 };
 
@@ -3726,3 +3990,395 @@ WebGLApplication.prototype.updateActiveNodeNeighborhoodRadius = function(value) 
     }
   }
 };
+
+WebGLApplication.prototype.updateShadingParameter = function(param, value, shading_method) {
+  if (!this.options.hasOwnProperty(param)) {
+    console.log("Invalid options parameter: ", param);
+    return;
+  }
+  value = this._validate(value, "Invalid value");
+  if (!value || value === this.options[param]) return;
+  this.options[param] = value;
+  if (shading_method === this.options.shading_method) {
+    this.updateSkeletonColors();
+  }
+};
+
+/**
+ * Render loop for the given animation.
+ */
+WebGLApplication.prototype.renderAnimation = function(animation, t)
+{
+  // Make sure we know this animation
+  this.animation = animation;
+  // Quere next frame for next time point
+  this.animationRequestId = window.requestAnimationFrame(
+      this.renderAnimation.bind(this, animation, t + 1));
+
+  // Update animation and then render
+  animation.update(t);
+  this.space.render();
+};
+
+/**
+ * Start the given animation.
+ */
+WebGLApplication.prototype.startAnimation = function(animation)
+{
+  if (this.animationRequestId) {
+    growlAlert('Information', 'There is already an animation running');
+    return;
+  }
+
+  if (!animation) {
+    CATMAID.error("Please provide an animation to play.");
+    return;
+  }
+
+  // Start animation at time point 0
+  this.renderAnimation(animation, 0);
+};
+
+/**
+ * Stop the current animation.
+ */
+WebGLApplication.prototype.stopAnimation = function()
+{
+  if (this.animationRequestId) {
+    window.cancelAnimationFrame(this.animationRequestId);
+    this.animationRequestId = undefined;
+  }
+
+  if (this.animation) {
+    if (this.animation.stop) {
+      this.animation.stop();
+    }
+    this.animation = undefined;
+  }
+};
+
+/**
+ * Create a new animation, based on the 3D viewers current state.
+ */
+WebGLApplication.prototype.createAnimation = function()
+{
+  // For now it is always the Y axis rotation
+  var options = {
+    type: 'rotation',
+    axis: this.options.animation_axis,
+    camera: this.space.view.camera,
+    target: this.space.view.controls.target,
+    speed: this.options.animation_rotation_speed,
+    backandforth: this.options.animation_back_forth,
+  };
+
+  // Add a notification handler for stepwise visibility, if enabled and at least
+  // one skeleton is loaded.
+  if (this.options.animation_stepwise_visibility) {
+    // Get current visibility map and create notify handler
+    var visMap = this.space.getVisibilityMap();
+    options['notify'] = this.createStepwiseVisibilityHandler(visMap);
+    // Create a stop handler that resets visibility to the state we found before
+    // the animation.
+    options['stop'] = this.createVisibibilityResetHandler(visMap);
+  }
+
+  return CATMAID.AnimationFactory.createAnimation(options);
+};
+
+/**
+ * Create a notification handler to be used with animations that will make
+ * an additional neuron visibile with every call.
+ */
+WebGLApplication.prototype.createStepwiseVisibilityHandler = function(visMap)
+{
+  var skeletonIds = Object.keys(this.space.content.skeletons);
+
+  // Return no-op handler if there are no skeletons
+  if (skeletonIds.length === 0) {
+    return function() {};
+  }
+
+  // Only make first skeleton visible
+  var visibleSkeletons = [skeletonIds[0]];
+  this.space.setSkeletonVisibility(visMap, visibleSkeletons);
+
+  var widget = this;
+
+  // Create function to make one skeleton visible per rotation
+  return function (r) {
+    // Expect r to be the numnber of rotations done
+    var skeletonIndex = parseInt(r);
+    // Make next skeleton visible, if available
+    if (skeletonIndex < skeletonIds.length) {
+      visibleSkeletons.push(skeletonIds[skeletonIndex]);
+      widget.space.setSkeletonVisibility(visMap, visibleSkeletons);
+    }
+  };
+};
+
+/**
+ * Create a handler function that resets visibility of all loaded skeletons.
+ */
+WebGLApplication.prototype.createVisibibilityResetHandler = function(visMap)
+{
+  return (function() {
+    this.space.setSkeletonVisibility(visMap);
+    this.space.render();
+  }).bind(this);
+};
+
+/**
+ * Export an animation as WebM video (if the browser supports it). First, a
+ * dialog is shown to adjust export preferences.
+ */
+WebGLApplication.prototype.exportAnimation = function()
+{
+  var dialog = new OptionsDialog("Animation export options");
+  dialog.appendMessage('Adjust the animation export settings to your liking. ' +
+     'The resulting file will be in WebM format and might take some seconds ' +
+     'to be generated. The default frame size matches the current size of ' +
+     'the 3D viewer.');
+
+  // Add options to dialog
+  var rotationsField = dialog.appendField("# Rotations: ",
+      "animation-export-num-rotations", '1');
+  var rotationtimeField = dialog.appendField("Rotation time (s): ",
+      "animation-export-rotation-time", '5');
+  var frameWidthField = dialog.appendField("Frame width (px): ",
+      "animation-export-frame-width", this.space.canvasWidth);
+  var frameHeightField = dialog.appendField("Frame height (px): ",
+      "animation-export-frame-height", this.space.canvasHeight);
+  var framerateField = dialog.appendField("Frame rate: ",
+      "animation-export-frame-rate", '25');
+  var backforthField = dialog.appendCheckbox('Back and forth',
+      'animation-export-backforth', false);
+  var stepVisibilityField = dialog.appendCheckbox('Stepwise neuron visibility',
+      'animation-export-backforth', false);
+  var camera = this.space.view.camera;
+  var target = this.space.view.controls.target;
+
+  dialog.onOK = handleOK.bind(this);
+
+  dialog.show(400, 450, true);
+
+  function handleOK() {
+    /* jshint validthis: true */ // `this` is bound to this WebGLApplication
+    $.blockUI();
+
+    // Get current visibility
+    var visMap = this.space.getVisibilityMap();
+
+    createAnimation.call(this);
+
+    function createAnimation() {
+      // Get current visibility map and create notify handler
+      var visMap = this.space.getVisibilityMap();
+
+      try {
+        var axis = "up";
+        var rotations = parseInt(rotationsField.value);
+        var rotationtime = parseFloat(rotationtimeField.value);
+        var framerate = parseInt(framerateField.value);
+
+        var nframes = Math.ceil(rotations * rotationtime * framerate);
+        var speed = 2 * Math.PI / (rotationtime * framerate);
+        var width = parseInt(frameWidthField.value);
+        var height = parseInt(frameHeightField.value);
+
+        // Collect options
+        var options = {
+          type: 'rotation',
+          axis: axis,
+          speed: speed,
+          camera: camera,
+          target: target,
+          backandforth: backforthField.checked,
+        };
+
+        // Add a notification handler for stepwise visibility, if enabled and at least
+        // one skeleton is loaded.
+        if (stepVisibilityField.checked) {
+          options['notify'] = this.createStepwiseVisibilityHandler(visMap);
+          // Create a stop handler that resets visibility to the state we found before
+          // the animation.
+          options['stop'] = this.createVisibibilityResetHandler(visMap);
+        }
+
+        // Get frame images
+        var animation = CATMAID.AnimationFactory.createAnimation(options);
+        var images = this.getAnimationFrames(animation, nframes, undefined, width, height);
+
+        // Export movie
+        var output = Whammy.fromImageArray(images, framerate);
+        saveAs(output, "catmaid_3d_view.webm");
+      } catch (e) {
+        // Unblock UI and re-throw exception
+        $.unblockUI();
+        throw e;
+      }
+      // Reset visibility and unblock UI
+      this.space.setSkeletonVisibility(visMap);
+      $.unblockUI();
+    }
+  }
+};
+
+/**
+ * Create a list of images for a given animation and the corresponding options.
+ * By default, 100 frames are generated, starting from timepoint zero.
+ */
+WebGLApplication.prototype.getAnimationFrames = function(animation, nframes,
+    startTime, width, height)
+{
+  // Save current dimensions and set new ones, if available
+  var originalWidth, originalHeight;
+  if (width && height) {
+    if (width !== this.space.canvasWidth || height !== this.space.canvasHeight) {
+      originalWidth = this.space.canvasWidth;
+      originalHeight = this.space.canvasHeight;
+      this.resizeView(width, height);
+    }
+  }
+
+  nframes = nframes || 100;
+  startTime = startTime || 0;
+  var frames = new Array(nframes);
+  for (var i=0; i<nframes; ++i) {
+    animation.update(startTime + i);
+    this.space.render();
+
+    // Store image
+    frames[i] = this.space.view.getImageData('image/webp');
+  }
+
+  // Restore original dimensions
+  if (originalWidth && originalHeight) {
+    this.resizeView(originalWidth, originalHeight);
+  }
+
+  return frames;
+};
+
+
+(function(CATMAID) {
+
+  /**
+   * Create new animations.
+   */
+  CATMAID.AnimationFactory = (function()
+  {
+    function getOption(options, key) {
+      if (options[key]) {
+        return options[key];
+      } else {
+        throw Error("Option not found: " + key);
+      }
+    }
+
+    return {
+
+      /**
+       * Create a new animation instance.
+       */
+      createAnimation: function(options) {
+        options = options || {};
+
+        var animation = {};
+
+        var notify = options.notify || false;
+
+        if (options.type == "rotation") {
+          var axis = options.axis || "up";
+          var camera = getOption(options, "camera");
+          var target = getOption(options, "target");
+          var speed = getOption(options, "speed");
+          var backAndForth = options.backandforth || false;
+
+          if ("up" === axis) {
+            axis = camera.up.clone().normalize();
+          } else if ("x" === axis) {
+            axis = new THREE.Vector3(1, 0, 0);
+          } else if ("y" === axis) {
+            axis = new THREE.Vector3(0, 1, 0);
+          } else if ("z" === axis) {
+            axis = new THREE.Vector3(0, 0, 1);
+          } else {
+            throw Error("Could not create animation, unknown axis: " + axis);
+          }
+
+          animation.update = CATMAID.AnimationFactory.AxisRotation(camera,
+              target, axis, speed, backAndForth, notify);
+        } else {
+          throw Error("Could not create animation, don't know type: " +
+              options.type);
+        }
+
+        // Add stop handler
+        var stop = options.stop || false;
+        animation.stop = function() {
+          if (stop) {
+            stop();
+          }
+        };
+
+        return animation;
+      },
+
+    };
+  })();
+
+  /**
+   * Rotate the camera around a particula axis through the the target position,
+   * while keeping the same distance to it. Optionally, a rotation speed can be
+   * passed. If back-and-forth mode is turned on, the rotation won't continue
+   * after a full circle, but reverse direction. A notification function can be
+   * passed in. It is called every full circle.
+   */
+  CATMAID.AnimationFactory.AxisRotation = function(camera, targetPosition, axis, rSpeed,
+      backAndForth, notify)
+  {
+    // Counts the number of rotations done
+    var numRotations = 0;
+
+    var targetDistance = camera.position.distanceTo(targetPosition);
+    rSpeed = rSpeed || 0.01;
+    backAndForth = backAndForth || false;
+
+    // Start position for the rotation, relative to the target
+    var startPosition = camera.position.clone().sub(targetPosition);
+
+    var m = new THREE.Matrix4();
+
+    // Return update function
+    return function(t) {
+      // Angle to rotate
+      var rad = rSpeed * t;
+
+      // Get current number of rotations
+      var currentRotation = Math.floor(rad / (2 * Math.PI));
+      if (currentRotation !== numRotations) {
+        numRotations = currentRotation;
+        // Call notification function, if any
+        if (notify) {
+          notify(currentRotation);
+        }
+      }
+
+      // In back and forth mode, movement direction is reversed once a full circle
+      // is reached.
+      if (backAndForth) {
+        rad = (currentRotation % 2) === 0 ? rad : -rad;
+      }
+
+      // Set matrix to a rotation around a certain axis
+      m.makeRotationAxis(axis, rad);
+
+      // Rotate the camera around this axis by using a copy of the start position
+      // (relative to target), rotating it and make it a world position by adding
+      // it to the target.
+      camera.position.copy(startPosition).applyMatrix4(m).add(targetPosition);
+    };
+  };
+
+})(CATMAID);

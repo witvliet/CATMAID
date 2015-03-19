@@ -6,7 +6,6 @@
  *
  * requirements:
  *	 tools.js
- *	 ui.js
  *	 slider.js
  *   stack.js
  */
@@ -72,19 +71,19 @@ function TracingTool()
 
     var proto_onmousedown = view.onmousedown;
     view.onmousedown = function( e ) {
-      switch ( ui.getMouseButton( e ) )
+      switch ( CATMAID.ui.getMouseButton( e ) )
       {
         case 1:
           tracingLayer.svgOverlay.whenclicked( e );
           break;
         case 2:
           proto_onmousedown( e );
-          ui.registerEvent( "onmousemove", updateStatusBar );
-          ui.registerEvent( "onmouseup",
+          CATMAID.ui.registerEvent( "onmousemove", updateStatusBar );
+          CATMAID.ui.registerEvent( "onmouseup",
             function onmouseup (e) {
-              ui.releaseEvents();
-              ui.removeEvent( "onmousemove", updateStatusBar );
-              ui.removeEvent( "onmouseup", onmouseup );
+              CATMAID.ui.releaseEvents();
+              CATMAID.ui.removeEvent( "onmousemove", updateStatusBar );
+              CATMAID.ui.removeEvent( "onmouseup", onmouseup );
               // Recreate nodes by feching them from the database for the new field of view
               tracingLayer.svgOverlay.updateNodes();
             });
@@ -203,24 +202,16 @@ function TracingTool()
     return;
   };
 
-  this.prototype.changeScale = function( val )
-  {
-    SkeletonAnnotations.Tag.changeScale();
-    stack.moveToPixel( stack.z, stack.y, stack.x, val );
-    return;
-  };
-
   this.prototype.changeSlice = function( val )
   {
     WebGLApplication.prototype.staticUpdateZPlane();
 
-    SkeletonAnnotations.Tag.changeSlice();
     stack.moveToPixel( val, stack.y, stack.x, stack.s );
   };
 
 
   var updateStatusBar = function( e ) {
-    var m = ui.getMouse(e, tracingLayer.svgOverlay.view, true);
+    var m = CATMAID.ui.getMouse(e, tracingLayer.svgOverlay.view, true);
     var offX, offY, pos_x, pos_y;
     if (m) {
       offX = m.offsetX;
@@ -675,8 +666,8 @@ function TracingTool()
       run: function (e) {
           if (!mayEdit())
               return false;
-          if (ReviewSystem.validSegment())
-              ReviewSystem.moveNodeInSegmentBackward();
+          if (CATMAID.ReviewSystem.validSegment())
+              CATMAID.ReviewSystem.moveNodeInSegmentBackward();
           return true;
       }
   }) );
@@ -687,8 +678,8 @@ function TracingTool()
       run: function (e) {
           if (!mayEdit())
               return false;
-          if (ReviewSystem.validSegment())
-              ReviewSystem.moveNodeInSegmentForward(e.shiftKey);
+          if (CATMAID.ReviewSystem.validSegment())
+              CATMAID.ReviewSystem.moveNodeInSegmentForward(e.shiftKey);
           return true;
       }
   }) );
@@ -699,8 +690,8 @@ function TracingTool()
       run: function (e) {
           if (!mayEdit())
               return false;
-          if (ReviewSystem.validSegment())
-              ReviewSystem.selectNextSegment();
+          if (CATMAID.ReviewSystem.validSegment())
+              CATMAID.ReviewSystem.selectNextSegment();
           return true;
       }
   }) );
@@ -781,7 +772,7 @@ function TracingTool()
     result += '</p>';
     return result;
   };
-  
+
   this.redraw = function()
   {
     self.prototype.redraw();
@@ -801,7 +792,6 @@ TracingTool.goToNearestInNeuronOrSkeleton = function(type, objectID) {
     z: projectCoordinates.z
   }, nodeIDToSelect, skeletonIDToSelect;
   parameters[type + '_id'] = objectID;
-  //requestQueue.register("model/node.nearest.php", "GET",
   requestQueue.register(django_url + project.id + "/node/nearest", "POST",
                         parameters, function (status, text) {
     var data;
@@ -814,7 +804,6 @@ TracingTool.goToNearestInNeuronOrSkeleton = function(type, objectID) {
       } else {
         nodeIDToSelect = data.treenode_id;
         skeletonIDToSelect = data.skeleton_id;
-        //console.log('goToNearestInNeuronOrSkeleton', type, objectID )
         SkeletonAnnotations.staticMoveTo(data.z, data.y, data.x,
           function () {
             SkeletonAnnotations.staticSelectNode(nodeIDToSelect, skeletonIDToSelect);

@@ -4,7 +4,6 @@
  *
  * requirements:
  *	 tools.js
- *	 ui.js
  *	 slider.js
  *   stack.js
  */
@@ -21,16 +20,11 @@ function Navigator()
 	this.stack = null;
 	this.toolname = "navigator";
 
-	if ( !ui ) ui = new UI();
-
 	var sliders_box = document.getElementById( "sliders_box" );
 	this.input_x = document.getElementById( "x" );		//!< x_input
 	this.input_y = document.getElementById( "y" );		//!< y_input
 	this.checkbox_reflines = document.getElementById( "displayreflines" );
 
-	// Last mouse position for proper zoom with + and -
-	var lastX = 0, lastY = 0;
-	
 	/* remove all existing dimension sliders */
 	while ( sliders_box.firstChild )
 		sliders_box.removeChild( sliders_box.firstChild );
@@ -114,39 +108,37 @@ function Navigator()
 	
 	var onmousemove = function( e )
 	{
-		self.lastX = self.stack.x + ui.diffX; // TODO - or + ?
-		self.lastY = self.stack.y + ui.diffY;
 		self.stack.moveToPixel(
 			self.stack.z,
-			self.stack.y - ui.diffY / self.stack.scale,
-			self.stack.x - ui.diffX / self.stack.scale,
+			self.stack.y - CATMAID.ui.diffY / self.stack.scale,
+			self.stack.x - CATMAID.ui.diffX / self.stack.scale,
 			self.stack.s );
 		return true;
 	};
 	
 	var onmouseup = function( e )
 	{
-		ui.releaseEvents(); 
-		ui.removeEvent( "onmousemove", onmousemove );
-		ui.removeEvent( "onmouseup", onmouseup );
+		CATMAID.ui.releaseEvents();
+		CATMAID.ui.removeEvent( "onmousemove", onmousemove );
+		CATMAID.ui.removeEvent( "onmouseup", onmouseup );
 		return false;
 	};
 	
 	var onmousedown = function( e )
 	{
-		ui.registerEvent( "onmousemove", onmousemove );
-		ui.registerEvent( "onmouseup", onmouseup );
-		ui.catchEvents( "move" );
-		ui.onmousedown( e );
+		CATMAID.ui.registerEvent( "onmousemove", onmousemove );
+		CATMAID.ui.registerEvent( "onmouseup", onmouseup );
+		CATMAID.ui.catchEvents( "move" );
+		CATMAID.ui.onmousedown( e );
 		
-		ui.catchFocus();
+		CATMAID.ui.catchFocus();
 		
 		return false;
 	};
 	
 	var onmousewheel = function( e )
 	{
-		var w = ui.getMouseWheel( e );
+		var w = CATMAID.ui.getMouseWheel( e );
 		if ( w )
 		{
 			if ( w > 0 )
@@ -165,7 +157,7 @@ function Navigator()
 	{
 		zoom : function( e )
 		{
-			var w = ui.getMouseWheel( e );
+			var w = CATMAID.ui.getMouseWheel( e );
 			if ( w )
 			{
         		w = self.stack.inverse_mouse_wheel * w;
@@ -193,8 +185,8 @@ function Navigator()
 		{
 			var xp = self.stack.x;
 			var yp = self.stack.y;
-			var m = ui.getMouse( e, self.stack.getView() );
-			var w = ui.getMouseWheel( e );
+			var m = CATMAID.ui.getMouse( e, self.stack.getView() );
+			var w = CATMAID.ui.getMouseWheel( e );
 			if ( m )
 			{
 				xp = m.offsetX - self.stack.viewWidth / 2;
@@ -287,8 +279,22 @@ function Navigator()
 	
 	this.changeScale = function( val )
 	{
-		self.stack.moveToPixel( self.stack.z, self.stack.y, self.stack.x, val );
-		return;
+		// Determine if the mouse is over the stack view.
+		var offset = $(self.stack.getView()).offset();
+		var m = CATMAID.UI.getLastMouse();
+		var x = m.x - offset.left,
+			y = m.y - offset.top;
+		if (x >= 0 && x <= self.stack.viewWidth &&
+			y >= 0 && y <= self.stack.viewHeight) {
+			x /= self.stack.scale;
+			y /= self.stack.scale;
+			x += (self.stack.x - self.stack.viewWidth / self.stack.scale / 2);
+			y += (self.stack.y - self.stack.viewHeight / self.stack.scale / 2);
+			self.scalePreservingLastPosition(x, y, val);
+		} else {
+			// If the mouse is not over the stack view, zoom towards the center.
+			self.stack.moveToPixel( self.stack.z, self.stack.y, self.stack.x, val );
+		}
 	};
 
 	/**
@@ -298,19 +304,19 @@ function Navigator()
 	this.scalePreservingLastPosition = function (keep_x, keep_y, sp) {
 		var old_s = self.stack.s;
 		var old_scale = self.stack.scale;
-		var new_s = Math.max(0, Math.min(self.stack.MAX_S, Math.round(sp)));
+		var new_s = Math.max(self.stack.MIN_S, Math.min(self.stack.MAX_S, sp));
 		var new_scale = 1 / Math.pow(2, new_s);
 
 		if (old_s == new_s)
 			return;
 
-		var dx = keep_x - self.stack.getProject().coordinates.x;
-		var dy = keep_y - self.stack.getProject().coordinates.y;
+		var dx = keep_x - self.stack.x;
+		var dy = keep_y - self.stack.y;
 
 		var new_centre_x = keep_x - dx * (old_scale / new_scale);
 		var new_centre_y = keep_y - dy * (old_scale / new_scale);
 
-		self.stack.moveTo(self.stack.getProject().coordinates.z, new_centre_y, new_centre_x, sp);
+		self.stack.moveToPixel(self.stack.z, new_centre_y, new_centre_x, sp);
 	};
 
 	//--------------------------------------------------------------------------
@@ -333,7 +339,7 @@ function Navigator()
 	
 	var YXMouseWheel = function( e )
 	{
-		var w = ui.getMouseWheel( e );
+		var w = CATMAID.ui.getMouseWheel( e );
 		if ( w )
 		{
 			this.value = parseInt( this.value ) - w;

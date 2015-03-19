@@ -1,6 +1,6 @@
 ## Under development
 
-Contributors: Albert Cardona, Andrew Champion, Tom Kazimiers
+Contributors: Albert Cardona, Andrew Champion, Tom Kazimiers, Stephan Gerhard
 
 ### Features and enhancements
 
@@ -21,6 +21,9 @@ Key shortcuts / mouse operations:
 
 - If the next (or previous) branch/end point is already selected when V (or B)
   is pressed, the view will center on it nevertheless.
+
+- If the mouse is over the stack when zooming, the view will recenter so that
+  the same stack location remains under the mouse at the new scale.
 
 
 Review system:
@@ -48,15 +51,60 @@ Review system:
 - The auto-created selection widget is now 50% smaller, giving more vertical
   space to the 3D viewer.
 
+- With the help of controls of the Animation tab, simple animations can be
+  played. Currently, rotation around the X, Y and Z axis as well as the current
+  "up" direction of the camera. is supported. The back-and-forth mode will
+  reverse rotation direction once a full circle is reached. With the help of the
+  stepwise visibility option, individual neurons can be made visible after a
+  certain amount of time the animation is running. Additionally, neurons can be
+  made sequentially visible after each rotation.
+
+- Animations can also be exported as WebM movie file. The "Export animation"
+  button in the Export tab, will show a dialog with basic export settings. Like
+  with the other view export options, the current 3D view setup is used. The
+  frame size can be adjusted in the export dialog. Creating the file can take
+  some seconds and currently only works for the Chrome browser (due to the lack
+  of WebP support in others). The resulting WebM video file can be converted to
+  any other format using e.g. VLC player, if needed.
+
+- New shading mode "synapse-free chunks". Has one parameter, the minimum amount
+of synapse-free cable to consider between two consecutive synapses, adjustable
+from tge "Shading Parameters" tab.
+
+- New shading mode "dendritic backbone". Depends on 'microtubules end' tags, or
+will approximate twigs by using the Strahler number entered in the "Shading
+Parameters" tab.
+
+- The view settings tab now contains a control to scale the size of the node
+  handles (e.g. active node, special tags).
+
 
 Connectivity widget:
 
-- Individual partner neurons can now be hidden: a little 'x' icon is displayed
-  to the right of each partner's name. Clicking it will hide it, similar to the
-  thresholding and 'Hide single node partners' functionality.
-
 - It is now possible to remove added neurons again. Each row of the table of
   target neurons now contains a small 'x' icon in the first column to remove it.
+
+
+Analyze Arbor:
+
+- Options are provided to approximate twigs by using a branch Strahler number
+defined in the "Options".
+
+- Dimensions of the pie charts and XY plots is now configurable from the
+"Options" dialog.
+
+
+Graph widget:
+
+- New button to "Clone" the graph widget: opens a new widget with identical content.
+
+- New buttons to "Save" and "Open..." to/from JSON, so that complex graphs can be
+reloaded later on. Skeletons not present in the database are not loaded.
+
+
+Miscellaneous:
+
+- Selecting tags for highlighting in the neuron dendrogram
 
 
 Admin:
@@ -66,6 +114,12 @@ Admin:
   relations, there is now a new action in the list view's action menu. To
   duplicate an entity with its relations, select the object and use the "save as
   new" button.
+
+
+Export:
+
+- A basic JSON export of all treenodes and connectors of the selected neurons is
+  now possible.
 
 
 ### Bug fixes
@@ -101,9 +155,25 @@ Neuron search:
   pre-defined views (XY, XZ, ZY, ZX) are display correctly again, i.e. the whole
   bounding box is now seen again.
 
+- Performance enhancement when smoothing skeletons with a Gaussian by avoiding
+to update the same Vector3 instances twice.
+
+
+Reviews:
+
+- Pressing 'E' during review will now go to the next unreviewed segment as seen
+  from the currently reviewed one. Before, the first unreviewed segment as seen
+  from the top of the table was selected.
+
+- Pressing 'Q' on the first node (leaf) brings one back one section to check if
+  the segment really ends. Pressing 'W' afterwards now brings one back to the
+  first node, not the second like it has been before.
+
 Miscellaneous:
 
 - Vertical resizing of widgets now doesn't lead to strange size changes anymore.
+
+- An alternative DVID tile source was added to support its multiscale API.
 
 
 ## 2015.1.21

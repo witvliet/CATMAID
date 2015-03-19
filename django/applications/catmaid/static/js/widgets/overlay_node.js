@@ -386,6 +386,8 @@ SkeletonElements.prototype.AbstractTreenode = function() {
     if (!this.line) {
       this.line = this.paper.select('.lines').append('line');
       this.line.toBack();
+      this.line.datum(this.id);
+      this.line.on('click', SkeletonElements.prototype.mouseEventManager.edge_mc_click);
     }
 
     this.line.attr({
@@ -519,6 +521,7 @@ SkeletonElements.prototype.AbstractTreenode = function() {
       }
     }
     if (this.line) {
+      this.line.datum(id);
       this.line.hide();
     }
     if (this.number_text) {
@@ -949,8 +952,7 @@ SkeletonElements.prototype.mouseEventManager = new (function()
   /** Here 'this' is c's SVG node, and node is the Node instance. */
   var mc_move = function(d) {
     var e = d3.event.sourceEvent;
-    var catmaidSVGOverlay = SkeletonAnnotations.getSVGOverlayByPaper(this.parentNode.parentNode);
-    var node = catmaidSVGOverlay.nodes[d];
+    if (this === null || this.parentNode === null) return; // Not from a valid SVG source.
 
     if (is_middle_click(e)) return; // Allow middle-click panning
 
@@ -958,6 +960,9 @@ SkeletonElements.prototype.mouseEventManager = new (function()
 
     if (!o) return; // Not properly initialized with mc_start
     if (e.shiftKey) return;
+
+    var catmaidSVGOverlay = SkeletonAnnotations.getSVGOverlayByPaper(this.parentNode.parentNode);
+    var node = catmaidSVGOverlay.nodes[d];
 
     if (!mayEdit() || !node.can_edit) {
       statusBar.replaceLast("You don't have permission to move node #" + d);
@@ -1072,6 +1077,20 @@ SkeletonElements.prototype.mouseEventManager = new (function()
     } else {
       // activate this node
       catmaidSVGOverlay.activateNode(connectornode);
+    }
+  };
+
+  this.edge_mc_click = function (d) {
+    var e = d3.event;
+    var catmaidSVGOverlay = SkeletonAnnotations.getSVGOverlayByPaper(this.parentNode.parentNode);
+    if (catmaidSVGOverlay.ensureFocused()) {
+      return;
+    }
+    var node = catmaidSVGOverlay.nodes[d];
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+      e.stopPropagation();
+      catmaidSVGOverlay.activateNode(node);
+      catmaidSVGOverlay.splitSkeleton(d);
     }
   };
 

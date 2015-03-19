@@ -901,32 +901,32 @@ Arbor.prototype.flowCentrality = function(outputs, inputs, totalOutputs, totalIn
         cs = {},
         centrality = {};
     for (var i=0; i<partitions.length; ++i) {
-      var partition = partitions[i];
-        var seenI = 0,
-            seenO = 0;
-        for (var k=0, l=partition.length; k<l; ++k) {
-          var node = partition[k],
-              counts = cs[node];
-          if (undefined === counts) {
-            var n_inputs = inputs[node],
-                n_outputs = outputs[node];
-            if (n_inputs) seenI += n_inputs;
-            if (n_outputs) seenO += n_outputs;
-            // Last node of the partition is a branch or root
-            if (k === l -1) cs[node] = {seenInputs: seenI,
-                                        seenOutputs: seenO};
-          } else {
-            seenI += counts.seenInputs;
-            seenO += counts.seenOutputs;
-            counts.seenInputs = seenI;
-            counts.seenOutputs = seenO;
-          }
-          var centripetal = seenI * (totalOutputs - seenO),
-              centrifugal = seenO * (totalInputs  - seenI);
-          centrality[node] = {centrifugal: centrifugal,
-                              centripetal: centripetal,
-                              sum: centrifugal + centripetal};
+      var partition = partitions[i],
+          seenI = 0,
+          seenO = 0;
+      for (var k=0, l=partition.length; k<l; ++k) {
+        var node = partition[k],
+            counts = cs[node];
+        if (undefined === counts) {
+          var n_inputs = inputs[node],
+              n_outputs = outputs[node];
+          if (n_inputs) seenI += n_inputs;
+          if (n_outputs) seenO += n_outputs;
+          // Last node of the partition is a branch or root
+          if (k === l -1) cs[node] = {seenInputs: seenI,
+                                      seenOutputs: seenO};
+        } else {
+          seenI += counts.seenInputs;
+          seenO += counts.seenOutputs;
+          counts.seenInputs = seenI;
+          counts.seenOutputs = seenO;
         }
+        var centripetal = seenI * (totalOutputs - seenO),
+            centrifugal = seenO * (totalInputs  - seenI);
+        centrality[node] = {centrifugal: centrifugal,
+                            centripetal: centripetal,
+                            sum: centrifugal + centripetal};
+      }
     }
 
     return centrality;
@@ -1399,7 +1399,7 @@ Arbor.prototype.subtreesEndCount = function() {
 /**
  * At each branch node, count the number of associated elements on each of the 2 or more subtrees.
  * load: map of node vs number of associated elements (e.g. input synapses). Nodes with a count of zero do not need to be present.
- * Returns a map of branch node vs array of values, of for each subtree.
+ * Returns a map of branch node vs array of values, one for each subtree.
  */
 Arbor.prototype.subtreesLoad = function(load) {
   return this.subtreesMeasurements(
@@ -1806,4 +1806,147 @@ Arbor.prototype.findNodesWithin = function(source, distanceFn, max_distance) {
     }
   }
   return within;
+};
+
+/** Split the arbor into a list of Arbor instances,
+ * by cutting at each node in the cuts map (which contains node keys and truthy values).
+ * The cut is done by severing the edge between an node and its parent,
+ * so a cut at the root node has no effect, but cuts at end nodes result
+ * in single-node Arbor instances (just root, no edges). */
+Arbor.prototype.split = function(cuts) {
+  var be = this.findBranchAndEndNodes(),
+      ends = be.ends,
+      branches = be.branches,
+      junctions = {},
+      fragments = [];
+
+  var CountingArbor = function() {
+    this.root = null;
+    this.edges = {};
+    this._n_nodes = 0;
+  };
+
+  CountingArbor.prototype = Arbor.prototype;
+
+  var asArbor = function(carbor) {
+    var arbor = new Arbor();
+    arbor.root = carbor.root;
+    arbor.edges = carbor.edges;
+    return arbor;
+  };
+
+  var open = new Array(ends.length);
+  for (var k=0; k<ends.length; ++k) {
+    var arbor = new CountingArbor();
+    arbor.root = ends[k];
+    arbor._n_nodes = 1;
+    open[k] = arbor;
+  }
+
+  while (open.length > 0) {
+    var arbor = open.shift(),
+        node = arbor.root,
+        paren,
+        n_successors;
+    do {
+      var paren = this.edges[node];
+      if (undefined === paren) break; // reached root: cannot cut even if in cuts
+
+      if (cuts[node]) {
+        arbor.root = node;
+        fragments.push(asArbor(arbor));
+        arbor = new CountingArbor();
+        arbor.root = paren;
+        arbor._n_nodes = 1;
+      } else {
+        arbor.edges[node] = paren;
+        arbor._n_nodes += 1;
+        // Note arbor.root is now obsolete
+      }
+      n_successors = branches[paren];
+      node = paren;
+    } while (undefined === n_successors);
+
+    arbor.root = node;
+
+    if (undefined === paren && undefined === branches[node]) {
+      // Reached root and root is not a branch
+      fragments.push(asArbor(arbor));
+    } else {
+      var junction = junctions[node];
+      if (undefined === junction) {
+        // First time this branch node has been reached
+        junctions[node] = [arbor];
+      } else {
+        if (junction.length === n_successors -1) {
+          // Find largest
+          var max_nodes = arbor._n_nodes;
+          for (var k=0; k<junction.length; ++k) {
+            var a = junction[k];
+            if (a._n_nodes > max_nodes) {
+              junction[k] = arbor;
+              max_nodes = a._n_nodes;
+              arbor = a;
+            }
+          }
+          // Merge arbors
+          var ae = arbor.edges;
+          for (var k=0; k<junction.length; ++k) {
+            var a = junction[k];
+            var edges = a.edges;
+            var children = Object.keys(edges);
+            for (var i=0; i<children.length; ++i) {
+              var child = children[i];
+              ae[child] = edges[child];
+            }
+            arbor._n_nodes += a._n_nodes -1;
+          }
+          // Prepare next round of growth if appropriate
+          if (node === this.root) {
+            // root is branched
+            fragments.push(asArbor(arbor));
+          } else if (cuts[node]) {
+            fragments.push(asArbor(arbor));
+            arbor = new CountingArbor();
+            arbor.root = this.edges[node];
+            arbor._n_nodes = 1;
+            open.push(arbor);
+          } else {
+            open.push(arbor);
+          }
+        } else {
+          junction.push(arbor);
+        }
+      }
+    }
+  }
+
+  return fragments;
+};
+
+/** Return an array of treenode IDs corresponding each to the first node of a twig that is not part of the backbone, approximating the roots by using the strahler number. */
+Arbor.prototype.approximateTwigRoots = function(strahler_cut) {
+  // Approximate by using Strahler number:
+  // the twig root will be at the first parent
+  // with a Strahler number larger than strahler_cut
+  var strahler = this.strahlerAnalysis(),
+      ends = this.findBranchAndEndNodes().ends,
+      edges = this.edges,
+      roots = [],
+      seen = {};
+  for (var i=0, l=ends.length; i<l; ++i) {
+    var child = ends[i],
+        paren = edges[child];
+    do {
+      if (seen[paren]) break;
+      if (strahler[paren] > strahler_cut) {
+        roots.push(child);
+        break;
+      }
+      seen[paren] = true;
+      child = paren;
+      paren = edges[paren];
+    } while (paren);
+  }
+  return roots;
 };

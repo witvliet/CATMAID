@@ -260,6 +260,12 @@ var WindowMaker = new function()
     update.onclick = AA.update.bind(AA);
     buttons.appendChild(update);
 
+    var options = document.createElement('input');
+    options.setAttribute("type", "button");
+    options.setAttribute("value", "Options");
+    options.onclick = AA.adjustOptions.bind(AA);
+    buttons.appendChild(options);
+
     var pies = document.createElement('input');
     pies.setAttribute("type", "button");
     pies.setAttribute("value", "Export charts as SVG");
@@ -342,18 +348,11 @@ var WindowMaker = new function()
     exportSVG.onclick = ND.exportSVG.bind(ND);
     buttons.appendChild(exportSVG);
 
-    var tag = document.createElement('label');
-    tag.appendChild(document.createTextNode('Tag'));
-    var tagInput = document.createElement('input');
-    tagInput.setAttribute('type', 'text');
-    tagInput.setAttribute('id', 'dendrogram-tag-' + ND.widgetID);
-    tagInput.onkeypress = function(e) {
-      if (13 === e.keyCode) {
-        ND.update();
-      }
-    };
-    tag.appendChild(tagInput);
-    buttons.appendChild(tag);
+    var highlightTags = document.createElement('input');
+    highlightTags.setAttribute("type", "button");
+    highlightTags.setAttribute("value", "Highlight tags");
+    highlightTags.onclick = ND.chooseHighlightTags.bind(ND);
+    buttons.appendChild(highlightTags);
 
     var minStrahler = document.createElement('label');
     minStrahler.appendChild(document.createTextNode('Collapse Strahler <'));
@@ -739,6 +738,18 @@ var WindowMaker = new function()
     return win;
   };
 
+  var appendToTab = function(tab, elems) {
+    elems.forEach(function(e) {
+      switch (e.length) {
+        case 1: tab.appendChild(e[0]); break;
+        case 2: appendButton(tab, e[0], e[1]); break;
+        case 3: appendButton(tab, e[0], e[1], e[2]); break;
+        case 4: appendCheckbox(tab, e[0], e[1], e[2], e[3]); break;
+        case 5: appendNumericField(tab, e[0], e[1], e[2], e[3], e[4]); break;
+      }
+    });
+  };
+
   /** Creates and returns a new 3d webgl window */
   var create3dWebGLWindow = function()
   {
@@ -760,7 +771,7 @@ var WindowMaker = new function()
 
     var titles = document.createElement('ul');
     bar.appendChild(titles);
-    var tabs = ['Main', 'View', 'Shading', 'Skeleton filters', 'View settings', 'Shading parameters', 'Export'].reduce(function(o, name) {
+    var tabs = ['Main', 'View', 'Shading', 'Skeleton filters', 'View settings', 'Shading parameters', 'Animation', 'Export'].reduce(function(o, name) {
           var id = name.replace(/ /, '') + WA.widgetID;
           titles.appendChild($('<li><a href="#' + id + '">' + name + '</a></li>')[0]);
           var div = document.createElement('div');
@@ -769,18 +780,6 @@ var WindowMaker = new function()
           o[name] = div;
           return o;
     }, {});
-
-    var appendToTab = function(tab, elems) {
-      elems.forEach(function(e) {
-        switch (e.length) {
-          case 1: tab.appendChild(e[0]); break;
-          case 2: appendButton(tab, e[0], e[1]); break;
-          case 3: appendButton(tab, e[0], e[1], e[2]); break;
-          case 4: appendCheckbox(tab, e[0], e[1], e[2], e[3]); break;
-          case 5: appendNumericField(tab, e[0], e[1], e[2], e[3], e[4]); break;
-        }
-      });
-    };
 
     var select_source = SkeletonListSources.createSelect(WA);
 
@@ -880,12 +879,14 @@ var WindowMaker = new function()
     [['none', 'None'],
      ['active_node_split', 'Active node split'],
      ['near_active_node', 'Near active node'],
+     ['synapse-free', 'Synapse-free chunks'],
      ['downstream_amount', 'Downstream cable'],
      ['betweenness_centrality', 'Betweenness centrality'],
      ['slab_centrality', 'Slab centrality'],
      ['flow_centrality', 'Flow centrality'],
      ['centrifugal flow_centrality', 'Centrifugal flow centrality'],
      ['centripetal flow_centrality', 'Centripetal flow centrality'],
+     ['dendritic-backbone', 'Dendritic backbone'],
      ['distance_to_root', 'Distance to root'],
      ['partitions', 'Principal branch length'],
      ['strahler', 'Strahler analysis']
@@ -954,6 +955,13 @@ var WindowMaker = new function()
           ['Line width ', o.skeleton_line_width, null, function() { WA.updateSkeletonLineWidth(this.value); }, 10],
         ]);
 
+    var nodeScalingInput = appendNumericField(tabs['View settings'],
+        'Node handle scaling ', o.skeleton_node_scaling, null, function() {
+              WA.options.skeleton_node_scaling = Math.max(0, this.value) || 1.0;
+              WA.adjustContent();
+              WA.updateSkeletonNodeHandleScaling(this.value);
+        }, 5);
+
     appendToTab(tabs['Skeleton filters'],
         [
           ['Smooth ', o.smooth_skeletons, function() { WA.options.smooth_skeletons = this.checked; WA.updateSkeletons(); }, false],
@@ -965,9 +973,38 @@ var WindowMaker = new function()
 
     appendToTab(tabs['Shading parameters'],
         [
-          ['Synapse clustering bandwidth ', o.synapse_clustering_bandwidth, ' nm - ', function() { WA.updateSynapseClusteringBandwidth(this.value); }, 8],
-          ['Near active node ', o.distance_to_active_node, ' nm', function() {
-            WA.updateActiveNodeNeighborhoodRadius(this.value); }, 8]
+          ['Synapse clustering bandwidth ', o.synapse_clustering_bandwidth, ' nm - ', function() { WA.updateSynapseClusteringBandwidth(this.value); }, 6],
+          ['Near active node ', o.distance_to_active_node, ' nm - ', function() {
+            WA.updateActiveNodeNeighborhoodRadius(this.value); }, 6],
+          ['Min. synapse-free cable ', o.min_synapse_free_cable, 'nm - ', function() {
+            WA.updateShadingParameter('min_synapse_free_cable', this.value, 'synapse-free'); }, 6],
+          ['Strahler number ', o.strahler_cut, '', function() { WA.updateShadingParameter('strahler_cut', this.value, 'dendritic-backbone'); }, 4]
+        ]);
+
+    var axisOptions = document.createElement('select');
+    axisOptions.options.add(new Option("Camera Up", "up"));
+    axisOptions.options.add(new Option("X", "x"));
+    axisOptions.options.add(new Option("Y", "y"));
+    axisOptions.options.add(new Option("Z", "z"));
+    axisOptions.onchange = function() {
+      WA.options.animation_axis = this.value;
+    };
+
+    appendToTab(tabs['Animation'],
+        [
+          ['Play', function() { WA.startAnimation(WA.createAnimation()); }],
+          ['Stop', WA.stopAnimation.bind(WA)],
+          [document.createTextNode(' Rotation axis:')],
+          [axisOptions],
+          [' Rotation speed', o.animation_rotation_speed, '', function() {
+            WA.options.animation_rotation_speed = parseFloat(this.value);
+           }, 5],
+          ['Back and forth ', o.animation_back_forth, function() {
+            WA.options.animation_back_forth = this.checked;
+          }, false],
+          ['Stepwise neuron visibility ', o.animation_stepwise_visibility, function() {
+            WA.options.animation_stepwise_visibility = this.checked;
+          }, false]
         ]);
 
     appendToTab(tabs['Export'],
@@ -976,6 +1013,7 @@ var WindowMaker = new function()
           ['Export SVG', WA.exportSVG.bind(WA)],
           ['Export catalog SVG', WA.exportCatalogSVG.bind(WA)],
           ['Export skeletons as CSV', WA.exportSkeletonsAsCSV.bind(WA)],
+          ['Export animation', WA.exportAnimation.bind(WA)],
         ]);
 
     content.appendChild( bar );
@@ -996,6 +1034,12 @@ var WindowMaker = new function()
     // initialized.
     addLogic(win);
     WA.init( 800, 600, canvas.getAttribute("id") );
+
+    // Since the initialization can potentially change the node scaling, the is
+    // updated here explicitly. At some point we might want to have some sort of
+    // observer for this.
+    nodeScalingInput.value = WA.options.skeleton_node_scaling;
+
     // Create a Selection Table, preset as the sync target
     createStagingListWindow( null, win, WA.getName() );
 
@@ -1146,7 +1190,7 @@ var WindowMaker = new function()
 
     var titles = document.createElement('ul');
     bar.appendChild(titles);
-    var tabs = ['Main', 'Grow', 'Layout', 'Selection', 'Subgraphs', 'Align', 'Export'].reduce(function(o, name) {
+    var tabs = ['Main', 'Grow', 'Graph', 'Selection', 'Subgraphs', 'Align', 'Export'].reduce(function(o, name) {
           titles.appendChild($('<li><a href="#' + name + GG.widgetID + '">' + name + '</a></li>')[0]);
           var div = document.createElement('div');
           div.setAttribute('id', name + GG.widgetID);
@@ -1155,16 +1199,6 @@ var WindowMaker = new function()
           return o;
     }, {});
 
-    var appendToTab = function(tab, elems) {
-      elems.forEach(function(e) {
-        switch (e.length) {
-          case 1: tab.appendChild(e[0]); break;
-          case 2: appendButton(tab, e[0], e[1]); break;
-          case 3: appendButton(tab, e[0], e[1], e[2]); break;
-        }
-      });
-    };
-
     appendToTab(tabs['Main'],
         [[document.createTextNode('From')],
          [SkeletonListSources.createSelect(GG)],
@@ -1172,7 +1206,14 @@ var WindowMaker = new function()
          ['Append as group', GG.appendAsGroup.bind(GG)],
          ['Clear', GG.clear.bind(GG)],
          ['Refresh', GG.update.bind(GG)],
-         ['Properties', GG.graph_properties.bind(GG)]]);
+         ['Properties', GG.graph_properties.bind(GG)],
+         ['Clone', GG.cloneWidget.bind(GG)],
+         ['Save', GG.saveJSON.bind(GG)],
+         ['Open...', function() { document.querySelector('#gg-file-dialog-' + GG.widgetID).click(); }]]);
+
+    appendHiddenFileButton(tabs['Export'], 'gg-file-dialog-' + GG.widgetID,
+        function(evt) { GG.loadFromJSON(evt.target.files); }
+    );
 
     var color = document.createElement('select');
     color.setAttribute('id', 'graph_color_choice' + GG.widgetID);
@@ -1186,15 +1227,23 @@ var WindowMaker = new function()
     color.options.add(new Option('circles of hell (downstream)', 'circles_of_hell_downstream'));
     color.onchange = GG._colorize.bind(GG, color);
 
-    var layout = appendSelect(tabs['Layout'], "compartment_layout",
+    var layout = appendSelect(tabs['Graph'], "compartment_layout",
         ["Force-directed", "Hierarchical", "Grid", "Circle",
          "Concentric (degree)", "Concentric (out degree)", "Concentric (in degree)",
          "Random", "Compound Spring Embedder", "Manual"]);
 
-    appendToTab(tabs['Layout'],
+    var edges = document.createElement('select');
+    for (var i=1; i<101; ++i) edges.appendChild(new Option(i, i));
+    edges.onchange = function() { GG.hideEdges(this.value); };
+
+    appendToTab(tabs['Graph'],
         [['Re-layout', GG.updateLayout.bind(GG, layout)],
          [document.createTextNode(' - Color: ')],
-         [color]]);
+         [color],
+         [document.createTextNode(' - Hide edges with less than ')],
+         [edges],
+         [document.createTextNode(' synapses ')]
+        ]);
 
     appendToTab(tabs['Selection'],
         [['Annotate', GG.annotate_skeleton_list.bind(GG)],
@@ -1831,6 +1880,17 @@ var WindowMaker = new function()
     return b;
   };
 
+  var appendHiddenFileButton = function(div, id, onchangeFn) {
+    var fb = document.createElement('input');
+    fb.setAttribute('type', 'file');
+    fb.setAttribute('id', id);
+    fb.setAttribute('name', 'files[]');
+    fb.style.display = 'none';
+    fb.onchange = onchangeFn;
+    div.appendChild(fb);
+    return fb;
+  };
+
   var createCheckbox = function(title, value, onclickFn) {
     var cb = document.createElement('input');
     cb.setAttribute('type', 'checkbox');
@@ -2050,21 +2110,23 @@ var WindowMaker = new function()
         start.setAttribute("type", "button");
         start.setAttribute("id", "start_review_whole skeleton");
         start.setAttribute("value", "Start to review skeleton");
-        start.onclick = ReviewSystem.startReviewActiveSkeleton.bind(ReviewSystem, false);
+        start.onclick = CATMAID.ReviewSystem.startReviewActiveSkeleton.bind(
+            CATMAID.ReviewSystem, false);
         contentbutton.appendChild(start);
 
         var start = document.createElement('input');
         start.setAttribute("type", "button");
         start.setAttribute("id", "start_review_subarbor");
         start.setAttribute("value", "Start to review current sub-arbor");
-        start.onclick = ReviewSystem.startReviewActiveSkeleton.bind(ReviewSystem, true);
+        start.onclick = CATMAID.ReviewSystem.startReviewActiveSkeleton.bind(
+            CATMAID.ReviewSystem, true);
         contentbutton.appendChild(start);
 
         var end = document.createElement('input');
         end.setAttribute("type", "button");
         end.setAttribute("id", "end_review_skeleton");
         end.setAttribute("value", "End review");
-        end.onclick = ReviewSystem.endReview;
+        end.onclick = CATMAID.ReviewSystem.endReview;
         contentbutton.appendChild(end);
 
         content.appendChild( contentbutton );
@@ -2086,14 +2148,14 @@ var WindowMaker = new function()
         resetOwns.setAttribute("type", "button");
         resetOwns.setAttribute("id", "reset_skeleton_review_owns");
         resetOwns.setAttribute("value", "Reset own revisions");
-        resetOwns.onclick = ReviewSystem.resetOwnRevisions;
+        resetOwns.onclick = CATMAID.ReviewSystem.resetOwnRevisions;
         contentbutton.appendChild(resetOwns);
 
         var cacheImages = document.createElement('input');
         cacheImages.setAttribute("type", "button");
         cacheImages.setAttribute("id", "cache_images_of_skeleton");
         cacheImages.setAttribute("value", "Cache tiles");
-        cacheImages.onclick = ReviewSystem.cacheImages;
+        cacheImages.onclick = CATMAID.ReviewSystem.cacheImages;
         contentbutton.appendChild(cacheImages);
 
         var autoCenter = document.createElement('input');
@@ -2101,7 +2163,7 @@ var WindowMaker = new function()
         autoCenter.setAttribute('id', 'review_auto_center');
         autoCenter.setAttribute('checked', 'checked');
         autoCenter.onchange = function() {
-          ReviewSystem.setAutoCentering(this.checked);
+          CATMAID.ReviewSystem.setAutoCentering(this.checked);
         };
         var autoCenterLabel = document.createElement('label');
         autoCenterLabel.appendChild(autoCenter);
@@ -2127,7 +2189,7 @@ var WindowMaker = new function()
 
         addLogic(win);
 
-        ReviewSystem.init();
+        CATMAID.ReviewSystem.init();
 
         return win;
     };
@@ -2326,6 +2388,11 @@ var WindowMaker = new function()
               // Show dialog to select
               export_connectors();
             });
+            // Bind tree geometry export link to handler
+            $(this).find('#export-tree-geometry').click(function() {
+              // Show dialog to select
+              export_tree_geometry();
+            });
           }
         });
 
@@ -2495,7 +2562,7 @@ var WindowMaker = new function()
     keysHTML += '</p>';
 
     // If on Mac OS, replace all occurences of 'Ctrl' with '⌘'
-    if ('MAC' === window.getOS()) {
+    if ('MAC' === CATMAID.tools.getOS()) {
       keysHTML = keysHTML.replace(/Ctrl/gi, '⌘');
     }
 

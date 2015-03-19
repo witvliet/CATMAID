@@ -73,7 +73,7 @@ var NotificationsTable = new function()
     if (node && node.tagName == "SELECT") {
       var row = $(node).closest('tr');
       if (1 !== row.length) {
-        error("Couldn't find table row for notification");
+        CATMAID.error("Couldn't find table row for notification");
         return;
       }
       var row_data = ns.oTable.fnGetData(row[0]);
@@ -84,11 +84,11 @@ var NotificationsTable = new function()
       }
       else if (action == 'Approve') {
         NotificationsTable.approve(row_data[0]);
-        message();  // Refresh the notifications icon badge
+        get_messages();  // Refresh the notifications icon badge
       }
       else if (action == 'Reject') {
         NotificationsTable.reject(row_data[0]);
-        message();  // Refresh the notifications icon badge
+        get_messages();  // Refresh the notifications icon badge
       }
       node.selectedIndex = 0;
     }

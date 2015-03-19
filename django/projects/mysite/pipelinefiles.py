@@ -59,7 +59,8 @@ libraries_js = {
     'cytoscapejs': ['cytoscape.js'],
     'jsnetworkx': ['*.js'],
     'filesaver': ['*.js'],
-    'catmaid': ['*.js'],
+    'whammy': ['whammy.js'],
+    'catmaid': ['CATMAID.js', '*.js'],
 }
 
 PIPELINE_JS = OrderedDict()
@@ -77,6 +78,7 @@ PIPELINE_JS['arbor'] = {
 
 PIPELINE_JS['catmaid'] = {
     'source_filenames': (
+        'js/CATMAID.js',
         'js/action.js',
         'js/init.js',
         'js/navigator.js',

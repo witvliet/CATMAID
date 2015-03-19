@@ -1,16 +1,14 @@
 /* -*- mode: espresso; espresso-indent-level: 2; indent-tabs-mode: nil -*- */
 /* vim: set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
 /* global
+  CATMAID,
   annotations,
   ConnectorSelection,
-  GridLayer,
   growlAlert,
-  jsonResponseHandler,
   NeuronNameService,
   OptionsDialog,
   project,
   requestQueue,
-  ReviewSystem,
   SelectionTable,
   User,
   userprofile,
@@ -130,7 +128,7 @@ SettingsWidget.prototype.init = function(space)
           if (this.checked) {
             // Get current settings
             project.getStacks().forEach(function(s) {
-              s.addLayer("grid", new GridLayer(s, getGridOptions()));
+              s.addLayer("grid", new CATMAID.GridLayer(s, getGridOptions()));
               s.redraw();
             });
           } else {
@@ -338,16 +336,16 @@ SettingsWidget.prototype.init = function(space)
 
     var addReviewerButton = $('<button/>').text('Add to team').click(function() {
       var newReviewer = reviewerSelect.val();
-      // Let ReviewSystem.Whitelist choose a default date if none was entered
+      // Let CATMAID.ReviewSystem.Whitelist choose a default date if none was entered
       var acceptAfter = acceptAfterInput.val() ? acceptAfterInput.val() : undefined;
-      ReviewSystem.Whitelist
+      CATMAID.ReviewSystem.Whitelist
           .addReviewer(newReviewer, acceptAfter)
           .save(refreshWhitelist);
     });
 
     var removeReviewerButton = $('<button/>').text('Remove from team').click(function() {
       var removedReviewer = $(whitelist).val();
-      ReviewSystem.Whitelist
+      CATMAID.ReviewSystem.Whitelist
           .removeReviewer(removedReviewer)
           .save(refreshWhitelist);
     });
@@ -360,7 +358,7 @@ SettingsWidget.prototype.init = function(space)
 
     var refreshWhitelist = function () {
       $(whitelist).empty();
-      var wlEntries = ReviewSystem.Whitelist.getWhitelist();
+      var wlEntries = CATMAID.ReviewSystem.Whitelist.getWhitelist();
       var options = Object.keys(wlEntries).map(function(userId) {
         var user = User.safe_get(userId);
         var optionElement = $('<option/>')

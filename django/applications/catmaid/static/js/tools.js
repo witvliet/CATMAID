@@ -1,324 +1,222 @@
 /* -*- mode: espresso; espresso-indent-level: 2; indent-tabs-mode: nil -*- */
 /* vim: set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
 
-var UNIQUE_ID;
+// Namespace declaration
+CATMAID.tools = CATMAID.tools || {};
 
-function parseIndex(str) {
-  var pattern = /(\d+)$/;
-  if (pattern.test(str)) return parseInt(RegExp.$1);
-  else
-  return false;
-}
+/**
+ * Definition of methods in CATMAID.tools namespace.
+ */
+(function(tools) {
 
-function setAlpha(element, alpha) {
-  try {
-    if (element.filters) {
-      element.style.filter = "Alpha(opacity=" + Math.max(0, Math.min(100, alpha)) + ")";
+  "use strict";
+
+  /**
+   * Does a simple user agent test and returns one of 'MAC', 'WIN', 'LINUX' or
+   * 'UNKNOWN'.
+   */
+  tools.getOS = function()
+  {
+    var ua = navigator.userAgent.toUpperCase();
+    if (-1 !== ua.indexOf('MAC')) {
+      return 'MAC';
+    } else if (-1 !== ua.indexOf('WIN')) {
+      return 'WIN';
+    } else if (-1 !== ua.indexOf('LINUX')) {
+      return 'LINUX';
     } else {
-      //statusBar.println("setting Alpha to " + alpha);
-      element.style.MozOpacity = Math.max(0, Math.min(1, alpha / 100));
+      return 'UNKNOWN';
     }
-  } catch (exception) {}
-  if (alpha > 0) element.style.visibility = "visible";
-  else element.style.visibility = "hidden";
-  return;
-}
+  };
 
-/**
- * parse the fragment part of the current URL
- */
+  /**
+   * Compare two strings while respecting locales and numbers. This is
+   * essentially a wrapper around String.localeCompare() to have one
+   * place where it is parameterized.
+   */
+  tools.compareStrings = function(str1, str2)
+  {
+    return str1.localeCompare(str2, undefined, {numeric: true});
+  };
 
-function parseFragment() {
-  if (location.hash) {
-    var r, fragment;
-    fragment = /#(.*?)$/i;
-    /* jshint boss:true */ // Allow assignment in conditional
-    if (r = fragment.exec(location.hash)) {
-      var o, p, value;
-      o = {};
-      value = /([^&=]+)=([^&=]+)/gi;
-      while (p = value.exec(r[1])) {
-        o[p[1]] = p[2];
-      }
-      return o;
-    } else
-    return undefined;
-  } else
-  return undefined;
-}
-
-/**
- * parse the query part of the current URL
- */
-
-function parseQuery() {
-  if (location.search) {
-    var r, query;
-    query = /\?(.*?)$/i;
-    /* jshint boss:true */ // Allow assignment in conditional
-    if (r = query.exec(location.search)) {
-      var o, p, value;
-      o = {};
-      value = /([^&=]+)=([^&=]+)/gi;
-      while (p = value.exec(r[1])) {
-        o[p[1]] = p[2];
-      }
-      return o;
-    } else
-    return undefined;
-  } else
-  return undefined;
-}
-
-/**
- * get the width of an element from the offsetWidth of all of its children
- * use this as width-expression for boxes to be floated completely
- */
-
-function ieCSSWidth(o) {
-  var c = o.firstChild;
-  var w = c.offsetWidth;
-  /* jshint boss:true */ // Allow assignment in conditional
-  while (c = c.nextSibling) {
-    w += c.offsetWidth;
-  }
-  return w;
-}
-
-/**
- * get a "unique" id for a new element in the DOM
- */
-
-function uniqueId() {
-  if (!UNIQUE_ID) UNIQUE_ID = Math.floor(1073741824 * Math.random());
-  return ++UNIQUE_ID;
-}
-
-/**
- * Simplify more robust prototype inheritance. From:
- * http://michaux.ca/articles/class-based-inheritance-in-javascript
- */
-function extend(subclass, superclass) {
-   function Dummy() {}
-   Dummy.prototype = superclass.prototype;
-   subclass.prototype = new Dummy();
-   subclass.prototype.constructor = subclass;
-   subclass.superclass = superclass;
-   subclass.superproto = superclass.prototype;
-}
-
-/**
- * Makes a synchronous jQuery AJAX call and return the result.
- */
-function sync_request(url, type, data) {
-  // check parameters
-  if (!type)
-    type = "GET";
-  // init return variable
-  var result = "";
-  // make the call
-  jQuery.ajax({
-    type: type,
-    url: url,
-    data: data,
-    success: function(response) {
-      result = response;
-    },
-    async:false
-  });
-
-  return result;
-}
-
-/**
- * Stops default behaviour of an event. Found here:
- * http://stackoverflow.com/questions/891581
- */
-function stopDefault(e) {
-    if (e && e.preventDefault) {
-        e.preventDefault();
-    }
-    else {
-        window.event.returnValue = false;
-    }
-    return false;
-}
-
-/**
- * Creates a deep copy of an object. Based on:
- * http://stackoverflow.com/questions/122102
- */
-function deepCopy(obj) {
-    if(obj === null || typeof(obj) !== 'object'){
-        return obj;
-    }
-    //make sure the returned object has the same prototype as the original
-    var ret = Object.create(Object.getPrototypeOf(obj));
-    for(var key in obj){
-        ret[key] = deepCopy(obj[key]);
-    }
-    return ret;
-}
-
-/**
- * Convert a (usually base64 encorded) dataURI image to a binary blob.
- * From: http://stackoverflow.com/questions/4998908
- */
-function dataURItoBlob(dataURI) {
-    // convert base64/URLEncoded data component to raw binary data held in a string
-    var byteString;
-    if (dataURI.split(',')[0].indexOf('base64') >= 0)
-        byteString = atob(dataURI.split(',')[1]);
+  /**
+   * Parse a string as integer or return false if this is not possible or the
+   * integer is negative.
+   */
+  tools.parseIndex = function(str) {
+    var pattern = /(\d+)$/;
+    if (pattern.test(str)) return parseInt(RegExp.$1);
     else
-        byteString = unescape(dataURI.split(',')[1]);
+    return false;
+  };
 
-    // separate out the mime component
-    var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-
-    // write the bytes of the string to a typed array
-    var ia = new Uint8Array(byteString.length);
-    for (var i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
+  /**
+   * Get a "unique" id for a new element in the DOM.
+   */
+  var UNIQUE_ID;
+  tools.uniqueId = function() {
+    if (!UNIQUE_ID) {
+      UNIQUE_ID = Math.floor(1073741824 * Math.random());
     }
+    return ++UNIQUE_ID;
+  };
 
-    return new Blob([ia], {type:mimeString});
-}
-
-/**
- * Creates a jQuery UI based error dialog. If detail is passed, it is hidden by
- * default. The dialog allows to expand it, however.
- */
-window.ErrorDialog = function(text, detail) {
-  this.dialog = document.createElement('div');
-  this.dialog.setAttribute("id", "dialog-confirm");
-  this.dialog.setAttribute("title", "An error occured");
-  // Create error message tags
-  var msg = document.createElement('p');
-  msg.appendChild(document.createTextNode(text));
-  this.dialog.appendChild(msg);
-  // Create detail field, if detail available
-  if (detail) {
-    var detail_head = document.createElement('p');
-    var detail_head_em = document.createElement('em');
-    detail_head_em.appendChild(document.createTextNode('Show/hide detail'));
-    detail_head.appendChild(detail_head_em);
-    this.dialog.appendChild(detail_head);
-    var detail_text = document.createElement('p');
-    detail_text.appendChild(document.createTextNode(detail));
-    this.dialog.appendChild(detail_text);
-    // Hide detail by default and toggle display by click on header
-    $(detail_text).hide();
-    $(detail_head).click(function() {
-      $(detail_text).toggle();
-    });
-    $(detail_head_em).css('cursor', 'pointer');
-  }
-};
-
-window.ErrorDialog.prototype = {};
-
-/**
- * Displays the error dialog.
- */
-window.ErrorDialog.prototype.show = function() {
-  $(this.dialog).dialog({
-    width: '400px',
-    height: 'auto',
-    modal: true,
-    buttons: {
-      "OK": function() {
-        $(this).dialog("close");
-      }
-    }
-  });
-};
-
-/**
- * Convenience function to show an error dialog.
- */
-window.error = function(msg, detail)
-{
-  new ErrorDialog(msg, detail).show();
-};
-
-/**
- * Creates a generic JSON response handler that complains when the response
- * status is different from 200 or a JSON error is set.
- */
-window.jsonResponseHandler = function(success, error)
-{
-  return function(status, text, xml) {
-    if (status === 200 && text) {
-      var json = $.parseJSON(text);
-      if (json.error) {
-        new ErrorDialog(json.error, json.detail).show();
-        if (typeof(error) == 'function') {
-          error();
+  /**
+   * Parse the query part of a URL and return an object containing all the GET
+   * properties.
+   */
+  tools.parseQuery = function(url) {
+    if (url) {
+      var r, query;
+      query = /\?(.*?)$/i;
+      var r = query.exec(url);
+      if (r) {
+        var o, p, value;
+        o = {};
+        value = /([^&=]+)=([^&=]+)/gi;
+        while ((p = value.exec(r[1])) !== null) {
+          o[p[1]] = p[2];
         }
+        return o;
+      } else
+      return undefined;
+    } else
+    return undefined;
+  };
+
+  /**
+   * Simplify more robust prototype inheritance. From:
+   * http://michaux.ca/articles/class-based-inheritance-in-javascript
+   */
+  tools.extend = function(subclass, superclass) {
+     function Dummy() {}
+     Dummy.prototype = superclass.prototype;
+     subclass.prototype = new Dummy();
+     subclass.prototype.constructor = subclass;
+     subclass.superclass = superclass;
+     subclass.superproto = superclass.prototype;
+  };
+
+  /**
+   * Creates a deep copy of an object. Based on:
+   * http://stackoverflow.com/questions/122102
+   */
+  tools.deepCopy = function(obj) {
+      if(obj === null || typeof(obj) !== 'object'){
+          return obj;
+      }
+      //make sure the returned object has the same prototype as the original
+      var ret = Object.create(Object.getPrototypeOf(obj));
+      for(var key in obj){
+          ret[key] = tools.deepCopy(obj[key]);
+      }
+      return ret;
+  };
+
+  /**
+   * Convert a (usually base64 encorded) dataURI image to a binary blob.
+   * From: http://stackoverflow.com/questions/4998908
+   */
+  tools.dataURItoBlob = function(dataURI) {
+      // convert base64/URLEncoded data component to raw binary data held in a string
+      var byteString;
+      if (dataURI.split(',')[0].indexOf('base64') >= 0)
+          byteString = atob(dataURI.split(',')[1]);
+      else
+          byteString = unescape(dataURI.split(',')[1]);
+
+      // separate out the mime component
+      var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+      // write the bytes of the string to a typed array
+      var ia = new Uint8Array(byteString.length);
+      for (var i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+      }
+
+      return new Blob([ia], {type:mimeString});
+  };
+
+  /**
+   * Read the pixels of the given size from the given GL context and return them
+   * as an image. If a texture is passed in, the returned image will contain the
+   * texture data.
+   *
+   * @param gl The WebGL context to use.
+   * @param width The width of the image to read out.
+   * @param height The height of the image to read out.
+   * @param texture An optional texture object that will be read out if passed.
+   * @return An image object of either the context or the texture (if passed).
+   */
+  tools.createImageFromGlContext = function(gl, width, height, texture) {
+      var framebuffer;
+      if (texture) {
+        // Create a framebuffer backed by the texture
+        var framebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+      }
+
+      // Read the contents of the framebuffer
+      var data = new Uint8Array(width * height * 4);
+      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+
+      if (framebuffer) {
+        gl.deleteFramebuffer(framebuffer);
+      }
+
+      // Create a 2D canvas to store the result
+      var canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      var context = canvas.getContext('2d');
+
+      // Copy the pixels to a 2D canvas
+      var imageData = context.createImageData(width, height);
+      imageData.data.set(data);
+      context.putImageData(imageData, 0, 0);
+
+      var img = new Image();
+      img.src = canvas.toDataURL();
+      return img;
+  };
+
+  /**
+   * Set the x, y and z propery of the given object to the given value.
+   *
+   * @param obj The object to set the x, y and z property of.
+   * @param value The value x, y and z should be set to.
+   * @return The passed in object obj.
+   */
+  tools.setXYZ = function(obj, value) {
+      obj.x = obj.y = obj.z = value;
+      return obj;
+  };
+
+  /**
+   * Check if an entity is a function.
+   *
+   * @param fn The entitiy to test.
+   * @return True if fn is a function, false otherwise.
+   */
+  tools.isFn = function(fn) {
+    return typeof(fn) === 'function';
+  };
+
+  /**
+   * Call the given entity if it is a function. If extra arguments are passed
+   * in, they are passed along to fn, when called.
+   *
+   * @param fn the entity to call
+   */
+  tools.callIfFn = function(fn) {
+    if (CATMAID.tools.isFn(fn)) {
+      if (arguments.length > 1) {
+        fn.apply(window, Array.prototype.slice.call(arguments, 1));
       } else {
-        if (typeof(success) == 'function') {
-          success(json);
-        }
-      }
-    } else {
-      new ErrorDialog("An error occured",
-          "The server returned an unexpected status: " + status).show();
-      if (typeof(error) == 'function') {
-        error();
+        fn();
       }
     }
   };
-};
 
-/**
- * Creates a simple login dialog.
- */
-window.LoginDialog = function(text, callback) {
-  this.dialog = new OptionsDialog("Permission required");
-  if (text) {
-    this.dialog.appendMessage(text);
-  }
-  // Add short login text
-  var login_text = "Please enter the credentials for a user with the " +
-      "necessary credentials to continue to the requested information";
-  this.dialog.appendMessage(login_text);
-  // Add input fields
-  var user_field = this.dialog.appendField('Username', 'username', '', true);
-  var pass_field = this.dialog.appendField('Password', 'password', '', true);
-  pass_field.setAttribute('type', 'password');
-  // Align input fields better
-  $(this.dialog.dialog).find('label').css('width', '25%');
-  $(this.dialog.dialog).find('label').css('display', 'inline-block');
-
-  // If OK is pressed, the dialog should cause a (re-)login
-  this.dialog.onOK = function() {
-    login($(user_field).val(), $(pass_field).val(), callback);
-  };
-};
-
-window.LoginDialog.prototype = {};
-
-/**
- * Displays the login dialog.
- */
-window.LoginDialog.prototype.show = function() {
-  this.dialog.show('400', 'auto', true);
-};
-
-/**
- * Does a simple user agent test and returns one of 'MAC', 'WIN', 'LINUX' or
- * 'UNKNOWN'.
- */
-window.getOS = function()
-{
-  var ua = navigator.userAgent.toUpperCase();
-  if (-1 !== ua.indexOf('MAC')) {
-    return 'MAC';
-  } else if (-1 !== ua.indexOf('WIN')) {
-    return 'WIN';
-  } else if (-1 !== ua.indexOf('LINUX')) {
-    return 'LINUX';
-  } else {
-    return 'UNKNOWN';
-  }
-};
+})(CATMAID.tools);

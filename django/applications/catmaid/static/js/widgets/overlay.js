@@ -1,10 +1,10 @@
 /* -*- mode: espresso; espresso-indent-level: 2; indent-tabs-mode: nil -*- */
 /* vim: set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
 /* global
+  CATMAID,
   ActiveSkeleton,
   countProperties,
   display_tracing_setup_dialog,
-  ErrorDialog,
   Events,
   growlAlert,
   mayEdit,
@@ -20,8 +20,6 @@
   SkeletonListSources,
   statusBar,
   submitterFn,
-  UI,
-  ui,
   user_groups,
   userprofile,
   WebGLApplication
@@ -342,9 +340,9 @@ SkeletonAnnotations.SVGOverlay.prototype.executeIfSkeletonEditable = function(
         } else {
           // Check permissions
           if (!permissions.can_edit) {
-            new ErrorDialog("This skeleton is locked by another user and you " +
-                "are not part of the other user's group. You don't have " +
-                "permission to modify it.").show();
+            new CATMAID.ErrorDialog("This skeleton is locked by another user " +
+                "and you are not part of the other user's group. You don't " +
+                "have permission to modify it.").show();
             return;
           }
           // Execute continuation
@@ -400,7 +398,7 @@ SkeletonAnnotations.SVGOverlay.prototype.createViewMouseMoveFn = function(stack,
   return function(e) {
     var wc;
     var worldX, worldY;
-    var m = ui.getMouse(e, stack.getView(), true);
+    var m = CATMAID.ui.getMouse(e, stack.getView(), true);
     if (m) {
       wc = stack.getWorldTopLeft();
       worldX = wc.worldLeft + ((m.offsetX / stack.scale) * stack.resolution.x);
@@ -411,6 +409,7 @@ SkeletonAnnotations.SVGOverlay.prototype.createViewMouseMoveFn = function(stack,
       coords.offsetXPhysical = worldX;
       coords.offsetYPhysical = worldY;
     }
+    return true; // Bubble mousemove events.
   };
 };
 
@@ -762,8 +761,9 @@ SkeletonAnnotations.SVGOverlay.prototype.rerootSkeleton = function(nodeID) {
 
 SkeletonAnnotations.SVGOverlay.prototype.splitSkeleton = function(nodeID) {
   if (!this.checkLoadedAndIsNotRoot(nodeID)) return;
-  // Get ID of the first model available
-  var model = SkeletonAnnotations.sourceView.createModel();
+  var node = this.nodes[nodeID];
+  var name = NeuronNameService.getInstance().getName(node.skeleton_id);
+  var model = new SelectionTable.prototype.SkeletonModel(node.skeleton_id, name, new THREE.Color().setRGB(1, 1, 0));
   var self = this;
   // Make sure we have permissions to edit the neuron
   this.executeIfSkeletonEditable(model.id, (function() {
@@ -1034,8 +1034,8 @@ SkeletonAnnotations.SVGOverlay.prototype.createInterpolatedNodeFn = function () 
               if (retries > 0) {
                 handleLastRequest(q, retries - 1);
               } else {
-                new ErrorDialog("A required update of the node failed. " +
-                    "Please reload CATMAID.").show();
+                new CATMAID.ErrorDialog("A required update of the node " +
+                    "failed. Please reload CATMAID.").show();
               }
             };
             // Start a new continuation to update the nodes,
@@ -1165,18 +1165,17 @@ SkeletonAnnotations.SVGOverlay.prototype.createNode = function (parentID, phys_x
 SkeletonAnnotations.SVGOverlay.prototype.updateNodeCoordinatesinDB = function (callback) {
   var update = {treenode: [],
                 connector: []};
-  for (var nodeID in this.nodes) {
-    if (this.nodes.hasOwnProperty(nodeID)) {
-      var node = this.nodes[nodeID];
-      // only updated nodes that need sync, e.g.
-      // when they changed position
-      if (node.needsync) {
-        node.needsync = false;
-        update[node.type].push([node.id,
-                                this.pix2physX(node.x),
-                                this.pix2physY(node.y),
-                                this.pix2physZ(node.z)]);
-      }
+  var nodeIDs = Object.keys(this.nodes);
+  for (var i = 0; i < nodeIDs.length; ++i) {
+    var node = this.nodes[nodeIDs[i]];
+    // only updated nodes that need sync, e.g.
+    // when they changed position
+    if (node.needsync) {
+      node.needsync = false;
+      update[node.type].push([node.id,
+                              this.pix2physX(node.x),
+                              this.pix2physY(node.y),
+                              this.pix2physZ(node.z)]);
     }
   }
   if (update.treenode.length > 0 || update.connector.length > 0) {
@@ -1372,6 +1371,8 @@ SkeletonAnnotations.SVGOverlay.prototype.redraw = function( stack, completionCal
       dynamicScale);
 
   if ( !doNotUpdate ) {
+    // If changing scale or slice, remove tagbox.
+    SkeletonAnnotations.Tag.removeTagbox();
     this.updateNodes(completionCallback);
   }
 
@@ -1411,7 +1412,7 @@ SkeletonAnnotations.SVGOverlay.prototype.whenclicked = function (e) {
     return;
   }
 
-  var m = ui.getMouse(e, this.view);
+  var m = CATMAID.ui.getMouse(e, this.view);
 
   if (!mayEdit()) {
     statusBar.replaceLast("You don't have permission.");
@@ -2233,15 +2234,15 @@ SkeletonAnnotations.SVGOverlay.prototype.deleteNode = function(nodeId) {
   var self = this;
 
   if (!node) {
-    error("Could not find a node with id " + nodeId);
+    CATMAID.error("Could not find a node with id " + nodeId);
     return false;
   }
 
   if (!mayEdit() || !node.can_edit) {
     if (node.type === SkeletonAnnotations.TYPE_CONNECTORNODE) {
-      error("You don't have permission to delete connector #" + node.id);
+      CATMAID.error("You don't have permission to delete connector #" + node.id);
     } else {
-      error("You don't have permission to delete node #" + node.id);
+      CATMAID.error("You don't have permission to delete node #" + node.id);
     }
     return false;
   }
@@ -2427,7 +2428,7 @@ SkeletonAnnotations.Tag = new (function() {
         if ("ValueError" === err.type) {
           growlAlert('Error', err.error ? err.error : "Unspecified");
         } else {
-          error(err.error, err.detail);
+          CATMAID.error(err.error, err.detail);
         }
       },
       true
@@ -2518,7 +2519,7 @@ SkeletonAnnotations.Tag = new (function() {
   this.updateTags = function(svgOverlay) {
     var atn = SkeletonAnnotations.atn;
     if (null === atn.id) {
-      error("Can't update tags, because there is no active node selected.");
+      CATMAID.error("Can't update tags, because there is no active node selected.");
       return;
     }
     svgOverlay.submit(
@@ -2548,16 +2549,6 @@ SkeletonAnnotations.Tag = new (function() {
       this.handle_tagbox(atn, svgOverlay);
     }
   };
-
-  /** Upon changing stack scale, remove the tag box. */
-  this.changeScale = function(val) {
-    if (this.hasTagbox()) {
-      this.removeTagbox();
-    }
-  };
-
-  /** Upon changing stack slice, remove the tag box. */
-  this.changeSlice = this.changeScale;
 })();
 
 window.OptionsDialog = function(title) {
@@ -2679,8 +2670,8 @@ var SplitMergeDialog = function(model1, model2) {
     this.dialog.setAttribute("title", "Split skeleton");
   }
   // Dialog dimensions
-  this.width = parseInt(UI.getFrameWidth() * 0.8);
-  this.height = parseInt(UI.getFrameHeight() * 0.8);
+  this.width = parseInt(CATMAID.UI.getFrameWidth() * 0.8);
+  this.height = parseInt(CATMAID.UI.getFrameHeight() * 0.8);
 };
 
 SplitMergeDialog.prototype = {};

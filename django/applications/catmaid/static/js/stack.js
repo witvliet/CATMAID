@@ -4,7 +4,6 @@
  *
  * requirements:
  *	 tools.js
- *	 ui.js
  *	 slider.js
  */
 
@@ -76,7 +75,6 @@ function Stack(
 		scaleBar.firstChild.firstChild.replaceChild(
 			document.createTextNode( text + " " + Stack.SCALE_BAR_UNITS[ ui ] ),
 			scaleBar.firstChild.firstChild.firstChild );
-		return;
 	};
 
 
@@ -96,8 +94,6 @@ function Stack(
 		if( tool ) {
 			tool.redraw();
 		}
-
-		return;
 	};
 	this.update = update;
 
@@ -424,8 +420,6 @@ function Stack(
 		self.old_scale = self.scale;
 		self.old_yc = self.yc;
 		self.old_xc = self.xc;
-
-		return 2;
 	};
 
 	/**
@@ -611,8 +605,6 @@ function Stack(
 		}
 
 		self.overview.redraw();
-
-		return;
 	};
 	this.resize = resize;
 
@@ -647,7 +639,6 @@ function Stack(
 	{
 		if ( layers[ key ] )
 			return layers[key];
-        return;
 	};
 
 	/**
@@ -663,7 +654,6 @@ function Stack(
 			layers[ key ].unregister();
 		layers[ key ] = layer;
 		self.tilelayercontrol.refresh();
-		return;
 	};
 
 	/**
@@ -694,6 +684,8 @@ function Stack(
 	{
 //		if ( typeof tool != "undefined" && tool )
 //			tool.unregister();
+		// If this tool is already registered to this stack, do nothing.
+		if ( tool === newTool ) return;
 		tool = newTool;
 		if ( typeof tool != "undefined" && tool )
 			tool.register( self );
@@ -716,7 +708,6 @@ function Stack(
 
 	// initialize
 	var self = this;
-	if ( typeof ui == "undefined" ) ui = new UI();
 
 	self.id = id;
 
@@ -785,10 +776,7 @@ function Stack(
 				// treenode table. setting the focus to a dummy
 				// href element does not work
 				$('#search_labels').blur();
-				// only update the project's focused stack if the stack
-				// isn't already focused
-				if ( self !== project.focusedStack )
-					project.setFocusedStack( self );
+				project.setFocusedStack( self );
 				break;
 			case CMWWindow.BLUR:
 				self.overview.getView().style.zIndex = "5";

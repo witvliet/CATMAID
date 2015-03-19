@@ -2,12 +2,10 @@
 /* vim: set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
 /* global
   ConnectorSelection,
-  ErrorDialog,
   InstanceRegistry,
   NeuronNameService,
   project,
   requestQueue,
-  ReviewSystem,
   SelectionTable,
   SkeletonSource,
   SVGUtil,
@@ -64,8 +62,6 @@ SkeletonConnectivity.prototype.init = function() {
     'up': false,
     'down': false,
   };
-  // A list of skeleton IDs that were hidden by the user
-  this.hiddenSkeletons = [];
 };
 
 /** Appends only to the top list, that is, the set of seed skeletons
@@ -255,7 +251,7 @@ SkeletonConnectivity.prototype.update = function() {
             self.incoming = {};
             self.outgoing = {};
             self.gapjunctions = {};
-            new ErrorDialog("Couldn't load connectivity information",
+            new CATMAID.ErrorDialog("Couldn't load connectivity information",
                 "The server returned an unexpected status code: " +
                     status).show();
             return;
@@ -265,7 +261,7 @@ SkeletonConnectivity.prototype.update = function() {
             self.incoming = {};
             self.outgoing = {};
             self.gapjunctions = {};
-            new ErrorDialog("Couldn't load connectivity information",
+            new CATMAID.ErrorDialog("Couldn't load connectivity information",
                 json.error).show();
             return;
           }
@@ -454,7 +450,7 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
    * Support function for creating a partner table.
    */
   var create_table = function(skids, skeletons, thresholds, partners, title, relation,
-      hideSingles, reviewFilter, hiddenSkids, collapsed, collapsedCallback) {
+      hideSingles, reviewFilter, collapsed, collapsedCallback) {
     /**
      * Helper to handle selection of a neuron.
      */
@@ -555,7 +551,7 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
     }
     var average = Math.floor(100 * total_reviewed / total_node_count) | 0;
     row.append( $('<td />').text(average + "%")
-        .css('background-color', ReviewSystem.getBackgroundColor(average)));
+        .css('background-color', CATMAID.ReviewSystem.getBackgroundColor(average)));
     row.append( $('<td />').text(total_node_count));
     thead.append(row);
 
@@ -632,8 +628,6 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
       if (hideSingles) {
         ignore = ignore || partner.num_nodes == 1;
       }
-      // Ignore if manually hidden
-      ignore = ignore || (-1 !== hiddenSkids.indexOf(partner.id));
       if (ignore) {
         filtered.push(partner);
         return filtered;
@@ -663,9 +657,7 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
       // Cell with partner neuron name
       var td = document.createElement('td');
       var a = createNameElement(partner.name, partner.id);
-      var d = createHideButton(partner.id);
       td.appendChild(a);
-      td.appendChild(d);
       tr.appendChild(td);
 
       // Cell with synapses with partner neuron
@@ -687,7 +679,7 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
           getNrReviews([partner], reviewFilter) / partner.num_nodes)));
       var td = document.createElement('td');
       td.appendChild(document.createTextNode(pReviewed + "%"));
-      td.style.backgroundColor = ReviewSystem.getBackgroundColor(pReviewed);
+      td.style.backgroundColor = CATMAID.ReviewSystem.getBackgroundColor(pReviewed);
       tr.appendChild(td);
 
       // Cell with number of nodes of partner neuron
@@ -1043,13 +1035,13 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
   var table_incoming = create_table.call(this, this.ordered_skeleton_ids,
       this.skeletons, this.upThresholds, to_sorted_array(this.incoming),
       'Up', 'presynaptic_to', this.hideSingleNodePartners, this.reviewFilter,
-      this.hiddenSkeletons, this.upstreamCollapsed, (function() {
+      this.upstreamCollapsed, (function() {
         this.upstreamCollapsed = !this.upstreamCollapsed;
       }).bind(this));
   var table_outgoing = create_table.call(this, this.ordered_skeleton_ids,
       this.skeletons, this.downThresholds, to_sorted_array(this.outgoing),
       'Down', 'postsynaptic_to', this.hideSingleNodePartners, this.reviewFilter,
-      this.hiddenSkeletons, this.downstreamCollapsed, (function() {
+      this.downstreamCollapsed, (function() {
         this.downstreamCollapsed = !this.downstreamCollapsed;
       }).bind(this));
   var table_gapjunctions = create_table.call(this, this.ordered_skeleton_ids,
@@ -1132,38 +1124,6 @@ SkeletonConnectivity.prototype.createConnectivityTable = function() {
   add_select_all_fn(this, 'up', table_incoming, nSkeletons);
   add_select_all_fn(this, 'down', table_outgoing, nSkeletons);
   add_select_all_fn(this, 'gapjunction', table_gapjunctions, nSkeletons);
-
-  // Add handler for hiding neurons
-  $('.hide-skeleton').click(this, function(e) {
-    e.data.hideSkeleton($(this).attr('skid'));
-  });
-
-  /**
-   * Create a span element with an icon for hiding skeletons.
-   */
-  function createHideButton(skeleton_id) {
-    var e = document.createElement('span');
-    e.setAttribute('class', 'ui-icon ui-icon-close hide-skeleton');
-    e.setAttribute('title', 'Hide partner');
-    e.setAttribute('skid', skeleton_id);
-    return e;
-  }
-};
-
-/**
- * Adds the given skeleton to the list of hidden skeletons and triggers a
- * redraw.
- */
-SkeletonConnectivity.prototype.hideSkeleton = function(skid)
-{
-  // Abort if this skeleton is already hidden
-  if (-1 !== this.hiddenSkeletons.indexOf(skid)) {
-    return;
-  }
-
-  // Add skeleton ID and make sure it is a number
-  this.hiddenSkeletons.push(parseInt(skid));
-  this.redraw();
 };
 
 SkeletonConnectivity.prototype.openPlot = function() {

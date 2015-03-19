@@ -4,7 +4,6 @@
  *
  * requirements:
  *	 tools.js
- *	 ui.js
  *	 request.js
  *
  */
@@ -52,7 +51,7 @@ function Project( pid )
 				rootWindow.replaceChild( new CMWHSplitNode( rootWindow.getChild(), stack.getWindow() ) );
 			
 			stack.getWindow().focus();	
-			ui.onresize();
+			CATMAID.ui.onresize();
 		}
 		if ( stacks.length > 1 )
 			self.moveTo( self.coordinates.z, self.coordinates.y, self.coordinates.x );
@@ -62,10 +61,8 @@ function Project( pid )
 			self.moveTo( c.z, c.y, c.x );
 		}
 
-		// Only set focus if stack isn't already in focus
-		if ( stack !== self.focusedStack )
-		    self.setFocusedStack( stack );
-		
+		self.setFocusedStack( stack );
+
 		// only set the tool for the first stack
 		if ( stacks.length == 1 )
 		{
@@ -116,7 +113,7 @@ function Project( pid )
 					stacks[ ( i + 1 ) % stacks.length ].getWindow().focus();
 			}
 		}
-		ui.onresize();
+		CATMAID.ui.onresize();
 		return;
 	};
 	
@@ -249,7 +246,7 @@ function Project( pid )
 		document.getElementById("toolbox_edit").style.display = "block";
 		document.getElementById( "content" ).style.display = "none";
 		document.body.appendChild( view );
-		ui.registerEvent( "onresize", resize );
+		CATMAID.ui.registerEvent( "onresize", resize );
 		//window.onresize();
 		
 		document.onkeydown = onkeydown;
@@ -270,7 +267,7 @@ function Project( pid )
 		//! on the root window as this done by the last child.
 		rootWindow.closeAllChildren();
 			
-		ui.removeEvent( "onresize", resize );
+		CATMAID.ui.removeEvent( "onresize", resize );
 		try
 		{
 			document.body.removeChild( view );
@@ -463,7 +460,7 @@ function Project( pid )
 			ctrl = event.ctrlKey;
 			meta = event.metaKey;
 		}
-		fakeEvent.target = UI.getTargetElement(e || event);
+		fakeEvent.target = CATMAID.UI.getTargetElement(e || event);
 		var n = fakeEvent.target.nodeName.toLowerCase();
 		var fromATextField = false;
 		if (n == "input") {
@@ -505,7 +502,6 @@ function Project( pid )
 	// initialise
 	var self = this;
 	this.id = pid;
-	if ( typeof ui == "undefined" ) ui = new UI();
 	if ( typeof requestQueue == "undefined" ) requestQueue = new RequestQueue();
 	
 	var tool = null;

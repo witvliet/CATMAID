@@ -1,11 +1,11 @@
 /* -*- mode: espresso; espresso-indent-level: 2; indent-tabs-mode: nil -*- */
 /* vim: set softtabstop=2 shiftwidth=2 tabstop=2 expandtab: */
 /* global
+  CATMAID,
   ArborParser,
   Events,
-  growlAlert,
-  jsonResponseHandler,
   InstanceRegistry,
+  OptionsDialog,
   project,
   requestQueue,
   SelectionTable,
@@ -31,6 +31,7 @@ var NeuronDendrogram = function() {
   this.minStrahler = 1;
   this.collapseNotABranch = true;
   this.warnCollapsed = true;
+  this.highlightTags = [];
 
   // Stores a reference to the current SVG, if any
   this.svg = null;
@@ -168,7 +169,7 @@ NeuronDendrogram.prototype.selectNode = function(node_id, skeleton_id)
 
   // Make sure the requested node is part of the current skeleton
   if (!(node_id in nodesToChildren)) {
-    error("The requested node (" + node_id + ") was not found in the " +
+    CATMAID.error("The requested node (" + node_id + ") was not found in the " +
         "internal skeleton representation. Try updating it.");
     return;
   }
@@ -186,9 +187,8 @@ NeuronDendrogram.prototype.selectNode = function(node_id, skeleton_id)
       toExplore.push.apply(toExplore, nodesToChildren[nodeToHighlight]);
 
       if (0 === toExplore.length) {
-        growlAlert("Information", "Couldn highlight the currently selected " +
-            "node, because it is collapsed and no visible node downstream " +
-            "was found");
+        CATMAID.info("Couldn highlight the currently selected node, because " +
+            "it is collapsed and no visible node downstream was found");
         return;
       }
       // test next node in queue
@@ -197,7 +197,7 @@ NeuronDendrogram.prototype.selectNode = function(node_id, skeleton_id)
   }
 
   if (!nodeToHighlight) {
-    error("Couldn't find node to highlight in dendrogram");
+    CATMAID.error("Couldn't find node to highlight in dendrogram");
     return;
   } else if (nodeToHighlight !== node_id && this.warnCollapsed) {
     var getDepth = function(node, depth) {
@@ -214,9 +214,9 @@ NeuronDendrogram.prototype.selectNode = function(node_id, skeleton_id)
     };
     var numDownstreamSteps = getDepth(node_id, 0);
 
-    growlAlert("Information", "The active node is currently not visible in " +
-        "the dendrogram. Therefore, the next visible node downstream has " +
-        "been selected, which is " + numDownstreamSteps + " hop(s) away.");
+    CATMAID.info("The active node is currently not visible in the dendrogram. " +
+       "Therefore, the next visible node downstream has been selected, which " +
+       "is " + numDownstreamSteps + " hop(s) away.");
   }
 
   this.highlightNode(nodeToHighlight);
@@ -257,7 +257,7 @@ NeuronDendrogram.prototype.loadSkeleton = function(skid)
 
   // Retrieve skeleton data
   var url = django_url + project.id + '/' + skid + '/0/1/compact-skeleton';
-  requestQueue.register(url, "GET", {}, jsonResponseHandler(
+  requestQueue.register(url, "GET", {}, CATMAID.jsonResponseHandler(
         (function(data) {
           this.reset();
           this.currentSkeletonId = skid;
@@ -270,7 +270,7 @@ NeuronDendrogram.prototype.loadSkeleton = function(skid)
         }).bind(this),
         (function(data) {
           this.updating = false;
-          error("Neuron dendrogram: couldn't update skeleton data");
+          CATMAID.error("Neuron dendrogram: couldn't update skeleton data");
         }).bind(this)));
 };
 
@@ -409,8 +409,8 @@ NeuronDendrogram.prototype.update = function()
   var getTaggedNodes = (function(tags)
   {
     var mapping = this.currentSkeletonTags;
-    // Split tags into single tags and add all tagged node IDs to result
-    return tags.split(',').map(function(t) { return t.trim(); }).reduce(function(o, tag) {
+    // Add all tagged node IDs to result
+    return tags.reduce(function(o, tag) {
       if (mapping.hasOwnProperty(tag)) {
         o = o.concat(mapping[tag]);
       }
@@ -418,14 +418,14 @@ NeuronDendrogram.prototype.update = function()
     }, []);
   }).bind(this);
 
-  var filterTags = $('input#dendrogram-tag-' + this.widgetID).val();
-  var taggedNodeIds = getTaggedNodes(filterTags);
-  var blacklist = this.collapseNotABranch ? getTaggedNodes('not a branch'): [];
+  var taggedNodeIds = getTaggedNodes(this.highlightTags);
+  var blacklist = this.collapseNotABranch ? getTaggedNodes(['not a branch']): [];
   this.renderTree = this.createTreeRepresentation(this.currentSkeletonTree, taggedNodeIds, blacklist);
   this.renderedNodeIds = this.getNodesInTree(this.renderTree);
 
   if (this.currentSkeletonTree && this.currentSkeletonTags) {
-    this.renderDendogram(this.renderTree, this.currentSkeletonTags, filterTags);
+    this.renderDendogram(this.renderTree, this.currentSkeletonTags,
+       this.highlightTags.join(","));
   }
 
   // Select the active node after every change
@@ -484,7 +484,7 @@ NeuronDendrogram.prototype.highlightNode = function(node_id)
   // Get the actual node
   var node = d3.select("#node" + node_id).data();
   if (node.length !== 1) {
-    error("Couldn't find node " + node_id + " in dendrogram");
+    CATMAID.error("Couldn't find node " + node_id + " in dendrogram");
     return;
   } else {
     node = node[0];
@@ -744,6 +744,40 @@ NeuronDendrogram.prototype.exportSVG = function()
   var data = new XMLSerializer().serializeToString(xml);
   var blob = new Blob([data], {type: 'text/svg'});
   saveAs(blob, "dendrogram-" + this.skeletonID + "-" + this.widgetID + ".svg");
+};
+
+/**
+ * Show a dialog with a checkbox for each tag that is used in the current
+ * skeleton. A user can then select the tags that should be highlighted.
+ */
+NeuronDendrogram.prototype.chooseHighlightTags = function()
+{
+  if (!this.currentSkeletonId) {
+    CATMAID.warn("No skeleton selected");
+    return;
+  }
+
+  // Get all the tags for the current skeleton
+  var dialog = new OptionsDialog("Select tags to highlight");
+  dialog.appendMessage("The following tags are used in the selected " +
+      "skeleton. Every node labeled with at least one of the selected tags, " +
+      "will be highlighted and its sub-arbor will be highlighted as well.");
+
+  // Map tags to checkboxes
+  var checkboxes = {};
+  for (var tag in this.currentSkeletonTags) {
+    var checked = (-1 !== this.highlightTags.indexOf(tag));
+    checkboxes[tag] = dialog.appendCheckbox(tag, undefined, checked);
+  }
+
+  dialog.onOK = (function() {
+    this.highlightTags = Object.keys(checkboxes).filter(function(t) {
+      return checkboxes[t].checked;
+    });
+    this.update();
+  }).bind(this);
+
+  dialog.show(400, 'auto', true);
 };
 
 NeuronDendrogram.prototype.setCollapsed = function(value)
