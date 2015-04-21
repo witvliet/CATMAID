@@ -22,6 +22,7 @@ def search(request, project_id=None):
             'x': int(node['treenode__location_x']),
             'y': int(node['treenode__location_y']),
             'z': int(node['treenode__location_z']),
+            'r': int(node['treenode__radius']),
             'skid': node['treenode__skeleton']}
 
     search_string = request.GET.get('substring', "")
@@ -73,10 +74,10 @@ def search(request, project_id=None):
         'treenode__location_x',
         'treenode__location_y',
         'treenode__location_z',
+        'treenode__radius',
         'treenode__skeleton',
         'class_instance__name',
-        'class_instance__id',
-        'treenode__radius')
+        'class_instance__id')
 
     for node in node_query:
         row_with_node = label_rows[node['class_instance__id']]
