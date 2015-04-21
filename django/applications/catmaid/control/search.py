@@ -75,7 +75,8 @@ def search(request, project_id=None):
         'treenode__location_z',
         'treenode__skeleton',
         'class_instance__name',
-        'class_instance__id')
+        'class_instance__id',
+        'treenode__radius')
 
     for node in node_query:
         row_with_node = label_rows[node['class_instance__id']]
