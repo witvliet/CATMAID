@@ -216,7 +216,7 @@ def neuronname(request, project_id=None, skeleton_id=None):
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def updateneuronname(request, project_id=None, skeleton_id=None):
     p = get_object_or_404(Project, pk=project_id)
-    neuron_name = int(request.POST.get('neuron_name', None))
+    neuron_name = request.POST.get('neuron_name', None)
     if neuron_name is None:
         raise Exception('A neuron name has not been provided!')
     
