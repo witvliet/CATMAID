@@ -199,7 +199,7 @@ def _get_neuronname_from_skeletonid( project_id, skeleton_id ):
     p = get_object_or_404(Project, pk=project_id)
     qs = ClassInstanceClassInstance.objects.filter(
                 relation__relation_name='model_of',
-                project=p,
+                project_id=p,
                 class_instance_a=int(skeleton_id)).select_related("class_instance_b")
     try:
         return {'neuronname': qs[0].class_instance_b.name,
@@ -211,6 +211,25 @@ def _get_neuronname_from_skeletonid( project_id, skeleton_id ):
 @requires_user_role([UserRole.Annotate, UserRole.Browse])
 def neuronname(request, project_id=None, skeleton_id=None):
     return HttpResponse(json.dumps(_get_neuronname_from_skeletonid(project_id, skeleton_id)), content_type='text/json')
+
+
+@requires_user_role([UserRole.Annotate, UserRole.Browse])
+def updateneuronname(request, project_id=None, skeleton_id=None):
+    p = get_object_or_404(Project, pk=project_id)
+    neuron_name = int(request.POST.get('neuron_name', None))
+    if neuron_name is None:
+        raise Exception('A neuron name has not been provided!')
+    
+    try:
+        neuron = ClassInstanceClassInstance.objects.get(
+                    relation__relation_name='model_of',
+                    project=p,
+                    class_instance_a=skeleton_id).class_instance_b
+        neuron.name = neuron_name
+        neuron.save()
+        return HttpResponse(json.dumps({'success': True}))
+    except:
+        return HttpResponse(json.dumps({'success': False}))
 
 def _neuronnames(skeleton_ids, project_id):
     qs = ClassInstanceClassInstance.objects.filter(
