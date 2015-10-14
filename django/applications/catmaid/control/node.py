@@ -148,7 +148,8 @@ def node_list_tuples(request, project_id=None):
                 treenode_connector.relation_id,
                 treenode_connector.treenode_id,
                 treenode_connector.confidence,
-                connector.user_id
+                connector.user_id,
+                connector.parent_id
             FROM treenode_connector,
                  connector
             WHERE treenode_connector.treenode_id IN (%s)
@@ -170,7 +171,8 @@ def node_list_tuples(request, project_id=None):
             treenode_connector.relation_id,
             treenode_connector.treenode_id,
             treenode_connector.confidence,
-            connector.user_id
+            connector.user_id,
+            connector.parent_id
         FROM connector LEFT OUTER JOIN treenode_connector
                        ON connector.id = treenode_connector.connector_id
         WHERE connector.project_id = %(project_id)s
@@ -182,6 +184,33 @@ def node_list_tuples(request, project_id=None):
         ''', params)
 
         crows.extend(cursor.fetchall())
+        
+        # Obtain parent connectors not already captured because they are outside
+        # the field of view.
+        
+        connector_ids = set(str(crow[0]) for crow in crows)
+        parent_ids = set(str(crow[9]) for crow in crows if crow[9] is not None)
+
+        if connector_ids or parent_ids:
+            cursor.execute('''
+            SELECT connector.id,
+                connector.location_x,
+                connector.location_y,
+                connector.location_z,
+                connector.confidence,
+                treenode_connector.relation_id,
+                treenode_connector.treenode_id,
+                treenode_connector.confidence,
+                connector.user_id,
+                connector.parent_id
+            FROM connector LEFT OUTER JOIN treenode_connector
+                           ON connector.id = treenode_connector.connector_id
+            WHERE connector.id IN (%s)
+               OR connector.parent_id IN (%s)
+            ''' % (','.join(parent_ids or ['-1']),
+                   ','.join(connector_ids or ['-1'])))
+    
+            crows.extend(cursor.fetchall())
 
         connectors = []
         # A set of missing treenode IDs
@@ -237,7 +266,8 @@ def node_list_tuples(request, project_id=None):
                     [kv for kv in  pre[cid].iteritems()],
                     [kv for kv in post[cid].iteritems()],
                     [kv for kv in   gj[cid].iteritems()], 
-                    is_superuser or c[8] == user_id or c[8] in domain)
+                    is_superuser or c[8] == user_id or c[8] in domain,
+                    c[9])
 
 
         # Fetch missing treenodes. These are related to connectors

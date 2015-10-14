@@ -447,6 +447,7 @@ class Connector(UserFocusedModel):
     location_x = models.FloatField()
     location_y = models.FloatField()
     location_z = models.FloatField()
+    parent = models.ForeignKey('self', null=True, related_name='children')
     confidence = models.IntegerField(default=5)
 
 

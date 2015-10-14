@@ -702,6 +702,10 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
       SkeletonElements.prototype.mouseEventManager.forget(this.c, SkeletonAnnotations.TYPE_CONNECTORNODE);
       this.c.remove();
     }
+    if (this.line) {
+      this.line.remove();
+      this.line = null;
+    }
     this.pregroup = null;
     this.postgroup = null;
     this.gjgroup = null;
@@ -718,12 +722,49 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
       this.c.datum(null);
       this.c.hide();
     }
+    if (this.line) {
+      this.line.hide();
+    }
     this.removeConnectorArrows();
     this.pregroup = null;
     this.postgroup = null;
     this.gjgroup = null;
   };
+  
+  this.addChildNode = function(childNode) {
+    this.children[childNode.id] = childNode;
+  };
+  
+  this.drawLineToParent = function() {
+    if (!this.parent) {
+      return;
+    }
 
+    var gjIDs = Object.keys(this.gjgroup);
+    if (gjIDs.length > 0) {
+      var lineColor = "rgb(159,37,194)";
+    } else {
+      var lineColor = "rgb(235,117,0)";
+    }
+
+    if (!this.line) {
+      this.line = this.paper.select('.lines').append('line');
+      this.line.toBack();
+      this.line.datum(this.id);
+      this.line.on('click', SkeletonElements.prototype.mouseEventManager.edge_mc_click);
+    }
+
+    this.line.attr({
+        x1: this.x, y1: this.y,
+        x2: this.parent.x, y2: this.parent.y,
+        stroke: lineColor,
+        'stroke-width': 3
+    });
+
+    this.line.show();
+
+  };
+  
   this.colorFromZDiff = function()
   {
     // zdiff is in sections, therefore the current section is at [0, 1) -- notice 0 is inclusive and 1 is exclusive.
@@ -761,6 +802,7 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
       this.c.attr({fill: fillcolor});
     }
   };
+
 
   this.drawEdges = function(redraw) {
 
@@ -800,10 +842,24 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
         }
       }
     }
+    
+    
+    // Draw edges between connector parents and children.
+    for (var ID in this.children) {
+      if (this.children.hasOwnProperty(ID)) {
+        this.children[ID].drawLineToParent();
+      }
+    }
+    if (this.parent) {
+      this.drawLineToParent();
+    }
   };
 
   this.reInit = function(id, x, y, z, zdiff, confidence, can_edit) {
     this.id = id;
+    this.parent = null;
+    this.parent_id = -1;
+    this.children = {};
     this.x = x;
     this.y = y;
     this.z = z;
@@ -822,6 +878,10 @@ SkeletonElements.prototype.AbstractConnectorNode = function() {
       } else {
         this.c.hide();
       }
+    }
+    if (this.line) {
+      this.line.datum(id);
+      this.line.hide();
     }
 
     this.preLines = null;
@@ -844,6 +904,9 @@ SkeletonElements.prototype.ConnectorNode = function(
 {
   this.paper = paper;
   this.id = id;
+  this.parent = null;
+  this.parent_id = -1;
+  this.children = {};
   this.type = SkeletonAnnotations.TYPE_CONNECTORNODE;
   this.needsync = false; // state variable; whether this node is already synchronized with the database
   this.x = x;
@@ -859,6 +922,7 @@ SkeletonElements.prototype.ConnectorNode = function(
   this.preLines = null; // Array of ArrowLine to the presynaptic nodes
   this.postLines = null; // Array of ArrowLine to the postsynaptic nodes
   this.gjLines = null; // Array of Arrowline to nodes with gap junctions
+  this.line = null;
 };
 
 SkeletonElements.prototype.ConnectorNode.prototype = new SkeletonElements.prototype.AbstractConnectorNode();
@@ -1058,7 +1122,7 @@ SkeletonElements.prototype.mouseEventManager = new (function()
         // connected activated treenode or connectornode
         // to existing treenode or connectornode
         if (atnType === SkeletonAnnotations.TYPE_CONNECTORNODE) {
-          alert("Can not join two connector nodes!");
+          catmaidSVGOverlay.createConnectorLink(atnID, connectornode.id);
         } else if (atnType === SkeletonAnnotations.TYPE_NODE) {
           // create gap junction link with altKey or if gap junction link
           // already exists to active connector
@@ -1090,7 +1154,11 @@ SkeletonElements.prototype.mouseEventManager = new (function()
     if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
       e.stopPropagation();
       catmaidSVGOverlay.activateNode(node);
-      catmaidSVGOverlay.splitSkeleton(d);
+      if (SkeletonAnnotations.TYPE_NODE === node.type) {
+        catmaidSVGOverlay.splitSkeleton(d);
+      } else if (SkeletonAnnotations.TYPE_CONNECTORNODE === node.type) {
+        catmaidSVGOverlay.splitConnector(d);
+      }
     }
   };
 

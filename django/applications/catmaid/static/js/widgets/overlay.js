@@ -796,6 +796,24 @@ SkeletonAnnotations.SVGOverlay.prototype.splitSkeleton = function(nodeID) {
   }).bind(this));
 };
 
+SkeletonAnnotations.SVGOverlay.prototype.splitConnector = function(connectorID) {
+
+  var self = this;
+  this.submit(
+      django_url + project.id + '/connector/split',
+      {pid: project.id,
+       from_id: connectorID},
+       function(json) {
+         self.updateNodes();
+       });
+  /*
+  var self = this;
+  this.submit(
+      django_url + project.id + '/connector/reroot',
+      {treenode_id: nodeID},
+      function() { self.updateNodes(); } );*/
+};
+
 /** Used to join two skeletons together.
 * Permissions are checked at the server side, returning an error if not allowed. */
 SkeletonAnnotations.SVGOverlay.prototype.createTreenodeLink = function (fromid, toid) {
@@ -893,6 +911,18 @@ SkeletonAnnotations.SVGOverlay.prototype.createLink = function (fromid, toid, li
       {pid: project.id,
        from_id: fromid,
        link_type: link_type,
+       to_id: toid},
+       function(json) {
+         self.updateNodes();
+       });
+};
+
+SkeletonAnnotations.SVGOverlay.prototype.createConnectorLink = function (fromid, toid) {
+  var self = this;
+  this.submit(
+      django_url + project.id + '/connector/join',
+      {pid: project.id,
+       from_id: fromid,
        to_id: toid},
        function(json) {
          self.updateNodes();
@@ -1226,6 +1256,7 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso,
     // and confidence, a[6]: postsynaptic nodes as array of arrays with treenode id
     // and confidence, a[7]: nodes with gapjunctions as array of arrays with 
     // treenode id and confidence, a[8]: whether the user can edit the connector
+    // a[9]: parent connector
     this.nodes[a[0]] = this.graphics.newConnectorNode(
       a[0], this.phys2pixX(a[1]),
       this.phys2pixY(a[2]), this.phys2pixZ(a[3]),
@@ -1239,6 +1270,19 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso,
   // and set correct parent objects and parent's children update
   jso[0].forEach(function(a, index, array) {
     var pn = this.nodes[a[1]]; // parent Node
+    if (pn) {
+      var nn = this.nodes[a[0]];
+      // if parent exists, update the references
+      nn.parent = pn;
+      // update the parent's children
+      pn.addChildNode(nn);
+    }
+  }, this);
+  
+  // Now that all Connector instances are in place, loop connectors again
+  // and set correct parent objects and parent's children update
+  jso[1].forEach(function(a, index, array) {
+    var pn = this.nodes[a[9]]; // parent Node
     if (pn) {
       var nn = this.nodes[a[0]];
       // if parent exists, update the references

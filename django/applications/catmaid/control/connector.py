@@ -475,6 +475,7 @@ def create_connector(request, project_id=None):
 def delete_connector(request, project_id=None):
     connector_id = int(request.POST.get("connector_id", 0))
     can_edit_or_fail(request.user, connector_id, 'connector')
+    Connector.objects.filter(parent_id=connector_id).update(parent=None)
     Connector.objects.filter(id=connector_id).delete()
     return HttpResponse(json.dumps({
         'message': 'Removed connector and class_instances',
@@ -598,4 +599,102 @@ def connectors_info(request, project_id):
                   (row[15], row[16], row[17])) for row in cursor.fetchall())
 
     return HttpResponse(json.dumps(rows))
+
+
+@requires_user_role(UserRole.Annotate)
+def join_connectors(request, project_id=None):
+    """ An user with an Annotate role can join two connectors.
+    """
+    response_on_error = 'Failed to join'
+    try:
+        from_connector_id = int(request.POST.get('from_id', None))
+        to_connector_id = int(request.POST.get('to_id', None))
+
+        _join_connectors(request.user, from_connector_id, to_connector_id,
+                project_id)
+
+        response_on_error = 'Could not log actions.'
+
+        return HttpResponse(json.dumps({
+            'message': 'success',
+            'fromid': from_connector_id,
+            'toid': to_connector_id}))
+
+    except Exception as e:
+        raise Exception(response_on_error + ':' + str(e))
+
+
+def _join_connectors(user, from_connector_id, to_connector_id, project_id):
+    """ Take the IDs of two nodes, each belonging to a different skeleton, and
+    make to_treenode be a child of from_treenode, and join the nodes of the
+    skeleton of to_treenode into the skeleton of from_treenode, and delete the
+    former skeleton of to_treenode. All annotations in annotation_set will be
+    linked to the skeleton of to_treenode. It is expected that <annotation_map>
+    is a dictionary, mapping an annotation to an annotator ID. Also, all
+    reviews of the skeleton that changes ID are changed to refer to the new
+    skeleton ID.
+    """
+    if from_connector_id is None or to_connector_id is None:
+        raise Exception('Missing arguments to _join_connector')
+
+    response_on_error = ''
+    try:
+        from_connector_id = int(from_connector_id)
+        to_connector_id = int(to_connector_id)
+
+        try:
+            from_connector = Connector.objects.get(pk=from_connector_id)
+        except Connector.DoesNotExist:
+            raise Exception("Could not find connector with ID #%s" % from_connector_id)
+
+        if not Connector.objects.filter(pk=to_connector_id).exists():
+            raise Exception("Could not find connector with ID #%s" % to_connector_id)
+
+        if from_connector_id == to_connector_id:
+            raise Exception('Cannot join a connector to itself.')
+
+        # Reroot connector chain at from_connector if necessary
+        connector = from_connector
+        last_connector = None
+        while True:
+            parent = connector.parent
+            connector.parent = last_connector
+            connector.save()
+            if parent is None:
+                break
+            last_connector = connector
+            connector = parent
+        
+        # Update the parent of to_treenode.
+        response_on_error = 'Could not update parent of connector with ID %s' % to_connector_id
+        Connector.objects.filter(id=from_connector_id).update(parent=to_connector_id, editor=user)
+
+
+    except Exception as e:
+        raise Exception(response_on_error + ':' + str(e))
+
+
+@requires_user_role(UserRole.Annotate)
+def split_connectors(request, project_id=None):
+    """ An user with an Annotate role can join two connectors.
+    """
+    response_on_error = 'Failed to split'
+
+    try:
+        from_connector_id = int(request.POST.get('from_id', None))
+
+        try:
+            from_connector = Connector.objects.get(pk=from_connector_id)
+        except Connector.DoesNotExist:
+            raise Exception("Could not find connector with ID #%s" % from_connector_id)
+            
+        from_connector.parent = None
+        from_connector.save()
+
+        return HttpResponse(json.dumps({
+            'message': 'success',
+            'fromid': from_connector_id}))
+
+    except Exception as e:
+        raise Exception(response_on_error + ':' + str(e))
 
