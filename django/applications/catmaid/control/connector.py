@@ -121,7 +121,7 @@ def list_connector(request, project_id=None):
     else:
         skeleton_id = int(skeleton_id)
 
-    relation_type = int(request.POST.get('relation_type', 0))  # 0: Presyn, 1 Postsyn
+    relation_type = int(request.POST.get('relation_type', 0))  # 0: Presyn, 1 Postsyn, 2 Gj
     display_start = int(request.POST.get('iDisplayStart', 0))
     display_length = int(request.POST.get('iDisplayLength', 0))
     sorting_column = int(request.POST.get('iSortCol_0', 0))
@@ -131,13 +131,16 @@ def list_connector(request, project_id=None):
     try:
         response_on_error = 'Could not fetch relations.'
         relation_map = get_relation_to_id_map(project_id)
-        for rel in ['presynaptic_to', 'postsynaptic_to', 'element_of', 'labeled_as']:
+        for rel in ['presynaptic_to', 'postsynaptic_to', 'gapjunction_with', 'element_of', 'labeled_as']:
             if rel not in relation_map:
                 raise Exception('Failed to find the required relation %s' % rel)
 
         if relation_type == 1:
             relation_type_id = relation_map['presynaptic_to']
             inverse_relation_type_id = relation_map['postsynaptic_to']
+        elif relation_type == 2:
+            relation_type_id = relation_map['gapjunction_with']
+            inverse_relation_type_id = relation_map['gapjunction_with']
         else:
             relation_type_id = relation_map['postsynaptic_to']
             inverse_relation_type_id = relation_map['presynaptic_to']
