@@ -1123,6 +1123,7 @@ SkeletonElements.prototype.mouseEventManager = new (function()
         // to existing treenode or connectornode
         if (atnType === SkeletonAnnotations.TYPE_CONNECTORNODE) {
           catmaidSVGOverlay.createConnectorLink(atnID, connectornode.id);
+          catmaidSVGOverlay.activateNode(connectornode);
         } else if (atnType === SkeletonAnnotations.TYPE_NODE) {
           // create gap junction link with altKey or if gap junction link
           // already exists to active connector

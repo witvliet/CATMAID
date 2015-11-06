@@ -1231,6 +1231,9 @@ SkeletonAnnotations.SVGOverlay.prototype.updateNodeCoordinatesinDB = function (c
  * @param pz is the z of the section in calibrated coordinates
  */
 SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso, pz) {
+
+  var self = this;
+  
   // Reset nodes and labels
   this.nodes = {};
   // remove labels, but do not hide them
@@ -1282,13 +1285,17 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso,
   // Now that all Connector instances are in place, loop connectors again
   // and set correct parent objects and parent's children update
   jso[1].forEach(function(a, index, array) {
+  // ONLY DO THIS FOR THINGS THAT ARE CURRENTLY WITHIN ONE SECTION.
     var pn = this.nodes[a[9]]; // parent Node
     if (pn) {
       var nn = this.nodes[a[0]];
-      // if parent exists, update the references
-      nn.parent = pn;
-      // update the parent's children
-      pn.addChildNode(nn);
+      // Check that node and parent are within one section and that one is on the current section.
+      if (Math.abs(nn.z - pn.z) <= self.stack.resolution.z && Math.abs(project.coordinates.z - nn.z) <= self.stack.resolution.z && Math.abs(project.coordinates.z - pn.z) <= self.stack.resolution.z) {
+          // if parent exists, update the references
+          nn.parent = pn;
+          // update the parent's children
+          pn.addChildNode(nn);
+      }
     }
   }, this);
 
