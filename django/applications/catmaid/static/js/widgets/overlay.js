@@ -1232,8 +1232,6 @@ SkeletonAnnotations.SVGOverlay.prototype.updateNodeCoordinatesinDB = function (c
  */
 SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso, pz) {
 
-  var self = this;
-  
   // Reset nodes and labels
   this.nodes = {};
   // remove labels, but do not hide them
@@ -1290,7 +1288,7 @@ SkeletonAnnotations.SVGOverlay.prototype.refreshNodesFromTuples = function (jso,
     if (pn) {
       var nn = this.nodes[a[0]];
       // Check that node and parent are within one section and that one is on the current section.
-      if (Math.abs(nn.z - pn.z) <= self.stack.resolution.z && Math.abs(project.coordinates.z - nn.z) <= self.stack.resolution.z && Math.abs(project.coordinates.z - pn.z) <= self.stack.resolution.z) {
+      if (project.coordinates.z === nn.z || project.coordinates.z === pn.z) {
           // if parent exists, update the references
           nn.parent = pn;
           // update the parent's children
